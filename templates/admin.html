@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RyD - Panel Administrador</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #FDFBF7;
+            color: #2b2b2b;
+            font-family: 'Apple Garamond', Georgia, serif;
+        }
+        .header-ryd {
+            background-color: #FFFFFF;
+            border-bottom: 1px solid #F0EAE1;
+            padding: 20px 40px;
+        }
+        .logo-ryd {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #C5A059;
+            letter-spacing: 2px;
+            text-decoration: none;
+        }
+        .section-title {
+            font-size: 1.4rem;
+            color: #333;
+            border-bottom: 1px solid #C5A059;
+            padding-bottom: 6px;
+            margin-bottom: 25px;
+        }
+        .card-custom {
+            background-color: #FFFFFF;
+            border: 1px solid #E5E0D8;
+            border-radius: 4px;
+        }
+        .img-thumb {
+            width: 45px;
+            height: 45px;
+            object-fit: cover;
+            border-radius: 3px;
+            border: 1px solid #E5E0D8;
+        }
+    </style>
+</head>
+<body>
+
+<header class="header-ryd d-flex justify-content-between align-items-center">
+    <a href="{{ url_for('index') }}" class="logo-ryd">RyD</a>
+    <div>
+        <span class="me-3 text-muted">Administrador: <strong>{{ session.get('username') }}</strong></span>
+        <a href="{{ url_for('pos_cajero') }}" class="btn btn-outline-dark btn-sm me-2">POS Cajero</a>
+        <a href="{{ url_for('index') }}" class="btn btn-outline-dark btn-sm me-2">Ver Catálogo</a>
+        <a href="{{ url_for('logout') }}" class="btn btn-link btn-sm text-secondary">Salir</a>
+    </div>
+</header>
+
+<div class="container my-5">
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-info border-0 rounded-0 shadow-sm mb-4" role="alert">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="p-4 card-custom">
+                <small class="text-uppercase text-muted fw-bold">Ventas Totales Registradas</small>
+                <h3 class="fw-bold mt-2 m-0">${{ "%.2f"|format(total_ventas or 0.0) }}</h3>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="p-4 card-custom">
+                <small class="text-uppercase text-muted fw-bold">Ganancia Estimada Inventario</small>
+                <h3 class="fw-bold mt-2 m-0 text-success">${{ "%.2f"|format(total_ganancias or 0.0) }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="section-title m-0 border-0">Gestión de Inventario</h5>
+        <div>
+            <button class="btn btn-outline-dark btn-sm me-2" data-bs-toggle="modal" data-bs-target="#modalImportar">
+                Importar Excel / CSV
+            </button>
+            <button class="btn btn-dark btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevo">
+                + Nuevo Producto
+            </button>
+        </div>
+    </div>
+
+    <div class="card-custom p-3 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr class="small text-muted text-uppercase">
+                        <th>Imagen</th>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Categoría</th>
+                        <th>Costo</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if productos %}
+                        {% for p in productos %}
+                        <tr>
+                            <td>
+                                {% if p.imagen %}
+                                    <img src="{{ url_for('static', filename='uploads/' + p.imagen) }}" class="img-thumb" alt="Foto">
+                                {% else %}
+                                    <div class="bg-light text-muted small text-center d-flex align-items-center justify-content-center img-thumb">N/A</div>
+                                {% endif %}
+                            </td>
+                            <td><code>{{ p.codigo }}</code></td>
+                            <td><strong>{{ p.nombre }}</strong></td>
+                            <td><span class="badge bg-light text-dark border">{{ p.categoria or 'General' }}</span></td>
+                            <td>${{ "%.2f"|format(p.costo or 0) }}</td>
+                            <td>${{ "%.2f"|format(p.precio) }}</td>
+                            <td>{{ p.stock }}</td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-outline-secondary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#modalEditar{{ p.id }}">Editar</button>
+                                <a href="{{ url_for('eliminar_producto', id=p.id) }}" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar producto?')">Eliminar</a>
+                            </td>
+                        </tr>
+
+                        <!-- MODAL EDITAR PRODUCTO -->
+                        <div class="modal fade" id="modalEditar{{ p.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form action="{{ url_for('editar_producto', id=p.id) }}" method="POST" enctype="multipart/form-data">
+                                        <div class="modal-header border-0">
+                                            <h5 class="modal-title fw-bold">Editar Producto</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body text-start">
+                                            <div class="mb-3">
+                                                <label class="small text-muted">Código</label>
+                                                <input type="text" name="codigo" value="{{ p.codigo }}" class="form-control" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="small text-muted">Nombre</label>
+                                                <input type="text" name="nombre" value="{{ p.nombre }}" class="form-control" required>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <div class="col"><label class="small text-muted">Costo</label><input type="number" step="0.01" name="costo" value="{{ p.costo or 0 }}" class="form-control" required></div>
+                                                <div class="col"><label class="small text-muted">Precio</label><input type="number" step="0.01" name="precio" value="{{ p.precio }}" class="form-control" required></div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <div class="col"><label class="small text-muted">Stock</label><input type="number" name="stock" value="{{ p.stock }}" class="form-control" required></div>
+                                                <div class="col"><label class="small text-muted">Categoría</label><input type="text" name="categoria" value="{{ p.categoria or 'General' }}" class="form-control"></div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="small text-muted">Cambiar / Subir Foto</label>
+                                                <input type="file" name="imagen" class="form-control" accept="image/*">
+                                                {% if p.imagen %}
+                                                    <small class="text-muted d-block mt-1">Imagen actual: <code>{{ p.imagen }}</code></small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer border-0">
+                                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-dark">Guardar Cambios</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted small">No hay productos en inventario.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL NUEVO PRODUCTO -->
+<div class="modal fade" id="modalNuevo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('agregar_producto') }}" method="POST" enctype="multipart/form-data">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold">Nuevo Producto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="small text-muted">Código</label>
+                        <input type="text" name="codigo" id="inputCodigo" class="form-control" oninput="validarCodigoRepetido()" required>
+                        <div id="msgErrorCodigo" class="invalid-feedback">Este código ya pertenece a otro producto.</div>
+                    </div>
+                    <div class="mb-3"><label class="small text-muted">Nombre</label><input type="text" name="nombre" class="form-control" required></div>
+                    <div class="row mb-3">
+                        <div class="col"><label class="small text-muted">Costo</label><input type="number" step="0.01" name="costo" value="0" class="form-control" required></div>
+                        <div class="col"><label class="small text-muted">Precio</label><input type="number" step="0.01" name="precio" class="form-control" required></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col"><label class="small text-muted">Stock</label><input type="number" name="stock" class="form-control" required></div>
+                        <div class="col"><label class="small text-muted">Descuento %</label><input type="number" name="descuento" value="0" class="form-control"></div>
+                    </div>
+                    <div class="mb-3"><label class="small text-muted">Categoría</label><input type="text" name="categoria" class="form-control" placeholder="Ej. Uñas, Cabello, Insumos"></div>
+                    <div class="mb-3"><label class="small text-muted">Foto del Producto (opcional)</label><input type="file" name="imagen" class="form-control" accept="image/*"></div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="submit" id="btnGuardar" class="btn btn-dark w-100">Guardar Producto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL IMPORTAR EXCEL -->
+<div class="modal fade" id="modalImportar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('importar_excel') }}" method="POST" enctype="multipart/form-data">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold">Importar Productos desde Excel / CSV</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">
+                        Sube un archivo Excel (<code>.xlsx</code>) o CSV (<code>.csv</code>) con el formato de columnas recomendado:
+                    </p>
+                    <div class="bg-light p-2 rounded small mb-3">
+                        <code>codigo</code> | <code>nombre</code> | <code>costo</code> | <code>precio</code> | <code>stock</code> | <code>categoria</code>
+                    </div>
+                    <div class="mb-3">
+                        <label class="small text-muted">Seleccionar archivo</label>
+                        <input type="file" name="archivo_excel" class="form-control" accept=".xlsx, .xls, .csv" required>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        * Si el código ya existe, los datos del producto se actualizarán automáticamente.
+                    </small>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="submit" class="btn btn-dark w-100">Cargar Archivo e Importar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function validarCodigoRepetido() {
+    const input = document.getElementById('inputCodigo');
+    const btn = document.getElementById('btnGuardar');
+    const codigo = input.value.trim();
+
+    if (!codigo) {
+        input.classList.remove('is-invalid');
+        btn.disabled = false;
+        return;
+    }
+
+    fetch(`/check_codigo?codigo=${encodeURIComponent(codigo)}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.existe) {
+                input.classList.add('is-invalid');
+                btn.disabled = true;
+            } else {
+                input.classList.remove('is-invalid');
+                btn.disabled = false;
+            }
+        });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RyD - Tienda Oficial</title>
+    <style>
+        @font-face {
+            font-family: 'AppleGaramond-Light';
+            src: local('AppleGaramond-Light'), local('Apple Garamond Light'), local('Apple Garamond');
+        }
+
+        * { 
+            box-sizing: border-box; 
+            font-family: 'AppleGaramond-Light', 'Apple Garamond', Garamond, 'Times New Roman', serif; 
+            margin: 0; 
+            padding: 0; 
+        }
+
+        body { 
+            background-color: #FBF9F5; 
+            color: #2C2C2C; 
+            padding-bottom: 50px; 
+        }
+        
+        header { 
+            background-color: #FFFFFF; 
+            border-bottom: 1px solid #E5DFD3; 
+            padding: 20px 50px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+
+        .logo { 
+            font-family: 'AppleGaramond-Light', Garamond, serif;
+            font-size: 36px; 
+            font-weight: normal; 
+            letter-spacing: 3px; 
+            color: #C5A059; 
+            text-transform: uppercase;
+            text-decoration: none;
+        }
+
+        .container { 
+            max-width: 1200px; 
+            margin: 40px auto; 
+            padding: 0 20px; 
+        }
+
+        /* Búsqueda y Filtros */
+        .filter-section {
+            background: #FFFFFF;
+            border: 1px solid #E5DFD3;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+            min-width: 280px;
+        }
+
+        .search-form input {
+            flex: 1;
+            padding: 10px 14px;
+            background: #FBF9F5;
+            border: 1px solid #E5DFD3;
+            font-size: 14px;
+            color: #1A1A1A;
+        }
+
+        .search-form input:focus {
+            outline: none;
+            border-color: #C5A059;
+        }
+
+        .btn-search {
+            background: #1A1A1A;
+            color: #FFFFFF;
+            border: none;
+            padding: 10px 20px;
+            font-size: 13px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .btn-search:hover {
+            background: #333333;
+        }
+
+        .categories-bar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .cat-btn {
+            padding: 6px 14px;
+            border: 1px solid #E5DFD3;
+            background: #FBF9F5;
+            color: #1A1A1A;
+            text-decoration: none;
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+
+        .cat-btn:hover, .cat-btn.active {
+            background: #C5A059;
+            color: #FFFFFF;
+            border-color: #C5A059;
+        }
+
+        .banner-section { 
+            margin-bottom: 45px; 
+        }
+
+        .section-title { 
+            font-size: 22px; 
+            font-weight: normal; 
+            color: #1A1A1A; 
+            margin-bottom: 20px; 
+            border-bottom: 1px solid #C5A059; 
+            padding-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .carousel-container { 
+            display: flex; 
+            gap: 20px; 
+            overflow-x: auto; 
+            padding-bottom: 15px; 
+        }
+
+        .carousel-container::-webkit-scrollbar { 
+            height: 4px; 
+        }
+
+        .carousel-container::-webkit-scrollbar-thumb { 
+            background: #C5A059; 
+        }
+
+        .viral-card { 
+            min-width: 220px; 
+            max-width: 220px;
+            background: #FFFFFF; 
+            border: 1px solid #E5DFD3; 
+            border-radius: 4px; 
+            padding: 15px; 
+            text-align: center; 
+            position: relative; 
+        }
+
+        .viral-badge { 
+            position: absolute; 
+            top: 12px; 
+            left: 12px; 
+            background: #C5A059; 
+            color: #FFFFFF; 
+            font-size: 10px; 
+            letter-spacing: 1px; 
+            padding: 3px 8px; 
+            text-transform: uppercase;
+            z-index: 2;
+        }
+
+        .layout { 
+            display: grid; 
+            grid-template-columns: 2.2fr 1fr; 
+            gap: 30px; 
+        }
+
+        .products-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
+            gap: 20px; 
+        }
+
+        .card { 
+            background: #FFFFFF; 
+            border: 1px solid #E5DFD3; 
+            border-radius: 4px; 
+            padding: 15px; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+            position: relative; 
+        }
+
+        .prod-image-box {
+            width: 100%;
+            height: 180px;
+            background-color: #FBF9F5;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .prod-image-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .no-img-text {
+            color: #C5A059;
+            font-size: 24px;
+            letter-spacing: 2px;
+        }
+
+        .discount-badge { 
+            position: absolute; 
+            top: 12px; 
+            right: 12px; 
+            background: #8C2D19; 
+            color: #FFFFFF; 
+            font-size: 11px; 
+            padding: 2px 6px; 
+            z-index: 2;
+        }
+
+        .prod-title { 
+            font-size: 18px; 
+            color: #1A1A1A; 
+            margin-bottom: 4px; 
+        }
+
+        .category-tag { 
+            font-size: 11px; 
+            color: #8C857B; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+            margin-bottom: 8px; 
+        }
+
+        .price-box { 
+            margin-bottom: 15px; 
+        }
+
+        .old-price { 
+            text-decoration: line-through; 
+            color: #999999; 
+            font-size: 13px; 
+            margin-right: 8px; 
+        }
+
+        .current-price { 
+            font-size: 18px; 
+            color: #1A1A1A; 
+            font-weight: bold;
+        }
+
+        .add-form { 
+            display: flex; 
+            gap: 10px; 
+        }
+
+        .add-form input { 
+            width: 50px; 
+            padding: 8px; 
+            background: #FBF9F5; 
+            border: 1px solid #E5DFD3; 
+            color: #1A1A1A; 
+            text-align: center; 
+        }
+
+        .btn-add { 
+            flex: 1; 
+            background: #C5A059; 
+            color: #FFFFFF; 
+            border: none; 
+            font-size: 14px; 
+            letter-spacing: 1px;
+            cursor: pointer; 
+            transition: background 0.2s; 
+        }
+
+        .btn-add:hover { 
+            background: #B08C45; 
+        }
+
+        .cart-card { 
+            background: #FFFFFF; 
+            border: 1px solid #E5DFD3; 
+            border-radius: 4px; 
+            padding: 25px; 
+            position: sticky; 
+            top: 100px; 
+        }
+
+        .cart-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px; 
+        }
+
+        .cart-table th, .cart-table td { 
+            padding: 10px 4px; 
+            text-align: left; 
+            font-size: 14px; 
+            border-bottom: 1px solid #E5DFD3; 
+        }
+
+        .cart-table th {
+            color: #8C857B;
+            font-weight: normal;
+            text-transform: uppercase;
+            font-size: 11px;
+        }
+
+        .cart-total { 
+            font-size: 20px; 
+            color: #1A1A1A; 
+            text-align: right; 
+            margin-top: 20px; 
+            font-weight: bold;
+        }
+
+        .btn-pay { 
+            width: 100%; 
+            background: #1A1A1A; 
+            color: #FFFFFF; 
+            border: none; 
+            padding: 12px; 
+            font-size: 14px; 
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-top: 15px; 
+            cursor: pointer; 
+        }
+
+        .btn-pay:hover {
+            background: #333333;
+        }
+
+        .btn-clear { 
+            color: #8C2D19; 
+            text-decoration: none; 
+            font-size: 12px; 
+            float: right; 
+            margin-top: 5px; 
+        }
+
+        .alert { 
+            background: #E5DFD3; 
+            color: #1A1A1A; 
+            padding: 12px; 
+            margin-bottom: 20px; 
+            text-align: center; 
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="/" class="logo">RyD</a>
+    </header>
+
+    <div class="container">
+        
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <!-- Barra de Búsqueda y Categorías -->
+        <div class="filter-section">
+            <form action="/" method="GET" class="search-form">
+                {% if cat_seleccionada %}
+                    <input type="hidden" name="cat" value="{{ cat_seleccionada }}">
+                {% endif %}
+                <input type="text" name="q" placeholder="Buscar producto por nombre..." value="{{ busqueda }}">
+                <button type="submit" class="btn-search">Buscar</button>
+            </form>
+
+            <div class="categories-bar">
+                <a href="/{% if busqueda %}?q={{ busqueda }}{% endif %}" class="cat-btn {% if not cat_seleccionada %}active{% endif %}">Todas</a>
+                {% for c in categorias %}
+                    <a href="/?cat={{ c }}{% if busqueda %}&q={{ busqueda }}{% endif %}" 
+                       class="cat-btn {% if cat_seleccionada == c %}active{% endif %}">
+                        {{ c }}
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% if productos and not busqueda and not cat_seleccionada %}
+        <div class="banner-section">
+            <h2 class="section-title">Productos Destacados</h2>
+            <div class="carousel-container">
+                {% for p in productos %}
+                    {% if loop.index <= 5 %}
+                    <div class="viral-card">
+                        <span class="viral-badge">Popular</span>
+                        <div class="prod-image-box" style="height: 120px; margin-top: 15px;">
+                            {% if p[6] %}
+                                <img src="{{ p[6] }}" alt="{{ p[1] }}">
+                            {% else %}
+                                <span class="no-img-text">RyD</span>
+                            {% endif %}
+                        </div>
+                        <h4 style="color:#1A1A1A; font-weight: normal; font-size: 15px;">{{ p[1] }}</h4>
+                        <p style="color:#C5A059; font-size: 15px; margin-top:4px;">${{ "%.2f"|format(p[2]) }}</p>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="layout">
+            <div>
+                <h2 class="section-title">
+                    Catálogo 
+                    {% if cat_seleccionada %}- {{ cat_seleccionada }}{% endif %}
+                    {% if busqueda %}(Resultados para "{{ busqueda }}"){% endif %}
+                </h2>
+                <div class="products-grid">
+                    {% for p in productos %}
+                    <div class="card">
+                        {% if p[5] > 0 %}
+                            <span class="discount-badge">-{{ p[5] }}%</span>
+                        {% endif %}
+
+                        <div class="prod-image-box">
+                            {% if p[6] %}
+                                <img src="{{ p[6] }}" alt="{{ p[1] }}">
+                            {% else %}
+                                <span class="no-img-text">RyD</span>
+                            {% endif %}
+                        </div>
+
+                        <div>
+                            <div class="category-tag">{{ p[4] }}</div>
+                            <div class="prod-title">{{ p[1] }}</div>
+                        </div>
+
+                        <div class="price-box">
+                            {% if p[5] > 0 %}
+                                <span class="old-price">${{ "%.2f"|format(p[2]) }}</span>
+                                <span class="current-price">${{ "%.2f"|format(p[2] * (1 - p[5]/100)) }}</span>
+                            {% else %}
+                                <span class="current-price">${{ "%.2f"|format(p[2]) }}</span>
+                            {% endif %}
+                            <div style="font-size: 12px; color: #8C857B; margin-top: 4px;">Disponibles: {{ p[3] }}</div>
+                        </div>
+
+                        <form action="/agregar_carrito" method="POST" class="add-form">
+                            <input type="hidden" name="producto_id" value="{{ p[0] }}">
+                            <input type="number" name="cantidad" value="1" min="1" max="{{ p[3] }}" required>
+                            <button type="submit" class="btn-add">Agregar</button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <p style="color: #8C857B; grid-column: 1/-1;">No se encontraron productos con el filtro aplicado.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div>
+                <div class="cart-card">
+                    <h3 style="font-weight: normal; font-size: 20px;">
+                        Carrito de Compras
+                        {% if carrito %}
+                        <a href="/vaciar_carrito" class="btn-clear">Vaciar</a>
+                        {% endif %}
+                    </h3>
+
+                    <table class="cart-table">
+                        <thead>
+                            <tr><th>Producto</th><th>Cant.</th><th>Subtotal</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for item in carrito %}
+                            <tr>
+                                <td>{{ item.nombre }}</td>
+                                <td>{{ item.cantidad }}</td>
+                                <td>${{ "%.2f"|format(item.subtotal) }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: #8C857B; padding: 25px 0;">El carrito está vacío.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    <div class="cart-total">
+                        Total: ${{ "%.2f"|format(total_carrito) }}
+                    </div>
+
+                    {% if carrito %}
+                    <form action="/procesar_venta" method="POST">
+                        <button type="submit" class="btn-pay">Finalizar Compra</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

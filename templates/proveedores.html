@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>RyD - Gestión de Proveedores</title>
+    <style>
+        @font-face {
+            font-family: 'AppleGaramond-Light';
+            src: local('AppleGaramond-Light'), local('Apple Garamond Light'), local('Apple Garamond');
+        }
+
+        * { box-sizing: border-box; font-family: 'AppleGaramond-Light', 'Apple Garamond', Garamond, serif; margin: 0; padding: 0; }
+        body { background-color: #FBF9F5; color: #2C2C2C; padding: 30px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #C5A059; padding-bottom: 15px; margin-bottom: 25px; }
+        .logo { font-size: 28px; color: #C5A059; letter-spacing: 2px; text-transform: uppercase; }
+        
+        .btn-top {
+            background-color: #1A1A1A;
+            color: #FFFFFF;
+            padding: 8px 16px;
+            text-decoration: none;
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .card { background: #FFFFFF; border: 1px solid #E5DFD3; padding: 25px; margin-bottom: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
+        .card h3 { color: #C5A059; margin-bottom: 20px; font-size: 18px; text-transform: uppercase; border-bottom: 1px solid #F0EAE1; padding-bottom: 8px; }
+
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-size: 12px; color: #8C857B; margin-bottom: 5px; text-transform: uppercase; }
+        .form-group input, .form-group textarea { padding: 10px; border: 1px solid #E5DFD3; outline: none; font-size: 14px; }
+
+        .btn-submit { background-color: #1A1A1A; color: #FFFFFF; border: none; padding: 12px; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; margin-top: 15px; width: 100%; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #E5DFD3; font-size: 14px; }
+        th { background-color: #FAF8F3; color: #8C857B; text-transform: uppercase; font-size: 11px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <div class="header">
+            <div class="logo">Proveedores - RyD</div>
+            <div>
+                <a href="/admin" class="btn-top">Volver al Panel</a>
+            </div>
+        </div>
+
+        <!-- FORMULARIO PROVEEDOR -->
+        <div class="card">
+            <h3>Registrar Proveedor</h3>
+            <form action="/admin/proveedores" method="POST">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Empresa / Nombre</label>
+                        <input type="text" name="nombre" required placeholder="Ej: Distribuidora Beauty">
+                    </div>
+                    <div class="form-group">
+                        <label>Persona de Contacto</label>
+                        <input type="text" name="contacto" placeholder="Ej: María Pérez">
+                    </div>
+                    <div class="form-group">
+                        <label>Teléfono</label>
+                        <input type="text" name="telefono" placeholder="+58 412...">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" name="email" placeholder="contacto@ejemplo.com">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>Notas / Dirección</label>
+                    <textarea name="notas" rows="2" placeholder="Detalles de entregas, notas de pago..."></textarea>
+                </div>
+                <button type="submit" class="btn-submit">Guardar Proveedor</button>
+            </form>
+        </div>
+
+        <!-- TABLA PROVEEDORES -->
+        <div class="card">
+            <h3>Lista de Proveedores</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre / Empresa</th>
+                        <th>Contacto</th>
+                        <th>Teléfono</th>
+                        <th>Email</th>
+                        <th>Notas</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in proveedores %}
+                    <tr>
+                        <td><strong>{{ p['nombre'] }}</strong></td>
+                        <td>{{ p['contacto'] or '-' }}</td>
+                        <td>{{ p['telefono'] or '-' }}</td>
+                        <td>{{ p['email'] or '-' }}</td>
+                        <td>{{ p['notas'] or '-' }}</td>
+                        <td>
+                            <a href="/admin/proveedores/eliminar/{{ p['id'] }}" style="color: #8C2D19; text-decoration: none;" onclick="return confirm('¿Eliminar este proveedor? Se desvinculará de sus productos.')">[Eliminar]</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #8C857B; padding: 20px 0;">No hay proveedores registrados aún.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+</body>
+</html>

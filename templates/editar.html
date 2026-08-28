@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>RyD - Editar Producto</title>
+    <style>
+        @font-face {
+            font-family: 'AppleGaramond-Light';
+            src: local('AppleGaramond-Light'), local('Apple Garamond Light'), local('Apple Garamond');
+        }
+
+        * { 
+            box-sizing: border-box; 
+            font-family: 'AppleGaramond-Light', 'Apple Garamond', Garamond, serif; 
+            margin: 0; 
+            padding: 0; 
+        }
+
+        body { 
+            background-color: #FBF9F5; 
+            color: #2C2C2C; 
+            padding-bottom: 50px; 
+        }
+
+        header { 
+            background-color: #FFFFFF; 
+            border-bottom: 1px solid #E5DFD3; 
+            padding: 20px 50px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 30px;
+        }
+
+        .logo { 
+            font-size: 32px; 
+            letter-spacing: 3px; 
+            color: #C5A059; 
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: #8C857B;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-left: 10px;
+        }
+
+        .store-link { 
+            color: #1A1A1A; 
+            border: 1px solid #1A1A1A; 
+            text-decoration: none; 
+            padding: 8px 18px; 
+            font-size: 13px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 0 20px; 
+        }
+
+        .card { 
+            background: #FFFFFF; 
+            border: 1px solid #E5DFD3; 
+            border-radius: 4px; 
+            padding: 25px; 
+        }
+
+        h2 { 
+            font-size: 20px; 
+            font-weight: normal; 
+            color: #1A1A1A; 
+            border-bottom: 1px solid #C5A059; 
+            padding-bottom: 8px; 
+            margin-bottom: 20px; 
+            letter-spacing: 1px;
+        }
+
+        .form-group { 
+            margin-bottom: 15px; 
+        }
+
+        label { 
+            display: block; 
+            font-size: 12px; 
+            color: #8C857B; 
+            margin-bottom: 5px; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        input { 
+            width: 100%; 
+            padding: 8px; 
+            background: #FBF9F5; 
+            border: 1px solid #E5DFD3; 
+            color: #1A1A1A; 
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #C5A059;
+        }
+
+        .btn { 
+            background: #1A1A1A; 
+            color: #FFFFFF; 
+            border: none; 
+            padding: 10px 15px; 
+            cursor: pointer; 
+            width: 100%; 
+            font-size: 13px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-top: 10px;
+        }
+
+        .btn:hover { 
+            background: #333333; 
+        }
+
+        .alert { 
+            background: #E5DFD3; 
+            color: #1A1A1A; 
+            padding: 10px; 
+            margin-bottom: 15px; 
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <span class="logo">RyD</span>
+            <span class="subtitle">Editar Producto</span>
+        </div>
+        <div>
+            <a href="/admin" class="store-link">Volver al Panel</a>
+        </div>
+    </header>
+
+    <div class="container">
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <h2>Modificar Datos</h2>
+            <form action="/admin/editar/{{ producto['id'] }}" method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Código Único:</label>
+                    <input type="text" name="codigo" value="{{ producto['codigo'] }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Nombre del Producto:</label>
+                    <input type="text" name="nombre" value="{{ producto['nombre'] }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Categoría:</label>
+                    <input type="text" name="categoria" value="{{ producto['categoria'] }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Costo de Adquisición ($):</label>
+                    <input type="number" step="0.01" name="costo" value="{{ producto['costo'] }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Precio de Venta ($):</label>
+                    <input type="number" step="0.01" name="precio" value="{{ producto['precio'] }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Descuento (%):</label>
+                    <input type="number" min="0" max="100" name="descuento" value="{{ producto['descuento'] }}">
+                </div>
+                <div class="form-group">
+                    <label>Stock Disponible:</label>
+                    <input type="number" name="stock" value="{{ producto['stock'] }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Subir Nueva Imagen (Opcional):</label>
+                    <input type="file" name="imagen_archivo" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label>O Enlace de Imagen (URL):</label>
+                    <input type="url" name="imagen_url" value="{{ producto['imagen'] }}">
+                </div>
+                <button type="submit" class="btn">Guardar Cambios</button>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RyD - Tienda Oficial</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #FDFBF7;
+            color: #2b2b2b;
+            font-family: 'Apple Garamond', Georgia, serif;
+        }
+        .header-ryd {
+            background-color: #FFFFFF;
+            border-bottom: 1px solid #F0EAE1;
+            padding: 20px 40px;
+        }
+        .logo-ryd {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #C5A059;
+            letter-spacing: 2px;
+            text-decoration: none;
+        }
+        .search-header {
+            width: 240px;
+        }
+        .category-bar {
+            background-color: #FFFFFF;
+            border-bottom: 1px solid #E5E0D8;
+            padding: 12px 0;
+            margin-bottom: 30px;
+        }
+        .btn-category {
+            background: transparent;
+            border: none;
+            color: #555;
+            font-size: 0.9rem;
+            margin: 0 8px;
+            padding: 4px 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s ease;
+        }
+        .btn-category:hover, .btn-category.active {
+            color: #C5A059;
+            border-bottom: 2px solid #C5A059;
+        }
+        .section-title {
+            font-size: 1.4rem;
+            color: #333;
+            border-bottom: 1px solid #C5A059;
+            padding-bottom: 6px;
+            margin-bottom: 25px;
+        }
+        .cart-card {
+            background: #FFFFFF;
+            border: 1px solid #E5E0D8;
+            border-radius: 4px;
+            padding: 20px;
+        }
+        .cart-table th {
+            font-size: 0.75rem;
+            color: #888;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #E5E0D8;
+        }
+        .total-price {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #000;
+        }
+        .card-product {
+            background-color: #FFFFFF;
+            border: 1px solid #E5E0D8;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .product-img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-bottom: 1px solid #F0EAE1;
+        }
+        .btn-whatsapp {
+            background-color: #25D366;
+            color: #FFFFFF;
+            font-weight: bold;
+            border: none;
+        }
+        .btn-whatsapp:hover {
+            background-color: #1EBE5D;
+            color: #FFFFFF;
+        }
+    </style>
+</head>
+<body>
+
+<header class="header-ryd d-flex justify-content-between align-items-center">
+    <a href="{{ url_for('index') }}" class="logo-ryd">RyD</a>
+    <div class="search-header">
+        <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Buscar productos..." onkeyup="filtrarProductos()">
+    </div>
+</header>
+
+<nav class="category-bar text-center">
+    <div class="container d-flex justify-content-center flex-wrap">
+        <button class="btn-category active" onclick="filtrarCategoria('todas', this)">Todas</button>
+        <button class="btn-category" onclick="filtrarCategoria('cabello', this)">Productos para el Cabello</button>
+        <button class="btn-category" onclick="filtrarCategoria('intimos', this)">Íntimos</button>
+        <button class="btn-category" onclick="filtrarCategoria('insumos', this)">Insumos</button>
+        <button class="btn-category" onclick="filtrarCategoria('cejas y pestañas', this)">Cejas y Pestañas</button>
+        <button class="btn-category" onclick="filtrarCategoria('uñas', this)">Uñas</button>
+    </div>
+</nav>
+
+<div class="container mb-5">
+    
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-info border-0 rounded-0 shadow-sm mb-4" role="alert">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <!-- CATÁLOGO DE PRODUCTOS CON FOTO -->
+        <div class="col-lg-8 pe-lg-5">
+            <h5 class="section-title">Catálogo</h5>
+            
+            <div class="row" id="gridProductos">
+                {% if productos %}
+                    {% for p in productos %}
+                    <div class="col-md-6 mb-4 item-producto" 
+                         data-nombre="{{ p.nombre.lower() }}" 
+                         data-categoria="{{ (p.categoria or 'general').lower() }}">
+                        <div class="card-product">
+                            {% if p.imagen %}
+                                <img src="{{ url_for('static', filename='uploads/' + p.imagen) }}" class="product-img" alt="{{ p.nombre }}">
+                            {% endif %}
+                            <div class="p-3">
+                                <h6 class="fw-bold m-0">{{ p.nombre }}</h6>
+                                <p class="text-muted small my-1">Categoría: {{ p.categoria or 'General' }}</p>
+                                <p class="fw-bold text-dark m-0 mb-2">${{ "%.2f"|format(p.precio) }}</p>
+                                <form action="{{ url_for('agregar_carrito') }}" method="POST" class="d-flex">
+                                    <input type="hidden" name="producto_id" value="{{ p.id }}">
+                                    <input type="number" name="cantidad" value="1" min="1" max="{{ p.stock }}" class="form-control form-control-sm me-2" style="width: 70px;">
+                                    <button type="submit" class="btn btn-sm btn-dark">Agregar al Carrito</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted small">No hay productos en catálogo.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- CARRITO DE COMPRAS CON ENVÍO A WHATSAPP -->
+        <div class="col-lg-4">
+            <div class="cart-card shadow-sm">
+                <h6 class="mb-4">Carrito de Compras</h6>
+                
+                <table class="table table-borderless cart-table">
+                    <thead>
+                        <tr>
+                            <th>PRODUCTO</th>
+                            <th class="text-center">CANT.</th>
+                            <th class="text-end">SUBTOTAL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if carrito %}
+                            {% for item in carrito %}
+                            <tr>
+                                <td><small>{{ item.nombre }}</small></td>
+                                <td class="text-center"><small>{{ item.cantidad }}</small></td>
+                                <td class="text-end"><small>${{ "%.2f"|format(item.subtotal) }}</small></td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center py-4 text-muted small">
+                                    El carrito está vacío.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+
+                <hr style="border-color: #E5E0D8;">
+                
+                <div class="d-flex justify-content-between align-items-center mt-3 mb-4">
+                    <span class="total-price">Total:</span>
+                    <span class="total-price">${{ "%.2f"|format(total_carrito) }}</span>
+                </div>
+
+                {% if carrito %}
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Tu Nombre (para la factura):</label>
+                        <input type="text" id="clienteNombre" class="form-control form-control-sm" placeholder="Ej. Maria Gonzalez">
+                    </div>
+
+                    <button onclick="enviarPedidoWhatsApp()" class="btn btn-whatsapp btn-sm w-100 py-2 mb-2">
+                        Confirmar y Enviar Pedido por WhatsApp
+                    </button>
+                    <a href="{{ url_for('vaciar_carrito') }}" class="btn btn-outline-secondary btn-sm w-100">Vaciar Carrito</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let categoriaActual = 'todas';
+
+function filtrarProductos() {
+    const query = document.getElementById('searchInput').value.toLowerCase().trim();
+    const productos = document.querySelectorAll('.item-producto');
+
+    productos.forEach(prod => {
+        const nombre = prod.getAttribute('data-nombre');
+        const categoria = prod.getAttribute('data-categoria');
+
+        const coincideBusqueda = nombre.includes(query);
+        const coincideCategoria = (categoriaActual === 'todas') || categoria.includes(categoriaActual);
+
+        if (coincideBusqueda && coincideCategoria) {
+            prod.style.display = 'block';
+        } else {
+            prod.style.display = 'none';
+        }
+    });
+}
+
+function filtrarCategoria(cat, elemento) {
+    categoriaActual = cat;
+    document.querySelectorAll('.btn-category').forEach(btn => btn.classList.remove('active'));
+    elemento.classList.add('active');
+    filtrarProductos();
+}
+
+function enviarPedidoWhatsApp() {
+    const numeroTienda = "584244495812"; 
+    const nombre = document.getElementById('clienteNombre').value.trim() || "Cliente General";
+    
+    let mensaje = `*NUEVO PEDIDO - RyD Tienda Oficial*\n`;
+    mensaje += `*Cliente:* ${nombre}\n`;
+    mensaje += `------------------------------------\n`;
+
+    {% if carrito %}
+        {% for item in carrito %}
+            mensaje += `• {{ item.nombre }} x{{ item.cantidad }} - ${{ "%.2f"|format(item.subtotal) }}\n`;
+        {% endfor %}
+    {% endif %}
+
+    mensaje += `------------------------------------\n`;
+    mensaje += `*TOTAL A PAGAR:* ${{ "%.2f"|format(total_carrito) }}\n\n`;
+    mensaje += `Deseo coordinar el pago y la entrega.`;
+
+    const url = `https://api.whatsapp.com/send?phone=${numeroTienda}&text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
+}
+</script>
+
+</body>
+</html>
