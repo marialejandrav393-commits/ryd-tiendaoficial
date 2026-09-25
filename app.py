@@ -2,6 +2,7 @@ import os
 import sqlite3
 import pandas as pd
 import unicodedata
+from datetime import date
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.utils import secure_filename
@@ -148,6 +149,34 @@ def admin():
         total_ventas=total_ventas,
         total_ganancias=total_ganancias
     )
+
+@app.route('/cierre-caja')
+@role_required('admin')
+def cierre_caja():
+    hoy = date.today().strftime('%Y-%m-%d')
+    conn = obtener_conexion()
+    ventas_hoy = []
+    try:
+        ventas_hoy = conn.execute('SELECT * FROM ventas WHERE date(fecha) = ? ORDER BY fecha DESC', (hoy,)).fetchall()
+    except sqlite3.OperationalError:
+        ventas_hoy = []
+    conn.close()
+
+    total_recaudado = sum(dict(v).get('subtotal', 0) or dict(v).get('total', 0) or 0.0 for v in ventas_hoy)
+    total_efectivo = sum(dict(v).get('subtotal', 0) or dict(v).get('total', 0) or 0.0 for v in ventas_hoy if dict(v).get('metodo_pago') == 'Efectivo')
+    total_transferencia = sum(dict(v).get('subtotal', 0) or dict(v).get('total', 0) or 0.0 for v in ventas_hoy if dict(v).get('metodo_pago') in ['Transferencia', 'Pago Móvil', 'Transferencia/PagoMóvil'])
+    total_punto = sum(dict(v).get('subtotal', 0) or dict(v).get('total', 0) or 0.0 for v in ventas_hoy if dict(v).get('metodo_pago') in ['Punto', 'Punto de Venta'])
+
+    resumen = {
+        'fecha': hoy,
+        'cantidad_ventas': len(ventas_hoy),
+        'total_general': total_recaudado,
+        'efectivo': total_efectivo,
+        'transferencia': total_transferencia,
+        'punto': total_punto
+    }
+
+    return render_template('cierre_caja.html', ventas=ventas_hoy, resumen=resumen)
 
 @app.route('/check_codigo')
 @role_required('admin')
@@ -371,87 +400,4 @@ def vaciar_carrito():
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=80, debug=True)
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Cierre de Caja - {{ resumen.fecha }}</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
-        .cabecera { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 15px; }
-        .totales-grid { display: flex; gap: 15px; margin-bottom: 20px; }
-        .caja-total { border: 1px solid #ccc; padding: 10px; border-radius: 6px; flex: 1; text-align: center; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f4f4f4; }
-        .btn-imprimir { background: #10b981; color: white; padding: 10px 18px; border: none; border-radius: 5px; cursor: pointer; font-size: 15px; }
-        
-        /* Oculta botones al momento de imprimir */
-        @media print {
-            .btn-imprimir, .no-print { display: none; }
-            body { margin: 0; }
-            table, th, td { border-color: #000; }
-        }
-    </style>
-</head>
-<body>
-
-    <div class="no-print" style="margin-bottom: 15px;">
-        <button class="btn-imprimir" onclick="window.print()">🖨️ Imprimir Cierre de Caja</button>
-    </div>
-
-    <div class="cabecera">
-        <h2>RyD - Reporte de Cierre de Caja</h2>
-        <p><strong>Fecha:</strong> {{ resumen.fecha }} | <strong>Transacciones:</strong> {{ resumen.cantidad_ventas }}</p>
-    </div>
-
-    <div class="totales-grid">
-        <div class="caja-total">
-            <small>Efectivo</small>
-            <h3>${{ "%.2f"|format(resumen.efectivo) }}</h3>
-        </div>
-        <div class="caja-total">
-            <small>Transferencia / Pago Móvil</small>
-            <h3>${{ "%.2f"|format(resumen.transferencia) }}</h3>
-        </div>
-        <div class="caja-total">
-            <small>Punto de Venta</small>
-            <h3>${{ "%.2f"|format(resumen.punto) }}</h3>
-        </div>
-        <div class="caja-total" style="background: #eef2ff;">
-            <small>Total General</small>
-            <h3>${{ "%.2f"|format(resumen.total_general) }}</h3>
-        </div>
-    </div>
-
-    <h3>Detalle de Ventas</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Hora</th>
-                <th>Producto / Concepto</th>
-                <th>Cant.</th>
-                <th>Método</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for venta in ventas %}
-            <tr>
-                <td>{{ venta.hora }}</td>
-                <td>{{ venta.producto }}</td>
-                <td>{{ venta.cantidad }}</td>
-                <td>{{ venta.metodo_pago }}</td>
-                <td>${{ "%.2f"|format(venta.total) }}</td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="5" style="text-align: center;">No hay ventas registradas el día de hoy.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-</body>
-</html>
+    app.run(host='0.0.0.0', port=5000, debug=True)
