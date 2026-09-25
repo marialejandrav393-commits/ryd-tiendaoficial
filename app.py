@@ -162,18 +162,25 @@ def cierre_caja():
         ventas_hoy = []
     conn.close()
 
-    total_recaudado = sum(dict(v).get('subtotal', 0) or dict(v).get('total', 0) or 0.0 for v in ventas_hoy)
-    total_efectivo = sum(dict(v).get('subtotal', 0) or dict(v).get('total', 0) or 0.0 for v in ventas_hoy if dict(v).get('metodo_pago') == 'Efectivo')
-    total_transferencia = sum(dict(v).get('subtotal', 0) or dict(v).get('total', 0) or 0.0 for v in ventas_hoy if dict(v).get('metodo_pago') in ['Transferencia', 'Pago Móvil', 'Transferencia/PagoMóvil'])
-    total_punto = sum(dict(v).get('subtotal', 0) or dict(v).get('total', 0) or 0.0 for v in ventas_hoy if dict(v).get('metodo_pago') in ['Punto', 'Punto de Venta'])
+    def obtener_monto(v):
+        return dict(v).get('subtotal', 0) or dict(v).get('total', 0) or 0.0
+
+    total_recaudado = sum(obtener_monto(v) for v in ventas_hoy)
+    
+    # Separación por método de pago:
+    total_efectivo_usd = sum(obtener_monto(v) for v in ventas_hoy if dict(v).get('metodo_pago') in ['Efectivo $', 'Efectivo USD', 'Efectivo Divisa', 'Efectivo'])
+    total_efectivo_bs = sum(obtener_monto(v) for v in ventas_hoy if dict(v).get('metodo_pago') in ['Efectivo Bs', 'Efectivo Bolívares', 'Bs Efectivo'])
+    total_pago_movil = sum(obtener_monto(v) for v in ventas_hoy if dict(v).get('metodo_pago') in ['Pago Móvil', 'Transferencia', 'Transferencia/PagoMóvil', 'Pago Movil'])
+    total_binance = sum(obtener_monto(v) for v in ventas_hoy if dict(v).get('metodo_pago') in ['Binance', 'USDT', 'Binance Pay'])
 
     resumen = {
         'fecha': hoy,
         'cantidad_ventas': len(ventas_hoy),
         'total_general': total_recaudado,
-        'efectivo': total_efectivo,
-        'transferencia': total_transferencia,
-        'punto': total_punto
+        'efectivo_usd': total_efectivo_usd,
+        'efectivo_bs': total_efectivo_bs,
+        'pago_movil': total_pago_movil,
+        'binance': total_binance
     }
 
     return render_template('cierre_caja.html', ventas=ventas_hoy, resumen=resumen)
