@@ -4,79 +4,259 @@
     <meta charset="UTF-8">
     <title>Cierre de Caja - {{ resumen.fecha }}</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
-        .cabecera { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 15px; }
-        .totales-grid { display: flex; gap: 15px; margin-bottom: 20px; }
-        .caja-total { border: 1px solid #ccc; padding: 10px; border-radius: 6px; flex: 1; text-align: center; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f4f4f4; }
-        .btn-imprimir { background: #10b981; color: white; padding: 10px 18px; border: none; border-radius: 5px; cursor: pointer; font-size: 15px; }
-        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #F9F6F0;
+            color: #3D352E;
+            margin: 0;
+            padding: 30px;
+        }
+
+        .contenedor {
+            max-width: 950px;
+            margin: 0 auto;
+            background-color: #FFFFFF;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border: 1px solid #EFE8DC;
+        }
+
+        /* Barra superior con RyD en dorado y botón de imprimir */
+        .barra-superior {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #E6D8C3;
+            padding-bottom: 18px;
+            margin-bottom: 25px;
+        }
+
+        .marca-dorada {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #C5A059;
+            letter-spacing: 3px;
+            margin: 0;
+            text-transform: uppercase;
+        }
+
+        .titulo-cierre {
+            text-align: right;
+        }
+
+        .titulo-cierre h2 {
+            margin: 0;
+            font-size: 1.4rem;
+            color: #4A3E31;
+            font-weight: 600;
+        }
+
+        .titulo-cierre p {
+            margin: 4px 0 0 0;
+            font-size: 0.9rem;
+            color: #7A6F62;
+        }
+
+        /* Botón de impresión elegante */
+        .btn-imprimir {
+            background-color: #C5A059;
+            color: #FFFFFF;
+            padding: 10px 22px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: background 0.2s ease;
+        }
+
+        .btn-imprimir:hover {
+            background-color: #B38E47;
+        }
+
+        /* Rejilla de tarjetas de totales */
+        .totales-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 14px;
+            margin-bottom: 30px;
+        }
+
+        .caja-total {
+            background-color: #FAF7F2;
+            border: 1px solid #E8DECF;
+            padding: 16px 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .caja-total.total-principal {
+            background-color: #F4ECE1;
+            border-color: #D6C2A5;
+        }
+
+        .caja-total small {
+            font-weight: 600;
+            color: #7A6A56;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.8px;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .caja-total h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: #2F271D;
+            font-weight: 700;
+        }
+
+        /* Subtítulo sección */
+        .seccion-titulo {
+            font-size: 1.1rem;
+            color: #4A3E31;
+            border-bottom: 1px solid #EFE8DC;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        /* Tabla de detalle */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th {
+            background-color: #F3ECE1;
+            color: #4A3E31;
+            border: 1px solid #E4D9C8;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            border: 1px solid #EFE8DC;
+            padding: 10px 12px;
+            font-size: 0.9rem;
+            color: #3D352E;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #FDFCF9;
+        }
+
+        /* Estilo exclusivo para impresión */
         @media print {
-            .btn-imprimir, .no-print { display: none; }
-            body { margin: 0; }
-            table, th, td { border-color: #000; }
+            body {
+                background-color: #FFFFFF;
+                padding: 0;
+            }
+            .contenedor {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                max-width: 100%;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .caja-total {
+                border: 1px solid #CCCCCC;
+                background-color: #F9F9F9 !important;
+            }
+            table, th, td {
+                border: 1px solid #CCCCCC;
+            }
+            th {
+                background-color: #EEEEEE !important;
+            }
         }
     </style>
 </head>
 <body>
 
-    <div class="no-print" style="margin-bottom: 15px;">
-        <button class="btn-imprimir" onclick="window.print()">🖨️ Imprimir Cierre de Caja</button>
-    </div>
+    <div class="contenedor">
+        
+        <!-- Botón superior para imprimir -->
+        <div class="no-print" style="margin-bottom: 20px; text-align: right;">
+            <button class="btn-imprimir" onclick="window.print()">Imprimir Cierre</button>
+        </div>
 
-    <div class="cabecera">
-        <h2>RyD - Reporte de Cierre de Caja</h2>
-        <p><strong>Fecha:</strong> {{ resumen.fecha }} | <strong>Transacciones:</strong> {{ resumen.cantidad_ventas }}</p>
-    </div>
+        <!-- Encabezado con RyD en dorado en la esquina superior izquierda -->
+        <div class="barra-superior">
+            <div>
+                <h1 class="marca-dorada">RyD</h1>
+            </div>
+            <div class="titulo-cierre">
+                <h2>Reporte de Cierre de Caja</h2>
+                <p>Fecha: {{ resumen.fecha }} | Transacciones: {{ resumen.cantidad_ventas }}</p>
+            </div>
+        </div>
 
-    <div class="totales-grid">
-        <div class="caja-total">
-            <small>Efectivo</small>
-            <h3>${{ "%.2f"|format(resumen.efectivo) }}</h3>
+        <!-- Cuadros de totales -->
+        <div class="totales-grid">
+            <div class="caja-total">
+                <small>Efectivo ($)</small>
+                <h3>${{ "%.2f"|format(resumen.efectivo_usd) }}</h3>
+            </div>
+            <div class="caja-total">
+                <small>Efectivo (Bs)</small>
+                <h3>{{ "%.2f"|format(resumen.efectivo_bs) }} Bs</h3>
+            </div>
+            <div class="caja-total">
+                <small>Pago Movil / Transf.</small>
+                <h3>{{ "%.2f"|format(resumen.pago_movil) }} Bs</h3>
+            </div>
+            <div class="caja-total">
+                <small>Binance (USDT)</small>
+                <h3>${{ "%.2f"|format(resumen.binance) }}</h3>
+            </div>
+            <div class="caja-total total-principal">
+                <small>Total Equivalente ($)</small>
+                <h3>${{ "%.2f"|format(resumen.total_general) }}</h3>
+            </div>
         </div>
-        <div class="caja-total">
-            <small>Transferencia / Pago Móvil</small>
-            <h3>${{ "%.2f"|format(resumen.transferencia) }}</h3>
-        </div>
-        <div class="caja-total">
-            <small>Punto de Venta</small>
-            <h3>${{ "%.2f"|format(resumen.punto) }}</h3>
-        </div>
-        <div class="caja-total" style="background: #eef2ff;">
-            <small>Total General</small>
-            <h3>${{ "%.2f"|format(resumen.total_general) }}</h3>
-        </div>
-    </div>
 
-    <h3>Detalle de Ventas</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Hora</th>
-                <th>Producto / Concepto</th>
-                <th>Cant.</th>
-                <th>Método</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for venta in ventas %}
-            <tr>
-                <td>{{ venta.hora }}</td>
-                <td>{{ venta.producto }}</td>
-                <td>{{ venta.cantidad }}</td>
-                <td>{{ venta.metodo_pago }}</td>
-                <td>${{ "%.2f"|format(venta.subtotal if venta.subtotal is defined else venta.total) }}</td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="5" style="text-align: center;">No hay ventas registradas el día de hoy.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+        <!-- Tabla detallada de ventas -->
+        <h3 class="seccion-titulo">Detalle de Ventas del Dia</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Hora</th>
+                    <th>Producto / Concepto</th>
+                    <th>Cant.</th>
+                    <th>Metodo</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for venta in ventas %}
+                <tr>
+                    <td>{{ venta.hora }}</td>
+                    <td>{{ venta.producto }}</td>
+                    <td>{{ venta.cantidad }}</td>
+                    <td>{{ venta.metodo_pago }}</td>
+                    <td>${{ "%.2f"|format(venta.subtotal if venta.subtotal is defined else venta.total) }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: #7A6F62; padding: 20px;">
+                        No hay ventas registradas el dia de hoy.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    </div>
 
 </body>
 </html>
