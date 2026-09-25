@@ -52,7 +52,8 @@
         <span class="me-3 text-muted">Administrador: <strong>{{ session.get('username') }}</strong></span>
         <a href="{{ url_for('pos_cajero') }}" class="btn btn-outline-dark btn-sm me-2">POS Cajero</a>
         <a href="{{ url_for('index') }}" class="btn btn-outline-dark btn-sm me-2">Ver Catálogo</a>
-        <a href="{{ url_for('logout') }}" class="btn btn-link btn-sm text-secondary">Salir</a>
+        <a href="/cierre-caja" class="btn btn-secondary">Cierre de Caja</a>
+        <a href="{{ url_for('logout') }}" class="btn btn-link btn-sm text-secondary">Cerrar sesion</a>
     </div>
 </header>
 
