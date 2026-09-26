@@ -456,6 +456,15 @@ def procesar_venta():
         conn.rollback()
         conn.close()
         return jsonify({'exito': False, 'mensaje': str(e)}), 500
+        
+@app.route('/ticket/<int:venta_id>')
+def ticket(venta_id):
+    conn = obtener_conexion()
+    venta = conn.execute('SELECT * FROM ventas WHERE id = ?', (venta_id,)).fetchone()
+    conn.close()
+    if not venta:
+        return "Comprobante no localizado", 404
+    return render_template('ticket.html', venta=venta)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
