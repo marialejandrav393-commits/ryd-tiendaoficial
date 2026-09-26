@@ -3,108 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RyD - Punto de Venta (POS)</title>
+    <title>RyD - Terminal de Cobro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Librería para escanear código de barras con la cámara del teléfono/laptop -->
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root {
             --ryd-gold: #C5A059;
-            --ryd-gold-dark: #A6823C;
-            --ryd-bg: #FDFBF7;
-            --ryd-card-bg: #FFFFFF;
-            --ryd-beige-soft: #FAF6EE;
-            --ryd-border: #EFE6D8;
-            --ryd-border-gold: #DFCEB4;
-            --ryd-dark: #332B24;
-            --ryd-muted: #7E7265;
+            --ryd-gold-dark: #9D7B38;
+            --ryd-bg: #F8F5F0;
+            --ryd-surface: #FFFFFF;
+            --ryd-beige-card: #F2ECE1;
+            --ryd-border: #E8DEC8;
+            --ryd-border-light: #F4EFE6;
+            --ryd-text: #2C2620;
+            --ryd-muted: #827668;
+            --emboss-shadow: 4px 4px 10px rgba(180, 165, 140, 0.25), -4px -4px 10px rgba(255, 255, 255, 0.9);
+            --emboss-active: inset 3px 3px 6px rgba(180, 165, 140, 0.3), inset -3px -3px 6px rgba(255, 255, 255, 0.8);
         }
 
         body {
             background-color: var(--ryd-bg);
-            color: var(--ryd-dark);
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            color: var(--ryd-text);
+            font-family: 'Cinzel', 'Playfair Display', 'Cormorant Garamond', 'Segoe UI', serif;
+            letter-spacing: 0.3px;
             margin: 0;
             padding: 0;
         }
 
         .header-pos {
-            background-color: #FFFFFF;
-            border-bottom: 1.5px solid var(--ryd-border);
-            padding: 12px 24px;
+            background-color: var(--ryd-surface);
+            border-bottom: 1px solid var(--ryd-border);
+            padding: 14px 28px;
+            box-shadow: 0 4px 20px rgba(70, 60, 45, 0.03);
         }
 
-        .logo-ryd {
-            font-size: 1.8rem;
+        .brand-title {
+            font-size: 1.6rem;
             font-weight: 700;
             color: var(--ryd-gold);
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             text-decoration: none;
             text-transform: uppercase;
         }
 
-        .card-custom {
-            background-color: var(--ryd-card-bg);
+        .panel-luxury {
+            background-color: var(--ryd-surface);
+            border: 1px solid var(--ryd-border);
+            border-radius: 12px;
+            box-shadow: var(--emboss-shadow);
+            padding: 20px;
+        }
+
+        .search-input {
+            background: #FAF7F2;
             border: 1px solid var(--ryd-border);
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(61, 53, 46, 0.03);
+            color: var(--ryd-text);
+            padding: 10px 14px;
+            box-shadow: inset 1px 1px 3px rgba(0,0,0,0.04);
         }
-
-        .btn-gold {
-            background-color: var(--ryd-gold);
-            color: #FFFFFF;
-            border: none;
-            font-weight: 600;
-        }
-
-        .btn-gold:hover {
-            background-color: var(--ryd-gold-dark);
-            color: #FFFFFF;
-        }
-
-        .btn-outline-gold {
-            border: 1px solid var(--ryd-border-gold);
-            color: var(--ryd-dark);
-            background: #FFFFFF;
-            font-weight: 600;
-        }
-
-        .btn-outline-gold:hover {
-            background: var(--ryd-beige-soft);
+        .search-input:focus {
             border-color: var(--ryd-gold);
-        }
-
-        .table-cart th {
-            background-color: var(--ryd-beige-soft);
-            color: var(--ryd-muted);
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            border-bottom: 1px solid var(--ryd-border);
-        }
-
-        .product-card {
-            border: 1px solid var(--ryd-border);
-            border-radius: 6px;
-            padding: 10px;
-            cursor: pointer;
+            box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.15);
             background: #FFFFFF;
+        }
+
+        /* Cuadros de método de pago con relieve sofisticado */
+        .payment-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .payment-card {
+            background: var(--ryd-surface);
+            border: 1px solid var(--ryd-border);
+            border-radius: 8px;
+            padding: 12px 6px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: var(--emboss-shadow);
+            transition: all 0.18s ease;
+            user-select: none;
+        }
+
+        .payment-card:hover {
+            border-color: var(--ryd-gold);
+            transform: translateY(-1px);
+        }
+
+        .payment-card.active {
+            background: var(--ryd-beige-card);
+            border-color: var(--ryd-gold);
+            box-shadow: var(--emboss-active);
+        }
+
+        .payment-card-title {
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: var(--ryd-text);
+            margin: 0;
+            display: block;
+        }
+
+        .payment-card-sub {
+            font-size: 0.65rem;
+            color: var(--ryd-muted);
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            margin-top: 3px;
+            display: block;
+        }
+
+        .product-tile {
+            background: var(--ryd-surface);
+            border: 1px solid var(--ryd-border);
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: var(--emboss-shadow);
+            cursor: pointer;
             transition: all 0.15s ease;
             height: 100%;
         }
-
-        .product-card:hover {
+        .product-tile:hover {
             border-color: var(--ryd-gold);
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(197, 160, 89, 0.12);
         }
 
-        #reader {
-            width: 100%;
+        .btn-action-gold {
+            background: linear-gradient(135deg, #D4B26F, #B89248);
+            border: none;
+            color: #FFFFFF;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 12px;
             border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid var(--ryd-border-gold);
+            box-shadow: 0 4px 12px rgba(184, 146, 72, 0.25);
+            transition: all 0.2s ease;
+        }
+        .btn-action-gold:hover {
+            background: linear-gradient(135deg, #C5A059, #A6823C);
+            color: #FFFFFF;
+        }
+
+        .table-pos thead th {
+            background: var(--ryd-beige-card);
+            color: var(--ryd-muted);
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--ryd-border);
+            padding: 10px 12px;
+        }
+        .table-pos tbody td {
+            padding: 12px;
+            border-bottom: 1px solid var(--ryd-border-light);
+            font-size: 0.88rem;
+        }
+
+        .btn-delete-row {
+            background: transparent;
+            border: 1px solid #E4C8C5;
+            color: #9E4D48;
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            transition: all 0.15s ease;
+        }
+        .btn-delete-row:hover {
+            background: #9E4D48;
+            color: #FFFFFF;
         }
     </style>
 </head>
@@ -112,60 +185,58 @@
 
 <header class="header-pos d-flex justify-content-between align-items-center">
     <div class="d-flex align-items-center">
-        <a href="/" class="logo-ryd me-4">RyD</a>
-        <span class="badge bg-light text-dark border me-3">Turno Activo: <strong>{{ session.get('username', 'Cajero') }}</strong></span>
+        <a href="/" class="brand-title me-4">RyD</a>
+        <span class="small text-muted" style="letter-spacing: 1px; text-transform: uppercase;">
+            Terminal de Caja: <strong class="text-dark">{{ session.get('username', 'Cajero') }}</strong>
+        </span>
     </div>
     <div>
-        <a href="/cierre-caja" class="btn btn-outline-danger btn-sm me-2" onclick="return confirm('¿Deseas realizar el Cierre de Caja y finalizar tu turno de cobro?')">
-            Finalizar Turno / Cierre de Caja
+        <a href="/cierre-caja" class="btn btn-outline-secondary btn-sm me-2" onclick="return confirm('Confirmar balance y finalizar turno')">
+            Finalizar Turno
         </a>
-        <a href="/logout" class="btn btn-link btn-sm text-muted text-decoration-none">Salir</a>
+        <a href="/logout" class="btn btn-link btn-sm text-muted text-decoration-none">Cerrar Sesion</a>
     </div>
 </header>
 
 <div class="container-fluid p-3">
     <div class="row g-3">
-        <!-- Columna Izquierda: Escáner y Catálogo de Productos -->
+        <!-- Panel Izquierdo: Escaneo y Catálogo -->
         <div class="col-lg-7">
-            <div class="card-custom p-3 mb-3">
+            <div class="panel-luxury mb-3">
                 <div class="row g-2 align-items-center">
-                    <div class="col-md-7">
-                        <label class="small text-muted fw-bold mb-1">Escanear Código / Buscar Producto</label>
-                        <!-- Funciona con lector USB (pistola de barras) o ingresando el código manual y presionando Enter -->
-                        <input type="text" id="inputCodigoBarras" class="form-control" placeholder="Pasa la pistola o escribe el SKU..." autofocus>
+                    <div class="col-md-8">
+                        <label class="small text-muted fw-bold mb-1" style="letter-spacing: 0.8px; text-transform: uppercase; font-size: 0.7rem;">Lectura de Barra / Búsqueda</label>
+                        <input type="text" id="inputCodigoBarras" class="form-control search-input" placeholder="Escanear codigo SKU o ingresar manual..." autofocus>
                     </div>
-                    <div class="col-md-5 d-flex align-items-end">
-                        <!-- Botón para activar cámara en móvil o laptop -->
-                        <button type="button" class="btn btn-outline-gold w-100" onclick="toggleCamaraScanner()">
-                            📷 Usar Cámara Escáner
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="button" class="btn btn-outline-secondary w-100" style="padding: 10px; border-radius: 8px;" onclick="toggleCamaraScanner()">
+                            Escaner de Camara
                         </button>
                     </div>
                 </div>
 
-                <!-- Visor de Cámara para Códigos de Barra -->
                 <div id="contenedorCamara" class="mt-3" style="display: none;">
                     <div id="reader"></div>
-                    <button class="btn btn-sm btn-outline-secondary w-100 mt-2" onclick="detenerCamara()">Cerrar Cámara</button>
+                    <button class="btn btn-sm btn-outline-secondary w-100 mt-2" onclick="detenerCamara()">Desactivar Camara</button>
                 </div>
             </div>
 
-            <!-- Catálogo rápido interactivo por botones -->
-            <div class="card-custom p-3" style="max-height: 68vh; overflow-y: auto;">
+            <div class="panel-luxury" style="max-height: 65vh; overflow-y: auto;">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="m-0 fw-bold" style="color: var(--ryd-dark); text-transform: uppercase; font-size: 0.85rem;">Productos en Tienda</h6>
-                    <input type="text" id="filtroNombre" class="form-control form-control-sm w-50" placeholder="Filtrar por nombre..." onkeyup="filtrarCatalogo()">
+                    <span class="small fw-bold text-muted" style="letter-spacing: 1px; text-transform: uppercase;">Catalogo en Existencia</span>
+                    <input type="text" id="filtroNombre" class="form-control search-input form-control-sm w-50" placeholder="Filtrar por nombre..." onkeyup="filtrarCatalogo()">
                 </div>
                 <div class="row g-2" id="gridProductos">
                     {% for p in productos %}
                     <div class="col-md-4 col-sm-6 item-producto" data-nombre="{{ p.nombre|lower }}" data-codigo="{{ p.codigo|lower }}">
-                        <div class="product-card d-flex flex-column justify-content-between" onclick="agregarPorObjeto('{{ p.codigo }}', '{{ p.nombre }}', {{ p.precio }}, {{ p.stock }})">
+                        <div class="product-tile d-flex flex-column justify-content-between" onclick="agregarPorObjeto('{{ p.codigo }}', '{{ p.nombre }}', {{ p.precio }}, {{ p.stock }})">
                             <div>
-                                <small class="text-muted fw-bold d-block" style="color: var(--ryd-gold-dark) !important;">{{ p.codigo }}</small>
-                                <span class="d-block fw-bold text-truncate" style="font-size: 0.88rem;">{{ p.nombre }}</span>
+                                <small class="fw-bold d-block" style="color: var(--ryd-gold-dark); font-size: 0.72rem; letter-spacing: 0.5px;">{{ p.codigo }}</small>
+                                <span class="d-block text-truncate fw-bold" style="font-size: 0.85rem;">{{ p.nombre }}</span>
                             </div>
                             <div class="d-flex justify-content-between align-items-center mt-2">
-                                <span class="badge bg-light text-muted border">Stock: {{ p.stock }}</span>
-                                <strong class="text-dark">${{ "%.2f"|format(p.precio) }}</strong>
+                                <span class="small text-muted">Stock: {{ p.stock }}</span>
+                                <strong style="color: var(--ryd-text); font-size: 0.95rem;">${{ "%.2f"|format(p.precio) }}</strong>
                             </div>
                         </div>
                     </div>
@@ -174,62 +245,75 @@
             </div>
         </div>
 
-        <!-- Columna Derecha: Carrito de Compras y Métodos de Cobro -->
+        <!-- Panel Derecho: Carrito y Métodos en Relieve -->
         <div class="col-lg-5">
-            <div class="card-custom p-3 d-flex flex-column justify-content-between" style="min-height: 85vh;">
+            <div class="panel-luxury d-flex flex-column justify-content-between" style="min-height: 85vh;">
                 <div>
-                    <h6 class="fw-bold mb-3" style="color: var(--ryd-dark); text-transform: uppercase; font-size: 0.85rem; border-bottom: 1.5px solid var(--ryd-border-gold); padding-bottom: 8px;">
-                        Detalle de Venta
+                    <h6 class="fw-bold mb-3" style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 0.8rem; border-bottom: 1px solid var(--ryd-border); padding-bottom: 8px;">
+                        Detalle de Transaccion
                     </h6>
 
-                    <div class="table-responsive" style="max-height: 38vh; overflow-y: auto;">
-                        <table class="table table-hover align-middle table-cart mb-0">
+                    <div class="table-responsive" style="max-height: 32vh; overflow-y: auto;">
+                        <table class="table table-pos mb-0 align-middle">
                             <thead>
                                 <tr>
-                                    <th>Producto</th>
-                                    <th class="text-center" style="width: 100px;">Cant.</th>
-                                    <th class="text-end">PVP</th>
+                                    <th>Articulo</th>
+                                    <th class="text-center">Cant</th>
                                     <th class="text-end">Total</th>
-                                    <th class="text-center" style="width: 40px;"></th>
+                                    <th class="text-center"></th>
                                 </tr>
                             </thead>
                             <tbody id="cuerpoCarrito">
                                 <tr>
-                                    <td colspan="5" class="text-center py-4 text-muted small">El carrito está vacío. Pasa un código o haz clic en un producto.</td>
+                                    <td colspan="4" class="text-center py-4 text-muted small">Terminal en espera de articulos.</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Resumen de Totales y Formulario de Cobro -->
                 <div class="pt-3 border-top mt-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-muted fw-bold">TOTAL A PAGAR:</span>
-                        <h3 class="m-0 fw-bold" style="color: var(--ryd-dark);" id="txtTotalUSD">$0.00</h3>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="small text-muted fw-bold" style="letter-spacing: 1px; text-transform: uppercase;">Monto Liquidacion</span>
+                        <h2 class="m-0 fw-bold" style="color: var(--ryd-gold-dark);" id="txtTotalUSD">$0.00</h2>
                     </div>
 
-                    <!-- Métodos de Pago Disponibles -->
-                    <div class="mb-3">
-                        <label class="small text-muted fw-bold mb-1">Método de Pago</label>
-                        <select id="selectMetodoPago" class="form-select form-select-sm" onchange="actualizarCamposPago()">
-                            <option value="Efectivo $">💵 Efectivo Divisa ($)</option>
-                            <option value="Efectivo Bs">🇻🇪 Efectivo Bolívares (Bs)</option>
-                            <option value="Pago Móvil">📲 Pago Móvil</option>
-                            <option value="Punto de Venta">💳 Punto de Venta / Tarjeta</option>
-                            <option value="Binance">🟡 Binance (USDT)</option>
-                            <option value="Pago Mixto">🔄 Pago Combinado / Mixto</option>
-                        </select>
+                    <!-- Cuadros de Selección de Métodos con Relieve -->
+                    <label class="small text-muted fw-bold mb-1" style="letter-spacing: 0.8px; text-transform: uppercase; font-size: 0.7rem;">Modalidad de Pago</label>
+                    <div class="payment-grid mb-3">
+                        <div class="payment-card active" onclick="seleccionarMetodo(this, 'Efectivo $')">
+                            <span class="payment-card-title">Efectivo $</span>
+                            <span class="payment-card-sub">Divisa Fisico</span>
+                        </div>
+                        <div class="payment-card" onclick="seleccionarMetodo(this, 'Efectivo Bs')">
+                            <span class="payment-card-title">Efectivo Bs</span>
+                            <span class="payment-card-sub">Moneda Local</span>
+                        </div>
+                        <div class="payment-card" onclick="seleccionarMetodo(this, 'Pago Movil')">
+                            <span class="payment-card-title">Pago Movil</span>
+                            <span class="payment-card-sub">Interbancario</span>
+                        </div>
+                        <div class="payment-card" onclick="seleccionarMetodo(this, 'Punto de Venta')">
+                            <span class="payment-card-title">Punto Venta</span>
+                            <span class="payment-card-sub">Debito / Lote</span>
+                        </div>
+                        <div class="payment-card" onclick="seleccionarMetodo(this, 'Binance')">
+                            <span class="payment-card-title">Binance</span>
+                            <span class="payment-card-sub">USDT Cripto</span>
+                        </div>
+                        <div class="payment-card" onclick="seleccionarMetodo(this, 'Pago Mixto')">
+                            <span class="payment-card-title">Combinado</span>
+                            <span class="payment-card-sub">Dual / Mixto</span>
+                        </div>
                     </div>
 
-                    <!-- Campo opcional de referencia para Pago Móvil / Punto / Binance -->
                     <div class="mb-3" id="bloqueReferencia" style="display: none;">
-                        <label class="small text-muted fw-bold mb-1">Número de Referencia / Comprobante</label>
-                        <input type="text" id="inputReferencia" class="form-control form-control-sm" placeholder="Ej. Últimos 4 o 6 dígitos">
+                        <label class="small text-muted fw-bold mb-1" style="letter-spacing: 0.8px; text-transform: uppercase; font-size: 0.7rem;">Secuencia de Comprobante / Referencia</label>
+                        <input type="text" id="inputReferencia" class="form-control search-input form-control-sm" placeholder="Registrar referencia bancaria">
                     </div>
 
-                    <button type="button" class="btn btn-gold w-100 py-2 fs-6 fw-bold" onclick="procesarCobro()">
-                        Completar Venta e Imprimir Ticket
+                    <button type="button" class="btn btn-action-gold w-100 py-3" onclick="procesarCobro()">
+                        Registrar Transaccion y Emitir Comprobante
                     </button>
                 </div>
             </div>
@@ -239,13 +323,13 @@
 
 <script>
 let carrito = [];
+let metodoSeleccionado = 'Efectivo $';
 const productosDisponibles = [
     {% for p in productos %}
     { codigo: "{{ p.codigo }}", nombre: "{{ p.nombre }}", precio: {{ p.precio }}, stock: {{ p.stock }} },
     {% endfor %}
 ];
 
-// 1. Escuchar el lector de código de barras USB (Pistola)
 document.getElementById('inputCodigoBarras').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
@@ -262,7 +346,7 @@ function buscarYAgregarProducto(codigo) {
     if (prod) {
         agregarPorObjeto(prod.codigo, prod.nombre, prod.precio, prod.stock);
     } else {
-        alert("El código [" + codigo + "] no coincide con ningún producto registrado.");
+        alert("Referencia no catalogada: " + codigo);
     }
 }
 
@@ -272,19 +356,18 @@ function agregarPorObjeto(codigo, nombre, precio, stock) {
         if (item.cantidad < stock) {
             item.cantidad++;
         } else {
-            alert("No hay más stock disponible de este producto (" + stock + " máx).");
+            alert("Limite de inventario alcanzado (" + stock + " unidades disponibles).");
         }
     } else {
         if (stock > 0) {
             carrito.push({ codigo, nombre, precio, cantidad: 1, stock });
         } else {
-            alert("Producto agotado sin stock.");
+            alert("Existencia agotada en almacen.");
         }
     }
     renderizarCarrito();
 }
 
-// 2. BOTÓN DE ELIMINACIÓN: Quita el producto por completo si el cliente ya no lo desea
 function eliminarDelCarrito(codigo) {
     carrito = carrito.filter(p => p.codigo !== codigo);
     renderizarCarrito();
@@ -297,7 +380,6 @@ function cambiarCantidad(codigo, delta) {
     if (item.cantidad <= 0) {
         eliminarDelCarrito(codigo);
     } else if (item.cantidad > item.stock) {
-        alert("Stock máximo alcanzado.");
         item.cantidad = item.stock;
         renderizarCarrito();
     } else {
@@ -308,7 +390,7 @@ function cambiarCantidad(codigo, delta) {
 function renderizarCarrito() {
     const tbody = document.getElementById('cuerpoCarrito');
     if (carrito.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted small">El carrito está vacío. Pasa un código o haz clic en un producto.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted small">Terminal en espera de articulos.</td></tr>';
         document.getElementById('txtTotalUSD').innerText = '$0.00';
         return;
     }
@@ -323,7 +405,7 @@ function renderizarCarrito() {
         tbody.innerHTML += `
             <tr>
                 <td>
-                    <strong class="d-block text-truncate" style="max-width: 170px;">${p.nombre}</strong>
+                    <span class="d-block text-truncate fw-bold" style="max-width: 160px;">${p.nombre}</span>
                     <small class="text-muted">${p.codigo}</small>
                 </td>
                 <td class="text-center">
@@ -333,13 +415,9 @@ function renderizarCarrito() {
                         <button class="btn btn-sm btn-light border py-0 px-2" onclick="cambiarCantidad('${p.codigo}', 1)">+</button>
                     </div>
                 </td>
-                <td class="text-end">$${p.precio.toFixed(2)}</td>
                 <td class="text-end fw-bold">$${subtotal.toFixed(2)}</td>
                 <td class="text-center">
-                    <!-- BOTÓN DE ELIMINADO CON ÍCONO ROJO -->
-                    <button class="btn btn-sm btn-outline-danger border-0 p-1" onclick="eliminarDelCarrito('${p.codigo}')" title="Quitar producto">
-                        ✕
-                    </button>
+                    <button class="btn-delete-row" onclick="eliminarDelCarrito('${p.codigo}')" title="Retirar articulo">X</button>
                 </td>
             </tr>
         `;
@@ -348,40 +426,35 @@ function renderizarCarrito() {
     document.getElementById('txtTotalUSD').innerText = `$${totalUsd.toFixed(2)}`;
 }
 
-// 3. Filtrar catálogo por nombre
 function filtrarCatalogo() {
     const busqueda = document.getElementById('filtroNombre').value.toLowerCase();
     const items = document.querySelectorAll('.item-producto');
     items.forEach(el => {
         const nom = el.getAttribute('data-nombre');
         const cod = el.getAttribute('data-codigo');
-        if (nom.includes(busqueda) || cod.includes(busqueda)) {
-            el.style.display = 'block';
-        } else {
-            el.style.display = 'none';
-        }
+        el.style.display = (nom.includes(busqueda) || cod.includes(busqueda)) ? 'block' : 'none';
     });
 }
 
-// 4. Métodos de Pago
-function actualizarCamposPago() {
-    const metodo = document.getElementById('selectMetodoPago').value;
+function seleccionarMetodo(elemento, metodo) {
+    document.querySelectorAll('.payment-card').forEach(c => c.classList.remove('active'));
+    elemento.classList.add('active');
+    metodoSeleccionado = metodo;
+
     const bloqueRef = document.getElementById('bloqueReferencia');
-    if (metodo === 'Pago Móvil' || metodo === 'Punto de Venta' || metodo === 'Binance') {
+    if (['Pago Móvil', 'Punto de Venta', 'Binance'].includes(metodo)) {
         bloqueRef.style.display = 'block';
     } else {
         bloqueRef.style.display = 'none';
     }
 }
 
-// 5. Enviar cobro al backend
 function procesarCobro() {
     if (carrito.length === 0) {
-        alert("Agrega al menos un producto al carrito para cobrar.");
+        alert("Ingrese al menos un articulo en el detalle de venta.");
         return;
     }
 
-    const metodo = document.getElementById('selectMetodoPago').value;
     const referencia = document.getElementById('inputReferencia').value.trim();
 
     fetch('/procesar_venta', {
@@ -389,7 +462,7 @@ function procesarCobro() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             items: carrito,
-            metodo_pago: metodo,
+            metodo_pago: metodoSeleccionado,
             referencia: referencia
         })
     })
@@ -398,16 +471,12 @@ function procesarCobro() {
         if (data.exito) {
             window.location.href = `/ticket/${data.venta_id}`;
         } else {
-            alert("Error al procesar la venta: " + data.mensaje);
+            alert("Fallo de registro: " + data.mensaje);
         }
     })
-    .catch(err => {
-        alert("Error de conexión al servidor.");
-    });
+    .catch(() => alert("Error en comunicacion con el servidor."));
 }
 
-// 6. Cámara del teléfono para leer códigos de barra
-<Image alt="Lector de código QR y barras escaneando desde la cámara del teléfono móvil" caption="Escaneo óptico de códigos directo desde el navegador web" src="image_agent_tag_13695695286675265009"/>
 let html5QrCode = null;
 function toggleCamaraScanner() {
     const cont = document.getElementById('contenedorCamara');
@@ -421,8 +490,8 @@ function toggleCamaraScanner() {
                 buscarYAgregarProducto(decodedText.trim().toUpperCase());
                 detenerCamara();
             },
-            (error) => {}
-        ).catch(err => alert("No se pudo iniciar la cámara: " + err));
+            () => {}
+        ).catch(err => alert("Sensor optico no accesible: " + err));
     } else {
         detenerCamara();
     }
