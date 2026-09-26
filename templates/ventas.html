@@ -2,347 +2,134 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>RyD - Reporte de Ventas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RyD - Registro de Transacciones</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        @font-face {
-            font-family: 'AppleGaramond-Light';
-            src: local('AppleGaramond-Light'), local('Apple Garamond Light'), local('Apple Garamond');
+        :root {
+            --ryd-gold: #C5A059;
+            --ryd-gold-dark: #9D7B38;
+            --ryd-bg: #F8F5F0;
+            --ryd-surface: #FFFFFF;
+            --ryd-beige-card: #F2ECE1;
+            --ryd-border: #E8DEC8;
+            --ryd-border-light: #F4EFE6;
+            --ryd-text: #2C2620;
+            --ryd-muted: #827668;
+            --emboss-shadow: 4px 4px 10px rgba(180, 165, 140, 0.25), -4px -4px 10px rgba(255, 255, 255, 0.9);
         }
 
-        * { 
-            box-sizing: border-box; 
-            font-family: 'AppleGaramond-Light', 'Apple Garamond', Garamond, serif; 
-            margin: 0; 
-            padding: 0; 
+        body {
+            background-color: var(--ryd-bg);
+            color: var(--ryd-text);
+            font-family: 'Cinzel', 'Segoe UI', serif;
         }
 
-        body { 
-            background-color: #FBF9F5; 
-            color: #2C2C2C; 
-            padding-bottom: 50px; 
-        }
-        
-        header { 
-            background-color: #FFFFFF; 
-            border-bottom: 1px solid #E5DFD3; 
-            padding: 20px 50px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        .header-bar {
+            background: var(--ryd-surface);
+            border-bottom: 1px solid var(--ryd-border);
+            padding: 16px 36px;
         }
 
-        .logo { 
-            font-size: 32px; 
-            letter-spacing: 3px; 
-            color: #C5A059; 
-            text-transform: uppercase;
+        .card-custom {
+            background: var(--ryd-surface);
+            border: 1px solid var(--ryd-border);
+            border-radius: 10px;
+            box-shadow: var(--emboss-shadow);
         }
 
-        .subtitle {
-            font-size: 13px;
-            color: #8C857B;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            margin-left: 10px;
-        }
-
-        .store-link { 
-            color: #1A1A1A; 
-            border: 1px solid #1A1A1A;
-            text-decoration: none; 
-            padding: 8px 18px; 
-            font-size: 13px;
+        .table-custom thead th {
+            background: var(--ryd-beige-card);
+            color: var(--ryd-muted);
+            font-size: 0.72rem;
             letter-spacing: 1px;
             text-transform: uppercase;
+            border-bottom: 1px solid var(--ryd-border);
+            padding: 12px;
         }
 
-        .container { 
-            max-width: 1100px; 
-            margin: 0 auto; 
-            padding: 0 20px; 
+        .table-custom tbody td {
+            padding: 12px;
+            border-bottom: 1px solid var(--ryd-border-light);
+            font-size: 0.88rem;
         }
 
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .metric-card {
-            background: #FFFFFF;
-            border: 1px solid #E5DFD3;
+        .badge-method {
+            background: #FAF6EE;
+            border: 1px solid #DFCEB4;
+            color: var(--ryd-gold-dark);
+            font-size: 0.75rem;
+            padding: 4px 8px;
             border-radius: 4px;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .metric-title {
-            font-size: 12px;
-            color: #8C857B;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 8px;
-        }
-
-        .metric-value {
-            font-size: 28px;
-            color: #1A1A1A;
-            font-weight: bold;
-        }
-
-        .card { 
-            background: #FFFFFF; 
-            border: 1px solid #E5DFD3; 
-            border-radius: 4px; 
-            padding: 25px; 
-        }
-
-        h2 { 
-            font-size: 20px; 
-            font-weight: normal; 
-            color: #1A1A1A; 
-            border-bottom: 1px solid #C5A059; 
-            padding-bottom: 8px; 
-            margin-bottom: 20px; 
-            letter-spacing: 1px;
-        }
-
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-        }
-
-        th, td { 
-            padding: 12px 10px; 
-            text-align: left; 
-            border-bottom: 1px solid #E5DFD3; 
-            font-size: 14px; 
-        }
-
-        th { 
-            color: #8C857B; 
-            font-weight: normal;
-            text-transform: uppercase;
-            font-size: 11px;
-            letter-spacing: 1px;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
 
-    <header>
-        <div>
-            <span class="logo">RyD</span>
-            <span class="subtitle">Historial de Ventas</span>
-        </div>
-        <div>
-            <a href="/admin" class="store-link" style="margin-right: 10px;">Inventario</a>
-            <a href="/logout" class="store-link" style="border-color: #8C2D19; color: #8C2D19;">Cerrar Sesión</a>
-        </div>
-    </header>
+<header class="header-bar d-flex justify-content-between align-items-center">
+    <a href="/admin" style="font-size: 1.6rem; font-weight: 700; color: var(--ryd-gold); letter-spacing: 3px; text-decoration: none;">RyD</a>
+    <div>
+        <a href="/admin" class="btn btn-outline-secondary btn-sm me-2">Panel Administrador</a>
+        <a href="/cajero/pos" class="btn btn-outline-secondary btn-sm me-2">Terminal POS</a>
+        <a href="/cierre-caja" class="btn btn-sm text-white" style="background-color: var(--ryd-gold);">Cierre de Caja</a>
+    </div>
+</header>
 
-    <div class="container">
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 style="letter-spacing: 1.2px; text-transform: uppercase; margin: 0; font-size: 1.1rem;">Auditoria de Ventas</h5>
+        <input type="text" id="filtroVentas" class="form-control form-control-sm w-25" placeholder="Filtrar por referencia o cajero..." onkeyup="filtrarVentas()">
+    </div>
 
-        <div class="metrics-grid">
-            <div class="metric-card">
-                <div class="metric-title">Ingresos Totales</div>
-                <div class="metric-value">${{ "%.2f"|format(total_ingresos) }}</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-title">Ganancia Neta Estimada</div>
-                <div class="metric-value" style="color: #2E7D32;">${{ "%.2f"|format(total_ganancias) }}</div>
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>Registro de Compras</h2>
-            <table>
+    <div class="card-custom p-3">
+        <div class="table-responsive">
+            <table class="table table-custom table-hover align-middle mb-0" id="tablaVentas">
                 <thead>
                     <tr>
-                        <th>ID Venta</th>
-                        <th>Fecha</th>
-                        <th>Producto</th>
-                        <th>Cant.</th>
-                        <th>Precio Unit.</th>
-                        <th>Subtotal</th>
-                        <th>Ganancia</th>
+                        <th>ID</th>
+                        <th>Fecha y Hora</th>
+                        <th>Descripcion</th>
+                        <th>Cant</th>
+                        <th>Modalidad</th>
+                        <th>Referencia</th>
+                        <th>Operador</th>
+                        <th class="text-end">Liquidacion</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for v in ventas %}
-                    <tr>
-                        <td>#{{ v['id'] }}</td>
-                        <td>{{ v['fecha'] }}</td>
-                        <td>{{ v['producto_nombre'] }}</td>
-                        <td>{{ v['cantidad'] }}</td>
-                        <td>${{ "%.2f"|format(v['precio_unitario']) }}</td>
-                        <td>${{ "%.2f"|format(v['subtotal']) }}</td>
-                        <td style="color: #2E7D32;">+${{ "%.2f"|format(v['ganancia']) }}</td>
-                    </tr>
+                    {% if ventas %}
+                        {% for v in ventas %}
+                        <tr>
+                            <td>#{{ v.id }}</td>
+                            <td>{{ v.fecha }} <small class="text-muted">{{ v.hora }}</small></td>
+                            <td><strong>{{ v.producto }}</strong></td>
+                            <td>{{ v.cantidad }}</td>
+                            <td><span class="badge-method">{{ v.metodo_pago }}</span></td>
+                            <td><code>{{ v.referencia or 'N/A' }}</code></td>
+                            <td>{{ v.usuario }}</td>
+                            <td class="text-end fw-bold" style="color: var(--ryd-gold-dark);">${{ "%.2f"|format(v.subtotal) }}</td>
+                        </tr>
+                        {% endfor %}
                     {% else %}
-                    <tr>
-                        <td colspan="7" style="text-align: center; color: #8C857B; padding: 20px 0;">No se han registrado ventas aún.</td>
-                    </tr>
-                    {% endfor %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted small">No hay transacciones registradas en este periodo.</td>
+                        </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>
     </div>
+</div>
 
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Punto de Venta - POS</title>
-    <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: #eef2f5; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        
-        nav { background: white; padding: 15px 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        nav a { margin-right: 20px; text-decoration: none; color: #2c3e50; font-weight: bold; font-size: 16px; }
-        nav a:hover { color: #007bff; }
-
-        .pos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        @media (max-width: 768px) { .pos-grid { grid-template-columns: 1fr; } }
-
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        h2 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; }
-
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-weight: 600; margin-bottom: 5px; color: #555; }
-        select, input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
-        
-        .calc-box { background: #f8f9fa; border: 1px dashed #007bff; border-radius: 8px; padding: 15px; margin: 15px 0; }
-        .calc-row { display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; margin-bottom: 8px; }
-        .total-text { color: #28a745; font-size: 22px; }
-
-        .btn-pay { width: 100%; background: #28a745; color: white; padding: 14px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
-        .btn-pay:hover { background: #218838; }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
-        th { background: #f8f9fa; color: #666; font-weight: 600; }
-        .profit { color: #28a745; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <nav>
-            <a href="/">📦 Inventario</a>
-            <a href="/ventas" style="color: #007bff;">🛒 Punto de Venta</a>
-        </nav>
-
-        <div class="pos-grid">
-            <div class="card">
-                <h2>⚡ Nueva Venta</h2>
-                <form action="/realizar_venta" method="POST">
-                    <div class="form-group">
-                        <label>Seleccionar Producto:</label>
-                        <select name="producto_id" id="producto_select" required onchange="calcularTotal()">
-                            <option value="" data-precio="0" data-stock="0">-- Elija un producto --</option>
-                            {% for p in productos %}
-                            <option value="{{ p[0] }}" data-precio="{{ p[4] }}" data-stock="{{ p[5] }}">
-                                {{ p[2] }} — ${{ "%.2f"|format(p[4]) }} (Disp: {{ p[5] }})
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Cantidad:</label>
-                        <input type="number" name="cantidad" id="cantidad" value="1" min="1" required oninput="calcularTotal()">
-                    </div>
-
-                    <div class="calc-box">
-                        <div class="calc-row">
-                            <span>Total a Cobrar:</span>
-                            <span class="total-text" id="total_display">$0.00</span>
-                        </div>
-                        <hr style="border: 0; border-top: 1px solid #ddd; margin: 10px 0;">
-                        <div class="form-group" style="margin-bottom: 5px;">
-                            <label style="font-size: 13px;">Paga con ($):</label>
-                            <input type="number" step="0.01" id="paga_con" placeholder="Monto recibido" oninput="calcularCambio()">
-                        </div>
-                        <div class="calc-row" style="font-size: 15px; color: #555; margin-top: 5px;">
-                            <span>Cambio / Vuelto:</span>
-                            <span id="cambio_display" style="color: #007bff;">$0.00</span>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn-pay">💳 Registrar Venta</button>
-                </form>
-            </div>
-
-            <div class="card">
-                <h2>📊 Historial de Transacciones</h2>
-                <div style="max-height: 400px; overflow-y: auto;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Producto</th>
-                                <th>Cant.</th>
-                                <th>Total</th>
-                                <th>Ganancia</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for v in ventas %}
-                            <tr>
-                                <td style="font-size: 12px; color: #888;">{{ v[5] }}</td>
-                                <td><strong>{{ v[1] }}</strong></td>
-                                <td>{{ v[2] }}</td>
-                                <td>${{ "%.2f"|format(v[3]) }}</td>
-                                <td class="profit">+${{ "%.2f"|format(v[4]) }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        function calcularTotal() {
-            let select = document.getElementById('producto_select');
-            let option = select.options[select.selectedIndex];
-            let precio = parseFloat(option.getAttribute('data-precio')) || 0;
-            let cantidad = parseInt(document.getElementById('cantidad').value) || 0;
-            
-            let total = precio * cantidad;
-            document.getElementById('total_display').innerText = '$' + total.toFixed(2);
-            calcularCambio();
-        }
-
-        function calcularCambio() {
-            let select = document.getElementById('producto_select');
-            let option = select.options[select.selectedIndex];
-            let precio = parseFloat(option.getAttribute('data-precio')) || 0;
-            let cantidad = parseInt(document.getElementById('cantidad').value) || 0;
-            let total = precio * cantidad;
-
-            let pagaCon = parseFloat(document.getElementById('paga_con').value) || 0;
-            let cambio = pagaCon - total;
-
-            let cambioDisplay = document.getElementById('cambio_display');
-            if (pagaCon > 0 && cambio >= 0) {
-                cambioDisplay.innerText = '$' + cambio.toFixed(2);
-                cambioDisplay.style.color = '#007bff';
-            } else if (pagaCon > 0 && cambio < 0) {
-                cambioDisplay.innerText = 'Falta $' + Math.abs(cambio).toFixed(2);
-                cambioDisplay.style.color = '#dc3545';
-            } else {
-                cambioDisplay.innerText = '$0.00';
-                cambioDisplay.style.color = '#007bff';
-            }
-        }
-    </script>
+<script>
+function filtrarVentas() {
+    const val = document.getElementById('filtroVentas').value.toLowerCase();
+    const filas = document.querySelectorAll('#tablaVentas tbody tr');
+    filas.forEach(f => {
+        f.style.display = f.innerText.toLowerCase().includes(val) ? '' : 'none';
+    });
+}
+</script>
 </body>
 </html>
