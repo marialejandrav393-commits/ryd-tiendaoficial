@@ -3,60 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comprobante de Venta</title>
+    <title>RyD - Comprobante de Venta</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; }
-        .ticket-box { max-width: 400px; margin: 40px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        body {
+            background-color: #F8F5F0;
+            color: #2C2620;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .ticket-wrapper {
+            max-width: 380px;
+            margin: 40px auto;
+            background: #FFFFFF;
+            padding: 24px;
+            border: 1px solid #E8DEC8;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+        }
+
+        .brand-header {
+            text-align: center;
+            border-bottom: 1px dashed #C5A059;
+            padding-bottom: 12px;
+            margin-bottom: 14px;
+        }
+
+        .brand-name {
+            font-family: 'Cinzel', serif;
+            font-size: 1.8rem;
+            letter-spacing: 3px;
+            color: #C5A059;
+            font-weight: 700;
+        }
+
+        .ticket-table th {
+            border-bottom: 1px solid #E8DEC8;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+        }
+
+        .ticket-table td {
+            font-size: 0.8rem;
+            padding: 6px 0;
+        }
+
+        .btn-thermal {
+            background-color: #C5A059;
+            color: #FFFFFF;
+            border: none;
+            font-weight: 600;
+            font-size: 0.85rem;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .btn-thermal:hover {
+            background-color: #9D7B38;
+            color: #FFFFFF;
+        }
+
+        .btn-wa {
+            background-color: #FFFFFF;
+            border: 1px solid #D1C5AF;
+            color: #2C2620;
+            font-weight: 600;
+            font-size: 0.85rem;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .btn-wa:hover {
+            background-color: #F8F5F0;
+        }
+
         @media print {
             .no-print { display: none !important; }
-            body { background: white; }
-            .ticket-box { margin: 0; box-shadow: none; width: 100%; max-width: 100%; }
+            body { background: #FFFFFF; }
+            .ticket-wrapper { border: none; box-shadow: none; margin: 0; padding: 0; }
         }
     </style>
 </head>
 <body>
 
-<div class="ticket-box">
-    <div class="text-center mb-4">
-        <h4>Sistema de Inventario</h4>
-        <p class="text-muted mb-0">Comprobante de Venta</p>
+<div class="ticket-wrapper">
+    <div class="brand-header">
+        <div class="brand-name">RyD</div>
+        <div style="font-size: 0.75rem; color: #827668; letter-spacing: 1px;">SISTEMA OFICIAL DE VENTA</div>
+        <div style="font-size: 0.75rem; margin-top: 4px;">Comprobante #{{ venta.id if venta else '0001' }}</div>
+        <div style="font-size: 0.72rem; color: #827668;">{{ venta.fecha if venta else '' }} {{ venta.hora if venta else '' }}</div>
     </div>
 
-    <table class="table table-sm">
+    <div style="font-size: 0.75rem; margin-bottom: 10px;">
+        <div>Operador: <strong>{{ venta.usuario if venta else 'Cajero' }}</strong></div>
+        <div>Modalidad: <strong>{{ venta.metodo_pago if venta else 'Efectivo' }}</strong></div>
+        {% if venta and venta.referencia %}
+        <div>Referencia: <code>{{ venta.referencia }}</code></div>
+        {% endif %}
+    </div>
+
+    <table class="w-100 ticket-table mb-3">
         <thead>
             <tr>
-                <th>Cant</th>
-                <th>Producto</th>
+                <th>Articulo / Descripcion</th>
                 <th class="text-end">Subtotal</th>
             </tr>
         </thead>
         <tbody>
-            {% for item in ticket.items %}
-            <tr>
-                <td>{{ item.cantidad }}</td>
-                <td>{{ item.nombre }}</td>
-                <td class="text-end">${{ "%.2f"|format(item.subtotal) }}</td>
-            </tr>
-            {% endfor %}
+            {% if venta and venta.items %}
+                {% for it in venta.items %}
+                <tr>
+                    <td>{{ it.cantidad }}x {{ it.nombre }}</td>
+                    <td class="text-end">${{ "%.2f"|format(it.subtotal) }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td>{{ venta.producto if venta else 'Articulo comercial' }}</td>
+                    <td class="text-end">${{ "%.2f"|format(venta.subtotal if venta else 0) }}</td>
+                </tr>
+            {% endif %}
         </tbody>
     </table>
 
-    <hr>
-    <div class="d-flex justify-content-between fw-bold mb-4">
-        <span>Total a Pagar:</span>
-        <span>${{ "%.2f"|format(ticket.total) }}</span>
+    <div style="border-top: 1px dashed #C5A059; padding-top: 8px; margin-bottom: 20px;">
+        <div class="d-flex justify-content-between align-items-center">
+            <span style="font-size: 0.85rem; font-weight: 700;">TOTAL LIQUIDADO:</span>
+            <span style="font-size: 1.2rem; font-weight: 700; color: #C5A059;">
+                ${{ "%.2f"|format(venta.subtotal if venta else 0) }}
+            </span>
+        </div>
     </div>
 
-    <div class="d-grid gap-2 no-print">
-        <button onclick="window.print()" class="btn btn-dark">Imprimir Ticket</button>
-        {% if session.get('user_role') == 'admin' %}
-            <a href="{{ url_for('admin') }}" class="btn btn-outline-secondary">Volver al Panel</a>
-        {% else %}
-            <a href="{{ url_for('pos_cajero') }}" class="btn btn-outline-secondary">Nueva Venta (POS)</a>
-        {% endif %}
+    <div class="no-print d-flex flex-column gap-2">
+        <button class="btn btn-thermal w-100" onclick="window.print()">Imprimir Ticket Termico</button>
+        <button class="btn btn-wa w-100" onclick="enviarWhatsApp()">Despachar a WhatsApp</button>
+        <a href="/cajero/pos" class="btn btn-link btn-sm text-center text-muted text-decoration-none mt-1">Volver a Terminal POS</a>
     </div>
 </div>
 
+<script>
+function enviarWhatsApp() {
+    const telefono = prompt("Ingrese el numero de telefono del cliente (incluyendo codigo de pais, ej: 58412...):");
+    if (!telefono) return;
+    const mensaje = encodeURIComponent(
+        "RyD - Comprobante de Compra\n" +
+        "Comprobante: #{{ venta.id if venta else '0001' }}\n" +
+        "Total: ${{ '%.2f'|format(venta.subtotal if venta else 0) }}\n" +
+        "Metodo: {{ venta.metodo_pago if venta else 'Efectivo' }}\n" +
+        "Gracias por su preferencia."
+    );
+    window.open(`https://wa.me/${telefono}?text=${mensaje}`, '_blank');
+}
+</script>
 </body>
 </html>
