@@ -405,6 +405,57 @@ def vaciar_carrito():
     if session.get('user_role') == 'cajero':
         return redirect(url_for('pos_cajero'))
     return redirect(url_for('index'))
+from datetime import datetime
+
+@app.route('/procesar_venta', methods=['POST'])
+def procesar_venta():
+    data = request.get_json()
+    items = data.get('items', [])
+    metodo_pago = data.get('metodo_pago', 'Efectivo $')
+    referencia = data.get('referencia', '')
+    cajero = session.get('username', 'cajero')
+
+    if not items:
+        return jsonify({'exito': False, 'mensaje': 'El carrito está vacío'}), 400
+
+    conn = obtener_conexion()
+    total_venta = sum(float(item['precio']) * int(item['cantidad']) for item in items)
+    ahora = datetime.now()
+    fecha_hoy = ahora.strftime('%Y-%m-%d')
+    hora_actual = ahora.strftime('%H:%M:%S')
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO ventas (fecha, hora, producto, cantidad, subtotal, metodo_pago, referencia, usuario)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            fecha_hoy,
+            hora_actual,
+            f"{len(items)} productos",
+            sum(int(i['cantidad']) for i in items),
+            total_venta,
+            metodo_pago,
+            referencia,
+            cajero
+        ))
+        venta_id = cursor.lastrowid
+
+        for item in items:
+            conn.execute('''
+                UPDATE productos 
+                SET stock = MAX(0, stock - ?) 
+                WHERE codigo = ?
+            ''', (int(item['cantidad']), str(item['codigo'])))
+
+        conn.commit()
+        conn.close()
+        return jsonify({'exito': True, 'venta_id': venta_id})
+
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'exito': False, 'mensaje': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
