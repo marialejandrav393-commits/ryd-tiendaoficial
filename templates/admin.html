@@ -6,41 +6,202 @@
     <title>RyD - Panel Administrador</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            background-color: #FDFBF7;
-            color: #2b2b2b;
-            font-family: 'Apple Garamond', Georgia, serif;
+        :root {
+            --ryd-gold: #C5A059;
+            --ryd-gold-dark: #A6823C;
+            --ryd-bg: #FDFBF7;
+            --ryd-card-bg: #FFFFFF;
+            --ryd-beige-soft: #FAF6EE;
+            --ryd-border: #EFE6D8;
+            --ryd-border-gold: #DFCEB4;
+            --ryd-dark: #332B24;
+            --ryd-muted: #7E7265;
         }
+
+        body {
+            background-color: var(--ryd-bg);
+            color: var(--ryd-dark);
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            letter-spacing: 0.2px;
+        }
+
         .header-ryd {
             background-color: #FFFFFF;
-            border-bottom: 1px solid #F0EAE1;
-            padding: 20px 40px;
+            border-bottom: 1.5px solid var(--ryd-border);
+            padding: 16px 36px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
         }
+
         .logo-ryd {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: #C5A059;
-            letter-spacing: 2px;
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--ryd-gold);
+            letter-spacing: 3px;
             text-decoration: none;
+            text-transform: uppercase;
         }
-        .section-title {
-            font-size: 1.4rem;
-            color: #333;
-            border-bottom: 1px solid #C5A059;
-            padding-bottom: 6px;
-            margin-bottom: 25px;
+
+        .logo-ryd:hover {
+            color: var(--ryd-gold-dark);
         }
-        .card-custom {
+
+        .btn-ryd-outline {
+            border: 1px solid var(--ryd-border-gold);
+            color: var(--ryd-dark);
+            background: #FFFFFF;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .btn-ryd-outline:hover {
+            background: var(--ryd-beige-soft);
+            border-color: var(--ryd-gold);
+            color: var(--ryd-gold-dark);
+        }
+
+        .btn-ryd-gold {
+            background-color: var(--ryd-gold);
+            color: #FFFFFF;
+            border: none;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .btn-ryd-gold:hover {
+            background-color: var(--ryd-gold-dark);
+            color: #FFFFFF;
+        }
+
+        .btn-ryd-dark {
+            background-color: var(--ryd-dark);
+            color: #FFFFFF;
+            border: none;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .btn-ryd-dark:hover {
+            background-color: #1F1914;
+            color: #FFFFFF;
+        }
+
+        .card-kpi {
             background-color: #FFFFFF;
-            border: 1px solid #E5E0D8;
+            border: 1px solid var(--ryd-border);
+            border-radius: 8px;
+            padding: 22px 26px;
+            box-shadow: 0 4px 14px rgba(61, 53, 46, 0.03);
+            transition: transform 0.15s ease;
+        }
+
+        .card-kpi-highlight {
+            background-color: var(--ryd-beige-soft);
+            border: 1px solid var(--ryd-border-gold);
+        }
+
+        .kpi-label {
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: var(--ryd-muted);
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .kpi-value {
+            font-size: 2.1rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--ryd-dark);
+        }
+
+        .kpi-value-gold {
+            color: var(--ryd-gold);
+        }
+
+        .section-header {
+            border-bottom: 1.5px solid var(--ryd-border-gold);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--ryd-dark);
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            margin: 0;
+        }
+
+        .table-custom {
+            background: #FFFFFF;
+            border: 1px solid var(--ryd-border);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 14px rgba(61, 53, 46, 0.03);
+        }
+
+        .table thead th {
+            background-color: var(--ryd-beige-soft);
+            color: var(--ryd-muted);
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            border-bottom: 1px solid var(--ryd-border);
+            padding: 12px 16px;
+        }
+
+        .table tbody td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #F5EFE6;
+            vertical-align: middle;
+            font-size: 0.9rem;
+        }
+
+        .badge-cat {
+            background-color: var(--ryd-beige-soft);
+            color: var(--ryd-muted);
+            border: 1px solid var(--ryd-border-gold);
+            font-weight: 600;
+            font-size: 0.75rem;
+            padding: 5px 9px;
             border-radius: 4px;
         }
+
         .img-thumb {
-            width: 45px;
-            height: 45px;
+            width: 48px;
+            height: 48px;
             object-fit: cover;
-            border-radius: 3px;
-            border: 1px solid #E5E0D8;
+            border-radius: 6px;
+            border: 1px solid var(--ryd-border);
+            background-color: #FAF6EE;
+        }
+
+        .code-tag {
+            color: var(--ryd-gold-dark);
+            font-weight: 700;
+            font-size: 0.85rem;
+            background: rgba(197, 160, 89, 0.08);
+            padding: 3px 6px;
+            border-radius: 4px;
+        }
+
+        .modal-content {
+            border: 1px solid var(--ryd-border);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .modal-header {
+            background-color: var(--ryd-beige-soft);
+            border-bottom: 1px solid var(--ryd-border);
+        }
+
+        .form-control:focus {
+            border-color: var(--ryd-gold);
+            box-shadow: 0 0 0 0.2rem rgba(197, 160, 89, 0.15);
         }
     </style>
 </head>
@@ -48,58 +209,63 @@
 
 <header class="header-ryd d-flex justify-content-between align-items-center">
     <a href="{{ url_for('index') }}" class="logo-ryd">RyD</a>
-    <div>
-        <span class="me-3 text-muted">Administrador: <strong>{{ session.get('username') }}</strong></span>
-        <a href="{{ url_for('pos_cajero') }}" class="btn btn-outline-dark btn-sm me-2">POS Cajero</a>
-        <a href="{{ url_for('index') }}" class="btn btn-outline-dark btn-sm me-2">Ver Catálogo</a>
-        <a href="/cierre-caja" class="btn btn-secondary">Cierre de Caja</a>
-        <a href="{{ url_for('logout') }}" class="btn btn-link btn-sm text-secondary">Cerrar sesion</a>
+    <div class="d-flex align-items-center">
+        <span class="me-3 small text-muted">Sesión: <strong class="text-dark">{{ session.get('username') }}</strong></span>
+        <a href="{{ url_for('pos_cajero') }}" class="btn btn-ryd-outline btn-sm me-2">POS Cajero</a>
+        <a href="{{ url_for('index') }}" class="btn btn-ryd-outline btn-sm me-2">Ver Catálogo</a>
+        <a href="/cierre-caja" class="btn btn-ryd-gold btn-sm me-2">Cierre de Caja</a>
+        <a href="{{ url_for('logout') }}" class="btn btn-link btn-sm text-muted text-decoration-none">Cerrar Sesión</a>
     </div>
 </header>
 
-<div class="container my-5">
+<div class="container my-4">
 
     {% with messages = get_flashed_messages() %}
       {% if messages %}
         {% for message in messages %}
-          <div class="alert alert-info border-0 rounded-0 shadow-sm mb-4" role="alert">{{ message }}</div>
+          <div class="alert alert-warning border-0 rounded-2 shadow-sm mb-4" style="background-color: #FAF3E6; color: #8A6827;" role="alert">
+            {{ message }}
+          </div>
         {% endfor %}
       {% endif %}
     {% endwith %}
 
-    <div class="row mb-4">
-        <div class="col-md-6 mb-3">
-            <div class="p-4 card-custom">
-                <small class="text-uppercase text-muted fw-bold">Ventas Totales Registradas</small>
-                <h3 class="fw-bold mt-2 m-0">${{ "%.2f"|format(total_ventas or 0.0) }}</h3>
+    <!-- Tarjetas de Métricas Ejecutivas -->
+    <div class="row mb-4 g-3">
+        <div class="col-md-6">
+            <div class="card-kpi">
+                <span class="kpi-label">Ventas Totales Registradas</span>
+                <h2 class="kpi-value">${{ "%.2f"|format(total_ventas or 0.0) }}</h2>
             </div>
         </div>
-        <div class="col-md-6 mb-3">
-            <div class="p-4 card-custom">
-                <small class="text-uppercase text-muted fw-bold">Ganancia Estimada Inventario</small>
-                <h3 class="fw-bold mt-2 m-0 text-success">${{ "%.2f"|format(total_ganancias or 0.0) }}</h3>
+        <div class="col-md-6">
+            <div class="card-kpi card-kpi-highlight">
+                <span class="kpi-label">Ganancia Estimada Inventario</span>
+                <h2 class="kpi-value kpi-value-gold">${{ "%.2f"|format(total_ganancias or 0.0) }}</h2>
             </div>
         </div>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="section-title m-0 border-0">Gestión de Inventario</h5>
+    <!-- Barra de Control de Inventario -->
+    <div class="d-flex justify-content-between align-items-center section-header">
+        <h5 class="section-title">Gestión de Inventario</h5>
         <div>
-            <button class="btn btn-outline-dark btn-sm me-2" data-bs-toggle="modal" data-bs-target="#modalImportar">
+            <button class="btn btn-ryd-outline btn-sm me-2" data-bs-toggle="modal" data-bs-target="#modalImportar">
                 Importar Excel / CSV
             </button>
-            <button class="btn btn-dark btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevo">
+            <button class="btn btn-ryd-dark btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevo">
                 + Nuevo Producto
             </button>
         </div>
     </div>
 
-    <div class="card-custom p-3 shadow-sm">
+    <!-- Tabla Principal de Productos -->
+    <div class="table-custom">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead>
-                    <tr class="small text-muted text-uppercase">
-                        <th>Imagen</th>
+                    <tr>
+                        <th style="width: 70px;">Imagen</th>
                         <th>Código</th>
                         <th>Nombre</th>
                         <th>Categoría</th>
@@ -117,18 +283,22 @@
                                 {% if p.imagen %}
                                     <img src="{{ url_for('static', filename='uploads/' + p.imagen) }}" class="img-thumb" alt="Foto">
                                 {% else %}
-                                    <div class="bg-light text-muted small text-center d-flex align-items-center justify-content-center img-thumb">N/A</div>
+                                    <div class="img-thumb small text-muted d-flex align-items-center justify-content-center">N/A</div>
                                 {% endif %}
                             </td>
-                            <td><code>{{ p.codigo }}</code></td>
-                            <td><strong>{{ p.nombre }}</strong></td>
-                            <td><span class="badge bg-light text-dark border">{{ p.categoria or 'General' }}</span></td>
-                            <td>${{ "%.2f"|format(p.costo or 0) }}</td>
-                            <td>${{ "%.2f"|format(p.precio) }}</td>
-                            <td>{{ p.stock }}</td>
+                            <td><span class="code-tag">{{ p.codigo }}</span></td>
+                            <td><strong class="text-dark">{{ p.nombre }}</strong></td>
+                            <td><span class="badge-cat">{{ p.categoria or 'General' }}</span></td>
+                            <td class="text-muted">${{ "%.2f"|format(p.costo or 0) }}</td>
+                            <td><strong>${{ "%.2f"|format(p.precio) }}</strong></td>
+                            <td>
+                                <span class="badge {% if p.stock <= 2 %}bg-danger{% else %}bg-secondary{% endif %}">
+                                    {{ p.stock }}
+                                </span>
+                            </td>
                             <td class="text-end">
-                                <button type="button" class="btn btn-outline-secondary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#modalEditar{{ p.id }}">Editar</button>
-                                <a href="{{ url_for('eliminar_producto', id=p.id) }}" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar producto?')">Eliminar</a>
+                                <button type="button" class="btn btn-ryd-outline btn-sm py-1 px-2 me-1" data-bs-toggle="modal" data-bs-target="#modalEditar{{ p.id }}">Editar</button>
+                                <a href="{{ url_for('eliminar_producto', id=p.id) }}" class="btn btn-outline-danger btn-sm py-1 px-2" onclick="return confirm('¿Eliminar producto?')">Eliminar</a>
                             </td>
                         </tr>
 
@@ -137,38 +307,50 @@
                             <div class="modal-dialog">
                                 <div class="modal-content">
                                     <form action="{{ url_for('editar_producto', id=p.id) }}" method="POST" enctype="multipart/form-data">
-                                        <div class="modal-header border-0">
-                                            <h5 class="modal-title fw-bold">Editar Producto</h5>
+                                        <div class="modal-header">
+                                            <h5 class="modal-title fw-bold" style="color: var(--ryd-dark);">Editar Producto</h5>
                                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                         </div>
                                         <div class="modal-body text-start">
                                             <div class="mb-3">
-                                                <label class="small text-muted">Código</label>
+                                                <label class="small text-muted fw-bold">Código SKU</label>
                                                 <input type="text" name="codigo" value="{{ p.codigo }}" class="form-control" required>
                                             </div>
                                             <div class="mb-3">
-                                                <label class="small text-muted">Nombre</label>
+                                                <label class="small text-muted fw-bold">Nombre del Producto</label>
                                                 <input type="text" name="nombre" value="{{ p.nombre }}" class="form-control" required>
                                             </div>
                                             <div class="row mb-3">
-                                                <div class="col"><label class="small text-muted">Costo</label><input type="number" step="0.01" name="costo" value="{{ p.costo or 0 }}" class="form-control" required></div>
-                                                <div class="col"><label class="small text-muted">Precio</label><input type="number" step="0.01" name="precio" value="{{ p.precio }}" class="form-control" required></div>
+                                                <div class="col">
+                                                    <label class="small text-muted fw-bold">Costo ($)</label>
+                                                    <input type="number" step="0.01" name="costo" value="{{ p.costo or 0 }}" class="form-control" required>
+                                                </div>
+                                                <div class="col">
+                                                    <label class="small text-muted fw-bold">Precio ($)</label>
+                                                    <input type="number" step="0.01" name="precio" value="{{ p.precio }}" class="form-control" required>
+                                                </div>
                                             </div>
                                             <div class="row mb-3">
-                                                <div class="col"><label class="small text-muted">Stock</label><input type="number" name="stock" value="{{ p.stock }}" class="form-control" required></div>
-                                                <div class="col"><label class="small text-muted">Categoría</label><input type="text" name="categoria" value="{{ p.categoria or 'General' }}" class="form-control"></div>
+                                                <div class="col">
+                                                    <label class="small text-muted fw-bold">Stock</label>
+                                                    <input type="number" name="stock" value="{{ p.stock }}" class="form-control" required>
+                                                </div>
+                                                <div class="col">
+                                                    <label class="small text-muted fw-bold">Categoría</label>
+                                                    <input type="text" name="categoria" value="{{ p.categoria or 'General' }}" class="form-control">
+                                                </div>
                                             </div>
                                             <div class="mb-3">
-                                                <label class="small text-muted">Cambiar / Subir Foto</label>
+                                                <label class="small text-muted fw-bold">Foto del Producto</label>
                                                 <input type="file" name="imagen" class="form-control" accept="image/*">
                                                 {% if p.imagen %}
-                                                    <small class="text-muted d-block mt-1">Imagen actual: <code>{{ p.imagen }}</code></small>
+                                                    <small class="text-muted d-block mt-1">Archivo actual: <code>{{ p.imagen }}</code></small>
                                                 {% endif %}
                                             </div>
                                         </div>
                                         <div class="modal-footer border-0">
-                                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                            <button type="submit" class="btn btn-dark">Guardar Cambios</button>
+                                            <button type="button" class="btn btn-ryd-outline" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-ryd-gold">Guardar Cambios</button>
                                         </div>
                                     </form>
                                 </div>
@@ -177,7 +359,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="8" class="text-center py-4 text-muted small">No hay productos en inventario.</td>
+                            <td colspan="8" class="text-center py-5 text-muted small">No hay productos registrados en inventario.</td>
                         </tr>
                     {% endif %}
                 </tbody>
@@ -191,30 +373,51 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="{{ url_for('agregar_producto') }}" method="POST" enctype="multipart/form-data">
-                <div class="modal-header border-0">
-                    <h5 class="modal-title fw-bold">Nuevo Producto</h5>
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" style="color: var(--ryd-dark);">Registrar Nuevo Producto</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="small text-muted">Código</label>
+                        <label class="small text-muted fw-bold">Código SKU</label>
                         <input type="text" name="codigo" id="inputCodigo" class="form-control" oninput="validarCodigoRepetido()" required>
                         <div id="msgErrorCodigo" class="invalid-feedback">Este código ya pertenece a otro producto.</div>
                     </div>
-                    <div class="mb-3"><label class="small text-muted">Nombre</label><input type="text" name="nombre" class="form-control" required></div>
-                    <div class="row mb-3">
-                        <div class="col"><label class="small text-muted">Costo</label><input type="number" step="0.01" name="costo" value="0" class="form-control" required></div>
-                        <div class="col"><label class="small text-muted">Precio</label><input type="number" step="0.01" name="precio" class="form-control" required></div>
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold">Nombre / Descripción</label>
+                        <input type="text" name="nombre" class="form-control" required>
                     </div>
                     <div class="row mb-3">
-                        <div class="col"><label class="small text-muted">Stock</label><input type="number" name="stock" class="form-control" required></div>
-                        <div class="col"><label class="small text-muted">Descuento %</label><input type="number" name="descuento" value="0" class="form-control"></div>
+                        <div class="col">
+                            <label class="small text-muted fw-bold">Costo ($)</label>
+                            <input type="number" step="0.01" name="costo" value="0" class="form-control" required>
+                        </div>
+                        <div class="col">
+                            <label class="small text-muted fw-bold">Precio Venta ($)</label>
+                            <input type="number" step="0.01" name="precio" class="form-control" required>
+                        </div>
                     </div>
-                    <div class="mb-3"><label class="small text-muted">Categoría</label><input type="text" name="categoria" class="form-control" placeholder="Ej. Uñas, Cabello, Insumos"></div>
-                    <div class="mb-3"><label class="small text-muted">Foto del Producto (opcional)</label><input type="file" name="imagen" class="form-control" accept="image/*"></div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="small text-muted fw-bold">Stock Inicial</label>
+                            <input type="number" name="stock" class="form-control" required>
+                        </div>
+                        <div class="col">
+                            <label class="small text-muted fw-bold">Descuento (%)</label>
+                            <input type="number" name="descuento" value="0" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold">Categoría</label>
+                        <input type="text" name="categoria" class="form-control" placeholder="Ej. Uñas, Cuidado Capilar, Skincare">
+                    </div>
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold">Foto del Producto (opcional)</label>
+                        <input type="file" name="imagen" class="form-control" accept="image/*">
+                    </div>
                 </div>
                 <div class="modal-footer border-0">
-                    <button type="submit" id="btnGuardar" class="btn btn-dark w-100">Guardar Producto</button>
+                    <button type="submit" id="btnGuardar" class="btn btn-ryd-gold w-100 py-2">Guardar Producto en Catálogo</button>
                 </div>
             </form>
         </div>
@@ -226,27 +429,27 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="{{ url_for('importar_excel') }}" method="POST" enctype="multipart/form-data">
-                <div class="modal-header border-0">
-                    <h5 class="modal-title fw-bold">Importar Productos desde Excel / CSV</h5>
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" style="color: var(--ryd-dark);">Importación Masiva de Inventario</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="small text-muted">
-                        Sube un archivo Excel (<code>.xlsx</code>) o CSV (<code>.csv</code>) con el formato de columnas recomendado:
+                    <p class="small text-muted mb-2">
+                        Sube un archivo Excel (<code>.xlsx</code>) o CSV (<code>.csv</code>) con las columnas requeridas:
                     </p>
-                    <div class="bg-light p-2 rounded small mb-3">
+                    <div class="p-2 mb-3 rounded small" style="background-color: var(--ryd-beige-soft); border: 1px solid var(--ryd-border-gold);">
                         <code>codigo</code> | <code>nombre</code> | <code>costo</code> | <code>precio</code> | <code>stock</code> | <code>categoria</code>
                     </div>
                     <div class="mb-3">
-                        <label class="small text-muted">Seleccionar archivo</label>
+                        <label class="small text-muted fw-bold">Seleccionar archivo</label>
                         <input type="file" name="archivo_excel" class="form-control" accept=".xlsx, .xls, .csv" required>
                     </div>
-                    <small class="text-muted d-block mt-2">
-                        * Si el código ya existe, los datos del producto se actualizarán automáticamente.
+                    <small class="text-muted d-block">
+                        * Si el código ya existe en el sistema, los valores de costo, precio y stock se actualizarán automáticamente.
                     </small>
                 </div>
                 <div class="modal-footer border-0">
-                    <button type="submit" class="btn btn-dark w-100">Cargar Archivo e Importar</button>
+                    <button type="submit" class="btn btn-ryd-dark w-100 py-2">Cargar Archivo e Importar</button>
                 </div>
             </form>
         </div>
