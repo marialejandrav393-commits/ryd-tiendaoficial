@@ -17,7 +17,6 @@
             --ryd-text: #2C2620;
             --ryd-muted: #827668;
             --emboss-shadow: 4px 4px 10px rgba(180, 165, 140, 0.25), -4px -4px 10px rgba(255, 255, 255, 0.9);
-            --emboss-active: inset 2px 2px 5px rgba(180, 165, 140, 0.25), inset -2px -2px 5px rgba(255, 255, 255, 0.8);
         }
 
         body {
@@ -32,7 +31,6 @@
             background: var(--ryd-surface);
             border-bottom: 1.5px solid var(--ryd-border);
             padding: 16px 36px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.02);
         }
 
         .brand-title {
@@ -70,15 +68,15 @@
         .table-luxury thead th {
             background: var(--ryd-beige-card);
             color: var(--ryd-muted);
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             font-weight: 700;
-            letter-spacing: 1px;
+            letter-spacing: 0.8px;
             text-transform: uppercase;
             border-bottom: 1px solid var(--ryd-border);
-            padding: 12px 10px;
+            padding: 12px 6px;
         }
         .table-luxury tbody td {
-            padding: 10px 8px;
+            padding: 8px 6px;
             border-bottom: 1px solid var(--ryd-border-light);
             vertical-align: middle;
         }
@@ -87,9 +85,9 @@
             width: 100%;
             background: transparent;
             border: 1px solid transparent;
-            padding: 5px 6px;
+            padding: 4px;
             border-radius: 4px;
-            font-size: 0.85rem;
+            font-size: 0.84rem;
             color: var(--ryd-text);
         }
         .cell-input:focus {
@@ -124,7 +122,6 @@
             padding: 8px 16px;
             border-radius: 6px;
             box-shadow: var(--emboss-shadow);
-            transition: all 0.2s ease;
         }
         .btn-outline-gold:hover {
             border-color: var(--ryd-gold);
@@ -143,12 +140,16 @@
     </div>
 </header>
 
-<div class="container my-4">
-    <!-- Panel Superior con Botón de Carga Directo -->
+<div class="container-fluid px-4 my-4">
     <div class="panel-luxury mb-4">
-        <h5 style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 1.05rem; margin-bottom: 20px; border-bottom: 1px solid var(--ryd-border); padding-bottom: 8px;">
-            Recepción y Procesamiento de Factura de Compra
-        </h5>
+        <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+            <h5 style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 1.05rem; margin: 0;">
+                Recepción y Procesamiento de Factura Multipágina
+            </h5>
+            <span id="badgePaginas" class="badge bg-light text-dark border px-3 py-2" style="display: none; letter-spacing: 1px;">
+                Páginas procesadas: <strong id="numPaginasTxt">1</strong>
+            </span>
+        </div>
 
         <div class="row g-3 align-items-end">
             <div class="col-md-3">
@@ -160,11 +161,10 @@
                 <input type="text" id="telefonoProveedor" class="form-control input-luxury" placeholder="Ej. 04127494813">
             </div>
             <div class="col-md-4">
-                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px;">Seleccionar Factura (PDF, Imagen, Excel)</label>
+                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px;">Seleccionar Factura (PDF multipágina, Excel o Foto)</label>
                 <input type="file" id="archivoFactura" class="form-control input-luxury" accept=".xlsx, .xls, .csv, .pdf, image/*">
             </div>
             <div class="col-md-2">
-                <!-- BOTÓN PRINCIPAL DE PROCESAMIENTO -->
                 <button type="button" id="btnProcesarDoc" class="btn btn-gold w-100 py-2" onclick="iniciarProcesamientoFactura()">
                     Procesar Factura
                 </button>
@@ -173,18 +173,20 @@
 
         <div id="indicadorCarga" class="mt-3 text-center small text-muted" style="display: none; letter-spacing: 0.8px;">
             <span class="spinner-border spinner-border-sm text-warning me-2" role="status"></span>
-            Extrayendo datos de la factura...
+            Procesando todas las páginas del documento...
         </div>
     </div>
 
-    <!-- Panel de Inventario Extraído y Editable -->
+    <!-- Panel de Inventario con Soporte para Venta Detal / Fraccionada -->
     <div class="panel-luxury">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
                 <h6 style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 0.95rem; margin: 0;">
-                    Items de la Factura para Incorporar a Inventario
+                    Inventario Extraído (Venta Mayor y Detal)
                 </h6>
-                <small class="text-muted" style="font-size: 0.78rem;">Todos los campos son editables. El precio de venta se recalcula automáticamente con el margen y descuento.</small>
+                <small class="text-muted" style="font-size: 0.78rem;">
+                    Si compraste una caja o docena, ajusta "Unidades x Bulto". El sistema recalculará el costo individual y multiplicará el stock disponible automáticamente.
+                </small>
             </div>
             <div>
                 <button type="button" class="btn btn-outline-gold btn-sm me-2" onclick="agregarFilaManual()">+ Fila Manual</button>
@@ -196,20 +198,23 @@
             <table class="table table-luxury align-middle mb-0" id="tablaFactura">
                 <thead>
                     <tr>
-                        <th style="width: 120px;">Código SKU</th>
+                        <th style="width: 105px;">SKU</th>
                         <th>Nombre del Producto</th>
-                        <th style="width: 90px;">Costo ($)</th>
-                        <th style="width: 90px;">Ganancia %</th>
-                        <th style="width: 90px;">Desc %</th>
-                        <th style="width: 100px;">Precio ($)</th>
-                        <th style="width: 80px;">Stock</th>
-                        <th style="width: 130px;">Categoría</th>
-                        <th style="width: 40px;"></th>
+                        <th style="width: 75px;" title="Bultos comprados">Bultos</th>
+                        <th style="width: 80px;" title="Costo total de cada bulto">Costo Bulto</th>
+                        <th style="width: 85px;" title="Unidades que trae cada bulto o caja">Unid. x Bulto</th>
+                        <th style="width: 85px;" title="Costo por cada pieza individual">Costo Detal</th>
+                        <th style="width: 75px;">Margen %</th>
+                        <th style="width: 75px;">Desc %</th>
+                        <th style="width: 90px;" title="PVP al que se venderá al cliente">PVP Detal</th>
+                        <th style="width: 75px;" title="Piezas individuales que ingresarán a tienda">Stock Total</th>
+                        <th style="width: 110px;">Categoría</th>
+                        <th style="width: 35px;"></th>
                     </tr>
                 </thead>
                 <tbody id="cuerpoFactura">
                     <tr>
-                        <td colspan="9" class="text-center py-4 text-muted small">Selecciona tu factura y presiona "Procesar Factura" para cargar los productos automáticamente.</td>
+                        <td colspan="12" class="text-center py-4 text-muted small">Selecciona tu factura y presiona "Procesar Factura" para cargar todas las páginas y artículos.</td>
                     </tr>
                 </tbody>
             </table>
@@ -217,42 +222,55 @@
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
+// Recalcula en vivo cuando se cambia costo, empaque, margen o descuento
 function recalcularFila(input) {
     const fila = input.closest('tr');
-    const costo = parseFloat(fila.querySelector('.col-costo').value) || 0;
+    const bultos = parseInt(fila.querySelector('.col-bultos').value) || 1;
+    const costoBulto = parseFloat(fila.querySelector('.col-costo-bulto').value) || 0;
+    const unidadesXEmpaque = parseInt(fila.querySelector('.col-unidades-empaque').value) || 1;
     const ganancia = parseFloat(fila.querySelector('.col-ganancia').value) || 0;
     const descuento = parseFloat(fila.querySelector('.col-descuento').value) || 0;
 
-    let precio = costo * (1 + (ganancia / 100));
-    if (descuento > 0) {
-        precio = precio * (1 - (descuento / 100));
-    }
+    // Costo individual por cada unidad que viene dentro
+    const costoDetal = costoBulto / (unidadesXEmpaque > 0 ? unidadesXEmpaque : 1);
+    fila.querySelector('.col-costo-detal').value = costoDetal.toFixed(2);
 
-    fila.querySelector('.col-precio').value = precio.toFixed(2);
+    // Precio venta detal al público
+    let precioDetal = costoDetal * (1 + (ganancia / 100));
+    if (descuento > 0) {
+        precioDetal = precioDetal * (1 - (descuento / 100));
+    }
+    fila.querySelector('.col-precio-detal').value = precioDetal.toFixed(2);
+
+    // Stock total disponible en tienda para vender
+    const stockTotal = bultos * unidadesXEmpaque;
+    fila.querySelector('.col-stock-total').value = stockTotal;
 }
 
-function agregarFilaManual(codigo = '', nombre = '', costo = 0, stock = 1, categoria = 'General') {
+function agregarFilaManual(codigo = '', nombre = '', costoBulto = 0, bultos = 1, unidadesXEmpaque = 1, categoria = 'General') {
     const tbody = document.getElementById('cuerpoFactura');
-    
-    // Si la tabla contiene el mensaje de bienvenida, se limpia
     if (tbody.children.length === 1 && tbody.children[0].children.length === 1) {
         tbody.innerHTML = '';
     }
 
     const tr = document.createElement('tr');
     const cod = codigo || ('PRV-' + String(tbody.children.length + 1).padStart(3, '0'));
-    const precioCalculado = (costo * 1.30).toFixed(2);
+    const costoDetal = costoBulto / (unidadesXEmpaque > 0 ? unidadesXEmpaque : 1);
+    const pvpDetal = (costoDetal * 1.30).toFixed(2);
+    const stockTotal = bultos * unidadesXEmpaque;
 
     tr.innerHTML = `
         <td><input type="text" class="cell-input col-codigo" value="${cod}"></td>
         <td><input type="text" class="cell-input col-nombre" value="${nombre}" placeholder="Nombre del artículo"></td>
-        <td><input type="number" step="0.01" class="cell-input col-costo" value="${costo.toFixed(2)}" oninput="recalcularFila(this)"></td>
+        <td><input type="number" class="cell-input col-bultos" value="${bultos}" min="1" oninput="recalcularFila(this)"></td>
+        <td><input type="number" step="0.01" class="cell-input col-costo-bulto" value="${costoBulto.toFixed(2)}" oninput="recalcularFila(this)"></td>
+        <td><input type="number" class="cell-input col-unidades-empaque" value="${unidadesXEmpaque}" min="1" oninput="recalcularFila(this)" title="Indica cuántas unidades vienen en la caja"></td>
+        <td><input type="number" step="0.01" class="cell-input col-costo-detal" value="${costoDetal.toFixed(2)}" readonly style="color: var(--ryd-muted);"></td>
         <td><input type="number" step="1" class="cell-input col-ganancia" value="30" oninput="recalcularFila(this)"></td>
         <td><input type="number" step="1" class="cell-input col-descuento" value="0" oninput="recalcularFila(this)"></td>
-        <td><input type="number" step="0.01" class="cell-input col-precio" value="${precioCalculado}" style="font-weight: 700; color: var(--ryd-gold-dark);"></td>
-        <td><input type="number" class="cell-input col-stock" value="${stock}"></td>
+        <td><input type="number" step="0.01" class="cell-input col-precio-detal" value="${pvpDetal}" style="font-weight: 700; color: var(--ryd-gold-dark);"></td>
+        <td><input type="number" class="cell-input col-stock-total" value="${stockTotal}" readonly style="font-weight: 700;"></td>
         <td><input type="text" class="cell-input col-categoria" value="${categoria}"></td>
         <td class="text-center"><button class="btn btn-sm btn-outline-danger border-0 p-1" onclick="this.closest('tr').remove()">X</button></td>
     `;
@@ -273,73 +291,45 @@ function iniciarProcesamientoFactura() {
     indicador.style.display = 'block';
     btn.disabled = true;
 
-    const nombre = archivo.name.toLowerCase();
+    const formData = new FormData();
+    formData.append('factura', archivo);
 
-    // Procesamiento para Excel o CSV
-    if (nombre.endsWith('.xlsx') || nombre.endsWith('.xls') || nombre.endsWith('.csv')) {
-        const lector = new FileReader();
-        lector.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const primerHoja = workbook.Sheets[workbook.SheetNames[0]];
-                const filas = XLSX.utils.sheet_to_json(primerHoja, { header: 1 });
-
-                if (filas.length > 1) {
-                    const tbody = document.getElementById('cuerpoFactura');
-                    tbody.innerHTML = '';
-                    for (let i = 1; i < filas.length; i++) {
-                        const row = filas[i];
-                        if (!row || row.length === 0) continue;
-                        const cod = row[0] ? String(row[0]).trim() : ('PRV-' + String(i).padStart(3, '0'));
-                        const nom = row[1] ? String(row[1]).trim() : 'Producto ' + i;
-                        const costo = parseFloat(row[2]) || 0.0;
-                        const stock = parseInt(row[3]) || 1;
-                        const cat = row[4] ? String(row[4]).trim() : 'General';
-                        agregarFilaManual(cod, nom, costo, stock, cat);
-                    }
-                }
-            } catch (err) {
-                alert("Error al leer el archivo Excel/CSV.");
-            } finally {
-                indicador.style.display = 'none';
-                btn.disabled = false;
+    fetch('/procesar_factura_ocr', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.exito && data.items && data.items.length > 0) {
+            if (data.comercio) document.getElementById('nombreProveedor').value = data.comercio;
+            if (data.telefono) document.getElementById('telefonoProveedor').value = data.telefono;
+            
+            if (data.total_paginas) {
+                document.getElementById('badgePaginas').style.display = 'inline-block';
+                document.getElementById('numPaginasTxt').innerText = data.total_paginas;
             }
-        };
-        lector.readAsArrayBuffer(archivo);
-    } 
-    // Procesamiento para PDF o Foto a través de app.py
-    else {
-        const formData = new FormData();
-        formData.append('factura', archivo);
 
-        fetch('/procesar_factura_ocr', {
-            method: 'POST',
-            body: formData
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.exito && data.items && data.items.length > 0) {
-                if (data.comercio) document.getElementById('nombreProveedor').value = data.comercio;
-                if (data.telefono) document.getElementById('telefonoProveedor').value = data.telefono;
-
-                const tbody = document.getElementById('cuerpoFactura');
-                tbody.innerHTML = '';
-                data.items.forEach(it => {
-                    agregarFilaManual(it.codigo, it.nombre, it.costo, it.stock, it.categoria);
-                });
-            } else {
-                alert("El archivo se leyó pero no se encontraron filas legibles. Puedes añadirlas con '+ Fila Manual'.");
-            }
-        })
-        .catch(err => {
-            alert("Error al comunicar con el servidor para procesar el archivo.");
-        })
-        .finally(() => {
-            indicador.style.display = 'none';
-            btn.disabled = false;
-        });
-    }
+            const tbody = document.getElementById('cuerpoFactura');
+            tbody.innerHTML = '';
+            data.items.forEach(it => {
+                agregarFilaManual(
+                    it.codigo, 
+                    it.nombre, 
+                    it.costo_bulto, 
+                    it.bultos, 
+                    it.unidades_por_paquete, 
+                    it.categoria
+                );
+            });
+        } else {
+            alert("No se encontraron productos legibles en las páginas del documento.");
+        }
+    })
+    .catch(() => alert("Error al procesar el archivo en el servidor."))
+    .finally(() => {
+        indicador.style.display = 'none';
+        btn.disabled = false;
+    });
 }
 
 function guardarFacturaEnInventario() {
@@ -355,20 +345,29 @@ function guardarFacturaEnInventario() {
 
         const codigo = colCod.value.trim();
         const nombre = colNom.value.trim();
-        const costo = parseFloat(f.querySelector('.col-costo').value) || 0;
+        const costoUnitario = parseFloat(f.querySelector('.col-costo-detal').value) || 0;
         const ganancia = parseFloat(f.querySelector('.col-ganancia').value) || 0;
         const descuento = parseFloat(f.querySelector('.col-descuento').value) || 0;
-        const precio = parseFloat(f.querySelector('.col-precio').value) || 0;
-        const stock = parseInt(f.querySelector('.col-stock').value) || 0;
+        const precioDetal = parseFloat(f.querySelector('.col-precio-detal').value) || 0;
+        const stockTotal = parseInt(f.querySelector('.col-stock-total').value) || 0;
         const categoria = f.querySelector('.col-categoria').value.trim() || 'General';
 
         if (codigo && nombre) {
-            items.push({ codigo, nombre, costo, ganancia, descuento, precio, stock, categoria });
+            items.push({ 
+                codigo, 
+                nombre, 
+                costo: costoUnitario, 
+                ganancia, 
+                descuento, 
+                precio: precioDetal, 
+                stock: stockTotal, 
+                categoria 
+            });
         }
     });
 
     if (items.length === 0) {
-        alert("No hay productos válidos en la tabla para incorporar al inventario.");
+        alert("No hay productos válidos en la tabla.");
         return;
     }
 
@@ -384,7 +383,7 @@ function guardarFacturaEnInventario() {
     .then(res => res.json())
     .then(data => {
         if (data.exito) {
-            alert("Productos incorporados con éxito al inventario.");
+            alert("Inventario actualizado con éxito. Todos los productos ingresaron a precio de unidad y con el stock multiplicado.");
             window.location.href = '/admin';
         } else {
             alert("Error al guardar: " + data.mensaje);
