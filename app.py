@@ -525,62 +525,86 @@ import io
 import re
 from pypdf import PdfReader
 
+import io
+import re
+from pypdf import PdfReader
+
 @app.route('/procesar_factura_ocr', methods=['POST'])
 def procesar_factura_ocr():
     if 'factura' not in request.files:
-        return jsonify({'exito': False, 'mensaje': 'No se recibió ningún archivo'}), 400
+        return jsonify({'exito': False, 'mensaje': 'No se cargó ningún archivo'}), 400
 
     archivo = request.files['factura']
-    nombre_archivo = archivo.filename.lower()
+    nombre = archivo.filename.lower()
 
     comercio = ""
     telefono = ""
     items = []
 
     try:
-        # Lectura directa de archivos PDF
-        if nombre_archivo.endswith('.pdf'):
+        if nombre.endswith('.pdf'):
             reader = PdfReader(io.BytesIO(archivo.read()))
-            texto_completo = ""
+            texto = ""
             for page in reader.pages:
-                texto_completo += (page.extract_text() or "") + "\n"
+                texto += (page.extract_text() or "") + "\n"
 
-            # 1. Extraer el teléfono del proveedor
-            m_telf = re.search(r'Telf[:\s]*([0-9\+\-\s]+)', texto_completo, re.IGNORECASE)
-            if m_telf:
-                telefono = m_telf.group(1).strip()
-
-            # 2. Extraer el nombre del comercio
-            if "AURA" in texto_completo.upper():
-                comercio = "Aura Profesional"
+            # 1. Búsqueda de teléfono (formatos venezolanos 0412, 0414, 0424, 0416, 0426 o con prefijo Telf)
+            m_tel = re.search(r'(?:Telf|Tel|Cel|WhatsApp)?[:\s]*(04\d{2}[\s\-]?\d{7}|\+?58[\s\-]?\d{10})', texto, re.IGNORECASE)
+            if m_tel:
+                telefono = m_tel.group(1).replace(" ", "").replace("-", "")
             else:
-                lineas = [l.strip() for l in texto_completo.split('\n') if l.strip()]
-                comercio = lineas[0] if lineas else "Proveedor General"
+                m_tel2 = re.search(r'Telf[:\s]*([0-9\+\-\s]+)', texto, re.IGNORECASE)
+                if m_tel2:
+                    telefono = m_tel2.group(1).strip()
 
-            # 3. Extraer los artículos (Cantidad | Descripción | Precio Unitario | Total)
-            patron_items = re.compile(r'(\d+)\s*Und\.?\s*\|\s*([^|]+)\|\s*([0-9\.]+)\s*\|\s*([0-9\.]+)', re.IGNORECASE)
-            coincidencias = patron_items.findall(texto_completo)
+            # 2. Búsqueda de comercio emisor
+            lineas = [l.strip().lstrip('|').strip() for l in texto.split('\n') if l.strip()]
+            for l in lineas[:8]:
+                l_upper = l.upper()
+                if not any(palabra in l_upper for palabra in ['CLIENTE', 'DIRECCION', 'DIRECCIÓN', 'PRESUPUESTO', 'FACTURA', 'RIF', 'R.I.F', 'CANTIDAD', 'FECHA']):
+                    if len(l) > 3:
+                        comercio = l.title()
+                        break
+            if not comercio and "AURA" in texto.upper():
+                comercio = "Aura Profesional"
 
-            for idx, (cant, desc, p_unit, tot) in enumerate(coincidencias, start=1):
-                desc_limpia = desc.strip().replace('\n', ' ')
-                codigo_generado = f"AUR-{str(idx).zfill(3)}"
+            # 3. Extracción de productos multilínea (Cantidad -> Nombre -> Costo Unitario -> Total)
+            # Cubre facturas con barras verticales '|' o saltos de renglón
+            patron_items = re.findall(r'(\d+)\s*(?:Und\.?|Pza\.?|Unidad)?\s*[\n\|]\s*([^|\n]+?)\s*[\n\|]\s*(\d+(?:\.\d{1,2})?)\s*[\n\|]\s*(\d+(?:\.\d{1,2})?)', texto, re.IGNORECASE)
+            
+            if patron_items:
+                for idx, (cant, desc, p_unit, tot) in enumerate(patron_items, 1):
+                    nom_limpio = desc.strip().replace('\n', ' ')
+                    
+                    cat = "General"
+                    if any(k in nom_limpio.lower() for k in ['tijera', 'cortaunas', 'cuticula', 'lima', 'esmaltes']):
+                        cat = "Uñas"
+                    elif any(k in nom_limpio.lower() for k in ['peine', 'gorro', 'difusor', 'ondas', 'cera', 'cabello']):
+                        cat = "Cuidado Capilar"
+                    elif any(k in nom_limpio.lower() for k in ['ventilador', 'pinzas', 'organizador']):
+                        cat = "Accesorios"
 
-                # Clasificación de categoría automática
-                categoria = "Estética"
-                if any(x in desc_limpia.lower() for x in ['tijera', 'cortaunas', 'cuticula', 'lima']):
-                    categoria = "Uñas"
-                elif any(x in desc_limpia.lower() for x in ['peine', 'gorro', 'difusor', 'ondas']):
-                    categoria = "Cuidado Capilar"
-                elif any(x in desc_limpia.lower() for x in ['ventilador', 'pinzas']):
-                    categoria = "Accesorios"
+                    items.append({
+                        'codigo': f"PRV-{str(idx).zfill(3)}",
+                        'nombre': nom_limpio.title(),
+                        'costo': float(p_unit),
+                        'stock': int(cant),
+                        'categoria': cat
+                    })
 
-                items.append({
-                    'codigo': codigo_generado,
-                    'nombre': desc_limpia.title(),
-                    'costo': float(p_unit),
-                    'stock': int(cant),
-                    'categoria': categoria
-                })
+            # Método de respaldo línea por línea si la factura viene en columnas continuas
+            if not items:
+                for line in lineas:
+                    m = re.match(r'^(\d+)\s+(?:Und\.?\s+)?(.+?)\s+(\d+\.\d{2})\s+(\d+\.\d{2})$', line, re.IGNORECASE)
+                    if m:
+                        cant, desc, p_unit, _ = m.groups()
+                        items.append({
+                            'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
+                            'nombre': desc.strip().title(),
+                            'costo': float(p_unit),
+                            'stock': int(cant),
+                            'categoria': 'General'
+                        })
 
         return jsonify({
             'exito': True,
@@ -590,7 +614,7 @@ def procesar_factura_ocr():
         })
 
     except Exception as e:
-        return jsonify({'exito': False, 'mensaje': f'Error al procesar el archivo: {str(e)}'}), 500
+        return jsonify({'exito': False, 'mensaje': f'Error en procesamiento local: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
