@@ -161,25 +161,40 @@
             display: none;
         }
 
-        .btn-action-gold {
+        /* Botones Separados 3D */
+        .btn-pay-action {
+            border: 1px solid var(--ryd-border);
+            background: var(--ryd-surface);
+            color: var(--ryd-text);
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            padding: 12px 8px;
+            border-radius: 9px;
+            box-shadow: var(--emboss-btn);
+            font-size: 0.76rem;
+            transition: all 0.18s ease;
+            width: 100%;
+        }
+        .btn-pay-action:hover {
+            border-color: var(--ryd-gold);
+            color: var(--ryd-gold-dark);
+            transform: translateY(-1px);
+        }
+        .btn-pay-action:active {
+            box-shadow: var(--emboss-active);
+            transform: translateY(1px);
+        }
+
+        .btn-pay-gold {
             background: linear-gradient(135deg, #DFCA98, #B89248);
             border: 1px solid #C5A059;
             color: #FFFFFF;
-            font-weight: 700;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            padding: 14px;
-            border-radius: 10px;
-            box-shadow: 0 4px 14px rgba(184, 146, 72, 0.3), var(--emboss-btn);
-            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(184, 146, 72, 0.28), var(--emboss-btn);
         }
-        .btn-action-gold:hover {
+        .btn-pay-gold:hover {
             background: linear-gradient(135deg, #D4B26F, #A6823C);
             color: #FFFFFF;
-        }
-        .btn-action-gold:active {
-            box-shadow: var(--emboss-active);
-            transform: translateY(1px);
         }
 
         .rate-badge-box {
@@ -192,7 +207,6 @@
             align-items: center;
             gap: 6px;
         }
-        /* Casilla de Tasa Protegida para el Cajero */
         .rate-input-readonly {
             width: 80px;
             background: transparent;
@@ -219,9 +233,6 @@
             box-shadow: var(--emboss-btn);
             transition: all 0.18s ease;
             text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
         }
         .btn-3d:hover {
             border-color: var(--ryd-gold);
@@ -259,7 +270,6 @@
             transform: translateY(-2px);
         }
 
-        /* Modal con Relieve para Autorización */
         .modal-content-luxury {
             background-color: var(--ryd-bg);
             border: 1.5px solid var(--ryd-border);
@@ -279,18 +289,15 @@
         </span>
     </div>
     <div class="d-flex align-items-center gap-2">
-        <!-- Tasa del Día: Bloqueada para el Cajero, visible en pantalla -->
-        <div class="rate-badge-box me-2" title="Tasa fijada por la administración">
+        <div class="rate-badge-box me-2" title="Tasa oficial fijada por la administración">
             <span class="small text-muted fw-bold" style="font-size: 0.7rem; text-transform: uppercase;">Tasa Bs:</span>
             <input type="text" id="inputTasaPos" class="rate-input-readonly" readonly value="50.00">
         </div>
 
-        <!-- El botón Panel Admin SOLO se muestra si el usuario logueado es admin -->
         {% if session.get('username') == 'admin' %}
         <a href="/admin" class="btn-3d me-1">Panel Admin</a>
         {% endif %}
 
-        <!-- Finalizar Turno con Protección de Clave Administrativa -->
         <button type="button" class="btn-3d me-1" onclick="abrirModalCierre()">Finalizar Turno</button>
         <a href="/logout" class="btn btn-link btn-sm text-muted text-decoration-none">Cerrar Sesión</a>
     </div>
@@ -298,7 +305,7 @@
 
 <div class="container-fluid p-3">
     <div class="row g-3">
-        <!-- Panel Izquierdo: Buscador Predictivo y Catálogo -->
+        <!-- Panel Izquierdo: Buscador y Catálogo -->
         <div class="col-lg-7">
             <div class="panel-luxury mb-3">
                 <div class="row g-2 align-items-center">
@@ -326,7 +333,6 @@
                 </div>
             </div>
 
-            <!-- Grilla Visual de Productos con Precios Duales ($ / Bs) -->
             <div class="panel-luxury" style="max-height: 65vh; overflow-y: auto;">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <span class="small fw-bold text-muted" style="letter-spacing: 1px; text-transform: uppercase;">Catálogo Disponible</span>
@@ -354,7 +360,7 @@
             </div>
         </div>
 
-        <!-- Panel Derecho: Carrito, Métodos de Pago y Liquidación -->
+        <!-- Panel Derecho: Carrito y Acciones de Cobro Separadas -->
         <div class="col-lg-5">
             <div class="panel-luxury d-flex flex-column justify-content-between" style="min-height: 85vh;">
                 <div>
@@ -387,7 +393,6 @@
                         <h2 class="m-0 fw-bold" style="color: var(--ryd-gold-dark);" id="txtTotalUSD">$0.00</h2>
                     </div>
 
-                    <!-- Cuadro Destacado en Bolívares con Tasa Oficial del Administrador -->
                     <div class="box-bs-destacado" id="cuadroTotalBs">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
@@ -426,24 +431,32 @@
                         </div>
                     </div>
 
-                    <!-- Campo de Registro Obligatorio según el método de pago -->
                     <div class="mb-3" id="bloqueReferencia" style="display: none;">
                         <label class="small text-muted fw-bold mb-1" id="lblReferencia" style="letter-spacing: 0.8px; text-transform: uppercase; font-size: 0.7rem;">
                             Comprobante / Referencia Bancaria (Obligatorio)
                         </label>
-                        <input type="text" id="inputReferencia" class="form-control search-input form-control-sm" placeholder="Registrar referencia bancaria o desglose de pago mixto">
+                        <input type="text" id="inputReferencia" class="form-control search-input form-control-sm" placeholder="Ingrese número de referencia bancaria">
                     </div>
 
-                    <button type="button" class="btn btn-action-gold w-100" onclick="procesarCobro()">
-                        Registrar Transacción y Emitir Comprobante
-                    </button>
+                    <!-- Dos Botones de Acción Separados -->
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <button type="button" class="btn-pay-action" onclick="ejecutarVenta(false)">
+                                Registrar Pago
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn-pay-action btn-pay-gold" onclick="ejecutarVenta(true)">
+                                Emitir Comprobante
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal Emergente de Autorización Administrativa para Cierre de Turno -->
 <div class="modal fade" id="modalAutorizacionCierre" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content modal-content-luxury">
@@ -467,7 +480,6 @@
 <script>
 let carrito = [];
 let metodoSeleccionado = 'Efectivo $';
-// La tasa se recupera de la administración; el cajero solo la visualiza
 let tasaPos = parseFloat(localStorage.getItem('ryd_tasa_bcv')) || 50.00;
 
 const productosDisponibles = [
@@ -685,19 +697,17 @@ function seleccionarMetodo(elemento, metodo) {
     }
 }
 
-// Validación integral antes de autorizar el cobro
-function procesarCobro() {
+function ejecutarVenta(emitirTicket = true) {
     if (carrito.length === 0) {
-        alert("Debe agregar al menos un artículo para emitir la factura de cobro.");
+        alert("Debe agregar al menos un artículo para procesar la transacción.");
         return;
     }
 
     const referencia = document.getElementById('inputReferencia').value.trim();
 
-    // Verificación estricta de comprobante según la modalidad seleccionada
     if (['Pago Móvil', 'Punto de Venta', 'Binance', 'Pago Mixto'].includes(metodoSeleccionado)) {
         if (!referencia) {
-            alert(`Es obligatorio registrar el número de comprobante o referencia para la modalidad: ${metodoSeleccionado}.`);
+            alert(`Es obligatorio registrar la referencia para la modalidad: ${metodoSeleccionado}.`);
             document.getElementById('inputReferencia').focus();
             return;
         }
@@ -715,7 +725,15 @@ function procesarCobro() {
     .then(res => res.json())
     .then(data => {
         if (data.exito) {
-            window.location.href = `/ticket/${data.venta_id}`;
+            if (emitirTicket) {
+                window.location.href = `/ticket/${data.venta_id}`;
+            } else {
+                alert("¡Pago registrado con éxito en el sistema!");
+                carrito = [];
+                renderizarCarrito();
+                document.getElementById('inputReferencia').value = '';
+                window.location.reload();
+            }
         } else {
             alert(`Fallo de registro: ${data.mensaje}`);
         }
@@ -723,7 +741,6 @@ function procesarCobro() {
     .catch(() => alert("Error en comunicación con el servidor."));
 }
 
-// Manejo seguro del cierre de turno con clave de administrador
 let modalCierreInstance = null;
 function abrirModalCierre() {
     const modalEl = document.getElementById('modalAutorizacionCierre');
@@ -739,7 +756,6 @@ function validarYFinalizarTurno() {
         return;
     }
 
-    // Validación de la clave del administrador
     if (clave === 'admin123') {
         modalCierreInstance.hide();
         window.location.href = '/cierre-caja';
