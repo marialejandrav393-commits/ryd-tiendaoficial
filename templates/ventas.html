@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RyD - Registro de Transacciones</title>
+    <title>RyD - Historial de Ventas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
@@ -16,106 +16,200 @@
             --ryd-border-light: #F4EFE6;
             --ryd-text: #2C2620;
             --ryd-muted: #827668;
-            --emboss-shadow: 4px 4px 10px rgba(180, 165, 140, 0.25), -4px -4px 10px rgba(255, 255, 255, 0.9);
+            --emboss-shadow: 4px 4px 10px rgba(180, 165, 140, 0.35), -4px -4px 10px rgba(255, 255, 255, 0.95);
+            --emboss-btn: 3px 3px 7px rgba(180, 165, 140, 0.3), -3px -3px 7px rgba(255, 255, 255, 0.9);
+            --emboss-active: inset 2px 2px 5px rgba(180, 165, 140, 0.35), inset -2px -2px 5px rgba(255, 255, 255, 0.85);
         }
 
         body {
             background-color: var(--ryd-bg);
             color: var(--ryd-text);
             font-family: 'Cinzel', 'Segoe UI', serif;
+            margin: 0;
+            padding: 0;
         }
 
-        .header-bar {
+        .header-ryd {
             background: var(--ryd-surface);
-            border-bottom: 1px solid var(--ryd-border);
+            border-bottom: 1.5px solid var(--ryd-border);
             padding: 16px 36px;
         }
 
-        .card-custom {
-            background: var(--ryd-surface);
-            border: 1px solid var(--ryd-border);
-            border-radius: 10px;
-            box-shadow: var(--emboss-shadow);
+        .logo-ryd {
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--ryd-gold);
+            letter-spacing: 3.5px;
+            text-decoration: none;
+            text-transform: uppercase;
         }
 
-        .table-custom thead th {
+        .btn-3d {
+            background: var(--ryd-surface);
+            border: 1px solid var(--ryd-border);
+            color: var(--ryd-text);
+            font-weight: 700;
+            font-size: 0.78rem;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            padding: 9px 16px;
+            border-radius: 9px;
+            box-shadow: var(--emboss-btn);
+            transition: all 0.18s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+        .btn-3d:hover {
+            border-color: var(--ryd-gold);
+            color: var(--ryd-gold-dark);
+            transform: translateY(-1px);
+        }
+
+        .panel-luxury {
+            background: var(--ryd-surface);
+            border: 1px solid var(--ryd-border);
+            border-radius: 12px;
+            box-shadow: var(--emboss-shadow);
+            padding: 24px;
+        }
+
+        .search-input-luxury {
+            background: #FAF7F2;
+            border: 1px solid var(--ryd-border);
+            border-radius: 9px;
+            color: var(--ryd-text);
+            padding: 10px 16px;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+        .search-input-luxury:focus {
+            border-color: var(--ryd-gold);
+            background: #FFFFFF;
+            outline: none;
+        }
+
+        .table-scroll {
+            max-height: 65vh;
+            overflow-y: auto;
+            border: 1px solid var(--ryd-border);
+            border-radius: 10px;
+            background: #FFFFFF;
+        }
+        .table-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .table-scroll::-webkit-scrollbar-thumb {
+            background: var(--ryd-border);
+            border-radius: 4px;
+        }
+
+        .table-luxury {
+            margin: 0;
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .table-luxury thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
             background: var(--ryd-beige-card);
             color: var(--ryd-muted);
             font-size: 0.72rem;
+            font-weight: 700;
             letter-spacing: 1px;
             text-transform: uppercase;
-            border-bottom: 1px solid var(--ryd-border);
-            padding: 12px;
+            border-bottom: 1.5px solid var(--ryd-border);
+            padding: 14px 12px;
         }
-
-        .table-custom tbody td {
+        .table-luxury tbody td {
             padding: 12px;
             border-bottom: 1px solid var(--ryd-border-light);
             font-size: 0.88rem;
+            vertical-align: middle;
         }
 
         .badge-method {
-            background: #FAF6EE;
-            border: 1px solid #DFCEB4;
-            color: var(--ryd-gold-dark);
-            font-size: 0.75rem;
+            background: var(--ryd-beige-card);
+            border: 1px solid var(--ryd-border);
+            color: var(--ryd-text);
+            border-radius: 6px;
             padding: 4px 8px;
-            border-radius: 4px;
             font-weight: 600;
+            font-size: 0.76rem;
         }
     </style>
 </head>
 <body>
 
-<header class="header-bar d-flex justify-content-between align-items-center">
-    <a href="/admin" style="font-size: 1.6rem; font-weight: 700; color: var(--ryd-gold); letter-spacing: 3px; text-decoration: none;">RyD</a>
-    <div>
-        <a href="/admin" class="btn btn-outline-secondary btn-sm me-2">Panel Administrador</a>
-        <a href="/cajero/pos" class="btn btn-outline-secondary btn-sm me-2">Terminal POS</a>
-        <a href="/cierre-caja" class="btn btn-sm text-white" style="background-color: var(--ryd-gold);">Cierre de Caja</a>
+<header class="header-ryd d-flex justify-content-between align-items-center">
+    <a href="/admin" class="logo-ryd">RyD</a>
+    <div class="d-flex align-items-center gap-2">
+        <a href="/admin" class="btn-3d">Panel Admin</a>
+        <a href="/cajero/pos" class="btn-3d">POS Cajero</a>
+        <a href="/proveedores" class="btn-3d">Proveedores y Facturas</a>
+        <a href="/logout" class="btn btn-link btn-sm text-muted text-decoration-none ms-1">Cerrar Sesión</a>
     </div>
 </header>
 
-<div class="container my-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 style="letter-spacing: 1.2px; text-transform: uppercase; margin: 0; font-size: 1.1rem;">Auditoria de Ventas</h5>
-        <input type="text" id="filtroVentas" class="form-control form-control-sm w-25" placeholder="Filtrar por referencia o cajero..." onkeyup="filtrarVentas()">
-    </div>
+<div class="container-fluid px-4 my-4">
+    <div class="panel-luxury">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <div>
+                <h5 class="fw-bold mb-0" style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 1.05rem;">
+                    Registro y Auditoría de Ventas
+                </h5>
+                <small class="text-muted">Total de transacciones auditadas: <strong style="color: var(--ryd-gold-dark);">{{ ventas|length }}</strong></small>
+            </div>
+            <div style="max-width: 380px; width: 100%;">
+                <input type="text" id="buscadorVentas" class="search-input-luxury" placeholder="Filtrar por ticket #, método o referencia..." oninput="filtrarVentas(this.value)">
+            </div>
+        </div>
 
-    <div class="card-custom p-3">
-        <div class="table-responsive">
-            <table class="table table-custom table-hover align-middle mb-0" id="tablaVentas">
+        <div class="table-scroll">
+            <table class="table table-luxury align-middle" id="tablaVentas">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Fecha y Hora</th>
-                        <th>Descripcion</th>
-                        <th>Cant</th>
-                        <th>Modalidad</th>
-                        <th>Referencia</th>
-                        <th>Operador</th>
-                        <th class="text-end">Liquidacion</th>
+                        <th style="width: 100px;">N° Ticket</th>
+                        <th style="width: 170px;">Fecha y Hora</th>
+                        <th style="width: 120px;">Cajero</th>
+                        <th style="width: 150px;">Modalidad Pago</th>
+                        <th style="width: 160px;">Referencia</th>
+                        <th style="width: 130px; text-align: right;">Total Liquidado</th>
+                        <th style="width: 110px; text-align: center;">Comprobante</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% if ventas %}
-                        {% for v in ventas %}
-                        <tr>
-                            <td>#{{ v.id }}</td>
-                            <td>{{ v.fecha }} <small class="text-muted">{{ v.hora }}</small></td>
-                            <td><strong>{{ v.producto }}</strong></td>
-                            <td>{{ v.cantidad }}</td>
-                            <td><span class="badge-method">{{ v.metodo_pago }}</span></td>
-                            <td><code>{{ v.referencia or 'N/A' }}</code></td>
-                            <td>{{ v.usuario }}</td>
-                            <td class="text-end fw-bold" style="color: var(--ryd-gold-dark);">${{ "%.2f"|format(v.subtotal) }}</td>
-                        </tr>
-                        {% endfor %}
+                <tbody id="cuerpoVentas">
+                    {% for v in ventas %}
+                    <tr class="fila-venta" data-ticket="{{ v.id }}" data-metodo="{{ v.metodo_pago|lower }}" data-ref="{{ v.referencia|lower }}">
+                        <td>
+                            <strong style="color: var(--ryd-gold-dark);">#{{ "%06d"|format(v.id) }}</strong>
+                        </td>
+                        <td class="text-muted small">
+                            {{ v.fecha }}
+                        </td>
+                        <td>
+                            <span class="fw-bold">{{ v.usuario }}</span>
+                        </td>
+                        <td>
+                            <span class="badge-method">{{ v.metodo_pago }}</span>
+                        </td>
+                        <td>
+                            <span class="small text-muted">{{ v.referencia }}</span>
+                        </td>
+                        <td style="text-align: right;">
+                            <strong style="color: var(--ryd-text); font-size: 0.95rem;">${{ "%.2f"|format(v.total) }}</strong>
+                        </td>
+                        <td style="text-align: center;">
+                            <a href="/ticket/{{ v.id }}" class="btn-3d py-1 px-2" style="font-size: 0.72rem;">Ver Recibo</a>
+                        </td>
+                    </tr>
                     {% else %}
-                        <tr>
-                            <td colspan="8" class="text-center py-4 text-muted small">No hay transacciones registradas en este periodo.</td>
-                        </tr>
-                    {% endif %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted small">No hay transacciones registradas hasta el momento.</td>
+                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
@@ -123,11 +217,18 @@
 </div>
 
 <script>
-function filtrarVentas() {
-    const val = document.getElementById('filtroVentas').value.toLowerCase();
-    const filas = document.querySelectorAll('#tablaVentas tbody tr');
+function filtrarVentas(termino) {
+    const valor = termino.trim().toLowerCase();
+    const filas = document.querySelectorAll('#cuerpoVentas .fila-venta');
     filas.forEach(f => {
-        f.style.display = f.innerText.toLowerCase().includes(val) ? '' : 'none';
+        const ticket = f.getAttribute('data-ticket') || '';
+        const metodo = f.getAttribute('data-metodo') || '';
+        const ref = f.getAttribute('data-ref') || '';
+        if (ticket.includes(valor) || metodo.includes(valor) || ref.includes(valor)) {
+            f.style.display = '';
+        } else {
+            f.style.display = 'none';
+        }
     });
 }
 </script>
