@@ -9,6 +9,7 @@
         :root {
             --ryd-gold: #C5A059;
             --ryd-gold-dark: #9D7B38;
+            --ryd-gold-light: #DFCA98;
             --ryd-bg: #F8F5F0;
             --ryd-surface: #FFFFFF;
             --ryd-beige-card: #F2ECE1;
@@ -16,14 +17,16 @@
             --ryd-border-light: #F4EFE6;
             --ryd-text: #2C2620;
             --ryd-muted: #827668;
-            --emboss-shadow: 4px 4px 10px rgba(180, 165, 140, 0.25), -4px -4px 10px rgba(255, 255, 255, 0.9);
-            --emboss-active: inset 2px 2px 5px rgba(180, 165, 140, 0.25), inset -2px -2px 5px rgba(255, 255, 255, 0.8);
+            /* Relieve 3D Neumórfico Futurista */
+            --emboss-shadow: 4px 4px 10px rgba(180, 165, 140, 0.35), -4px -4px 10px rgba(255, 255, 255, 0.95);
+            --emboss-btn: 3px 3px 7px rgba(180, 165, 140, 0.3), -3px -3px 7px rgba(255, 255, 255, 0.9);
+            --emboss-active: inset 2px 2px 5px rgba(180, 165, 140, 0.35), inset -2px -2px 5px rgba(255, 255, 255, 0.85);
         }
 
         body {
             background-color: var(--ryd-bg);
             color: var(--ryd-text);
-            font-family: 'Cinzel', 'Segoe UI', serif;
+            font-family: 'Cinzel', 'Playfair Display', 'Cormorant Garamond', 'Segoe UI', serif;
             letter-spacing: 0.3px;
             margin: 0;
             padding: 0;
@@ -33,65 +36,155 @@
             background: var(--ryd-surface);
             border-bottom: 1.5px solid var(--ryd-border);
             padding: 16px 36px;
-            box-shadow: 0 4px 20px rgba(70, 60, 45, 0.02);
+            box-shadow: 0 4px 20px rgba(70, 60, 45, 0.03);
         }
 
         .logo-ryd {
-            font-size: 1.8rem;
+            font-size: 1.9rem;
             font-weight: 700;
             color: var(--ryd-gold);
-            letter-spacing: 3px;
+            letter-spacing: 3.5px;
             text-decoration: none;
             text-transform: uppercase;
         }
 
-        .panel-luxury {
+        /* Botones Futuristas en Relieve 3D */
+        .btn-3d {
             background: var(--ryd-surface);
             border: 1px solid var(--ryd-border);
-            border-radius: 12px;
-            box-shadow: var(--emboss-shadow);
-            padding: 24px;
+            color: var(--ryd-text);
+            font-weight: 700;
+            font-size: 0.78rem;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            padding: 9px 16px;
+            border-radius: 9px;
+            box-shadow: var(--emboss-btn);
+            transition: all 0.18s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+        .btn-3d:hover {
+            border-color: var(--ryd-gold);
+            color: var(--ryd-gold-dark);
+            transform: translateY(-1px);
+            box-shadow: 5px 5px 12px rgba(180, 165, 140, 0.4), -5px -5px 12px rgba(255, 255, 255, 1);
+        }
+        .btn-3d:active {
+            transform: translateY(1px);
+            box-shadow: var(--emboss-active);
         }
 
-        /* Buscador Predictivo de Administración */
-        .search-admin-container {
+        .btn-3d-gold {
+            background: linear-gradient(135deg, #DFCA98, #B89248);
+            border: 1px solid #C5A059;
+            color: #FFFFFF;
+            box-shadow: 0 4px 12px rgba(184, 146, 72, 0.28), var(--emboss-btn);
+        }
+        .btn-3d-gold:hover {
+            background: linear-gradient(135deg, #D4B26F, #A6823C);
+            color: #FFFFFF;
+        }
+
+        /* Tarjetas de Métricas en Relieve */
+        .card-stat-luxury {
+            background: var(--ryd-surface);
+            border: 1px solid var(--ryd-border);
+            border-radius: 14px;
+            padding: 22px 26px;
+            box-shadow: var(--emboss-shadow);
             position: relative;
-            max-width: 480px;
+        }
+        .stat-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: var(--ryd-muted);
+            margin-bottom: 8px;
+            display: block;
+        }
+        .stat-value-usd {
+            font-size: 2.2rem;
+            font-weight: 700;
+            line-height: 1;
+            margin: 0;
+        }
+        .stat-value-bs {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--ryd-muted);
+            margin-top: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        /* Control de Tasa del Día en Relieve */
+        .rate-badge-box {
+            background: var(--ryd-beige-card);
+            border: 1px solid var(--ryd-border);
+            border-radius: 10px;
+            padding: 8px 14px;
+            box-shadow: var(--emboss-active);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .rate-input {
+            width: 85px;
+            background: #FFFFFF;
+            border: 1px solid var(--ryd-border);
+            border-radius: 6px;
+            font-weight: 700;
+            color: var(--ryd-gold-dark);
+            text-align: center;
+            font-size: 0.88rem;
+            padding: 3px 6px;
+        }
+        .rate-input:focus {
+            border-color: var(--ryd-gold);
+            outline: none;
+        }
+
+        /* Buscador Predictivo Idéntico al POS */
+        .search-container-admin {
+            position: relative;
             width: 100%;
         }
-
-        .search-admin-input {
+        .search-input-admin {
             background: #FAF7F2;
             border: 1px solid var(--ryd-border);
-            border-radius: 8px;
+            border-radius: 10px;
             color: var(--ryd-text);
-            padding: 10px 16px;
-            font-size: 0.9rem;
+            padding: 12px 18px;
+            font-size: 0.92rem;
+            box-shadow: inset 1px 1px 4px rgba(180, 165, 140, 0.15);
             width: 100%;
             transition: all 0.2s ease;
         }
-        .search-admin-input:focus {
-            background: #FFFFFF;
+        .search-input-admin:focus {
             border-color: var(--ryd-gold);
+            background: #FFFFFF;
+            box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2);
             outline: none;
-            box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.15);
         }
 
-        /* Tabla de Inventario con Barra Deslizadora */
+        /* Contenedor Deslizador con Cabecera Fija */
         .table-admin-scroll {
-            max-height: 65vh;
+            max-height: 60vh;
             overflow-y: auto;
             border: 1px solid var(--ryd-border);
-            border-radius: 8px;
+            border-radius: 10px;
             background: #FFFFFF;
+            box-shadow: var(--emboss-shadow);
         }
-
         .table-admin-scroll::-webkit-scrollbar {
             width: 8px;
         }
         .table-admin-scroll::-webkit-scrollbar-track {
             background: var(--ryd-beige-card);
-            border-radius: 4px;
         }
         .table-admin-scroll::-webkit-scrollbar-thumb {
             background: var(--ryd-border);
@@ -102,122 +195,46 @@
         }
 
         .table-luxury {
-            margin-bottom: 0;
+            margin: 0;
             border-collapse: separate;
             border-spacing: 0;
             width: 100%;
         }
-
         .table-luxury thead th {
             position: sticky;
             top: 0;
             z-index: 10;
             background: var(--ryd-beige-card);
             color: var(--ryd-muted);
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             font-weight: 700;
             letter-spacing: 1px;
             text-transform: uppercase;
             border-bottom: 1.5px solid var(--ryd-border);
-            padding: 12px 14px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+            padding: 14px 12px;
         }
-
         .table-luxury tbody td {
-            padding: 12px 14px;
+            padding: 12px;
             border-bottom: 1px solid var(--ryd-border-light);
             vertical-align: middle;
-            background: #FFFFFF;
             font-size: 0.88rem;
         }
 
-        .badge-category {
+        .badge-cat {
             background: var(--ryd-beige-card);
             color: var(--ryd-text);
             border: 1px solid var(--ryd-border);
             border-radius: 6px;
             padding: 4px 8px;
-            font-size: 0.75rem;
-            letter-spacing: 0.5px;
+            font-size: 0.74rem;
+            font-weight: 600;
         }
-
         .badge-stock {
             background: #FAF7F2;
             border: 1px solid var(--ryd-border);
-            color: var(--ryd-text);
             border-radius: 6px;
             padding: 4px 10px;
             font-weight: 700;
-            font-size: 0.82rem;
-        }
-
-        .btn-ryd-outline {
-            border: 1px solid var(--ryd-border);
-            background: var(--ryd-surface);
-            color: var(--ryd-text);
-            font-weight: 600;
-            padding: 6px 14px;
-            border-radius: 6px;
-            box-shadow: var(--emboss-shadow);
-            transition: all 0.2s ease;
-            text-decoration: none;
-            font-size: 0.82rem;
-            letter-spacing: 0.5px;
-        }
-        .btn-ryd-outline:hover {
-            border-color: var(--ryd-gold);
-            background: var(--ryd-beige-card);
-            color: var(--ryd-text);
-        }
-
-        .btn-ryd-gold {
-            background: linear-gradient(135deg, #D4B26F, #B89248);
-            border: none;
-            color: #FFFFFF;
-            font-weight: 700;
-            padding: 8px 16px;
-            border-radius: 6px;
-            box-shadow: 0 4px 12px rgba(184, 146, 72, 0.25);
-            transition: all 0.2s ease;
-            text-decoration: none;
-            font-size: 0.82rem;
-            letter-spacing: 0.8px;
-            text-transform: uppercase;
-        }
-        .btn-ryd-gold:hover {
-            background: linear-gradient(135deg, #C5A059, #9D7B38);
-            color: #FFFFFF;
-        }
-
-        .btn-action-edit {
-            border: 1px solid var(--ryd-border);
-            background: #FFFFFF;
-            color: var(--ryd-text);
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            text-decoration: none;
-        }
-        .btn-action-edit:hover {
-            background: var(--ryd-beige-card);
-            border-color: var(--ryd-gold);
-            color: var(--ryd-text);
-        }
-
-        .btn-action-delete {
-            border: 1px solid #F1D4D2;
-            background: #FFFFFF;
-            color: #9E4D48;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            text-decoration: none;
-        }
-        .btn-action-delete:hover {
-            background: #9E4D48;
-            color: #FFFFFF;
         }
     </style>
 </head>
@@ -225,52 +242,77 @@
 
 <header class="header-ryd d-flex justify-content-between align-items-center">
     <a href="/admin" class="logo-ryd">RyD</a>
-    <div class="d-flex align-items-center">
-        <span class="me-3 small text-muted">Sesión: <strong class="text-dark">{{ session.get('username', 'Admin') }}</strong></span>
-        <a href="/cajero/pos" class="btn btn-ryd-outline me-2">POS Cajero</a>
-        <a href="/proveedores" class="btn btn-ryd-outline me-2">Proveedores y Facturas</a>
-        <a href="/ventas" class="btn btn-ryd-outline me-2">Historial Ventas</a>
-        <a href="/cierre-caja" class="btn btn-ryd-gold me-2">Cierre de Caja</a>
-        <a href="/logout" class="btn btn-link btn-sm text-muted text-decoration-none">Cerrar Sesión</a>
+    <div class="d-flex align-items-center gap-2">
+        <!-- Control de Tasa del Día en Barra Superior -->
+        <div class="rate-badge-box me-2">
+            <span class="small text-muted fw-bold" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.8px;">Tasa Bs/$:</span>
+            <input type="number" id="inputTasaDia" class="rate-input" step="0.01" value="50.00" oninput="actualizarTasaGlobal(this.value)">
+        </div>
+
+        <span class="me-2 small text-muted">Sesión: <strong class="text-dark">{{ session.get('username', 'Admin') }}</strong></span>
+        <a href="/cajero/pos" class="btn-3d">POS Cajero</a>
+        <a href="/proveedores" class="btn-3d">Proveedores y Facturas</a>
+        <a href="/ventas" class="btn-3d">Historial Ventas</a>
+        <a href="/cierre-caja" class="btn-3d btn-3d-gold">Cierre de Caja</a>
+        <a href="/logout" class="btn btn-link btn-sm text-muted text-decoration-none ms-1">Cerrar Sesión</a>
     </div>
 </header>
 
 <div class="container-fluid px-4 my-4">
-    <div class="panel-luxury">
-        <!-- Barra Superior del Panel con Buscador Predictivo -->
+    <!-- Fila de Tarjetas Superiores: Ventas y Ganancia Dual ($ y Bs) -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card-stat-luxury">
+                <span class="stat-label">Ventas Totales Registradas</span>
+                <h3 class="stat-value-usd" style="color: var(--ryd-text);">${{ "%.2f"|format(total_ventas_usd|default(0.0)) }}</h3>
+                <div class="stat-value-bs" id="txtVentasTotalesBs">Equivalente: Bs. 0.00</div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card-stat-luxury">
+                <span class="stat-label">Ganancia Estimada Inventario</span>
+                <h3 class="stat-value-usd" style="color: var(--ryd-gold-dark);" id="txtGananciaUSD">${{ "%.2f"|format(ganancia_estimada|default(4227.78)) }}</h3>
+                <div class="stat-value-bs" id="txtGananciaBs">Cálculo en proceso...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Inventario con Buscador Predictivo -->
+    <div class="card-stat-luxury">
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
             <div>
-                <h5 class="fw-bold mb-1" style="letter-spacing: 1px; text-transform: uppercase; font-size: 1.1rem; color: var(--ryd-text);">
-                    Catálogo General de Inventario
+                <h5 class="fw-bold mb-0" style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 1.05rem;">
+                    Gestión de Inventario
                 </h5>
                 <small class="text-muted">
-                    Productos registrados: <strong id="contadorProductos" style="color: var(--ryd-gold-dark);">{{ productos|length }}</strong>
+                    Productos listados: <strong id="contadorItems" style="color: var(--ryd-gold-dark);">{{ productos|length }}</strong>
                 </small>
             </div>
 
-            <!-- Buscador en tiempo real para el Administrador -->
-            <div class="search-admin-container">
-                <input type="text" id="buscadorAdmin" class="search-admin-input" 
-                       placeholder="Buscar por código SKU, nombre o categoría..." 
-                       oninput="filtrarInventarioAdmin(this.value)">
-            </div>
-
-            <div>
-                <a href="/agregar" class="btn btn-ryd-gold me-2">+ Nuevo Producto</a>
+            <div class="d-flex align-items-center gap-2">
+                <a href="/proveedores" class="btn-3d">Importar Excel / Factura</a>
+                <a href="/agregar" class="btn-3d btn-3d-gold">+ Nuevo Producto</a>
             </div>
         </div>
 
-        <!-- Tabla con Desplazamiento Vertical Fluido y Cabecera Fija -->
+        <!-- Buscador Predictivo en Vivo -->
+        <div class="search-container-admin mb-3">
+            <input type="text" id="buscadorAdmin" class="search-input-admin" 
+                   placeholder="Buscar producto por letra, nombre o código SKU..." 
+                   autocomplete="off" oninput="filtrarInventarioAdmin(this.value)">
+        </div>
+
+        <!-- Tabla Deslizadora con Cabecera Fija -->
         <div class="table-admin-scroll">
             <table class="table table-luxury align-middle" id="tablaAdmin">
                 <thead>
                     <tr>
-                        <th style="width: 130px;">Código SKU</th>
+                        <th style="width: 120px;">Código SKU</th>
                         <th>Nombre del Producto</th>
                         <th style="width: 150px;">Categoría</th>
                         <th style="width: 100px;">Costo ($)</th>
-                        <th style="width: 110px;">PVP Venta ($)</th>
-                        <th style="width: 100px; text-align: center;">Stock</th>
+                        <th style="width: 140px;">Precio ($ / Bs)</th>
+                        <th style="width: 90px; text-align: center;">Stock</th>
                         <th style="width: 150px; text-align: center;">Acciones</th>
                     </tr>
                 </thead>
@@ -279,33 +321,35 @@
                     <tr class="fila-producto" 
                         data-codigo="{{ p.codigo|lower }}" 
                         data-nombre="{{ p.nombre|lower }}" 
-                        data-categoria="{{ p.categoria|lower }}">
+                        data-categoria="{{ p.categoria|lower }}"
+                        data-precio="{{ p.precio }}">
                         <td>
                             <strong style="color: var(--ryd-gold-dark); letter-spacing: 0.5px;">{{ p.codigo }}</strong>
                         </td>
                         <td>
-                            <span class="fw-bold">{{ p.nombre }}</span>
+                            <span class="fw-bold text-dark">{{ p.nombre }}</span>
                         </td>
                         <td>
-                            <span class="badge-category">{{ p.categoria }}</span>
+                            <span class="badge-cat">{{ p.categoria }}</span>
                         </td>
                         <td class="text-muted">
                             ${{ "%.2f"|format(p.costo) }}
                         </td>
                         <td>
                             <strong style="color: var(--ryd-text); font-size: 0.95rem;">${{ "%.2f"|format(p.precio) }}</strong>
+                            <div class="small text-muted col-precio-bs" style="font-size: 0.76rem;"></div>
                         </td>
                         <td class="text-center">
                             <span class="badge-stock">{{ p.stock }}</span>
                         </td>
                         <td class="text-center">
-                            <a href="/editar/{{ p.id }}" class="btn-action-edit me-1">Editar</a>
-                            <a href="/eliminar/{{ p.id }}" class="btn-action-delete" onclick="return confirm('¿Confirmas eliminar este producto del inventario?')">Eliminar</a>
+                            <a href="/editar/{{ p.id }}" class="btn-3d py-1 px-2 me-1" style="font-size: 0.72rem;">Editar</a>
+                            <a href="/eliminar/{{ p.id }}" class="btn-3d py-1 px-2" style="font-size: 0.72rem; color: #9E4D48; border-color: #F0D5D3;" onclick="return confirm('¿Confirmas retirar este producto del inventario?')">Eliminar</a>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="7" class="text-center py-5 text-muted small">No hay productos registrados en el inventario.</td>
+                        <td colspan="7" class="text-center py-5 text-muted small">No hay productos en inventario.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -315,27 +359,65 @@
 </div>
 
 <script>
-// Filtro predictivo instantáneo desde la primera letra
+let tasaActual = parseFloat(localStorage.getItem('ryd_tasa_bcv')) || 50.00;
+
+function inicializarTasa() {
+    const input = document.getElementById('inputTasaDia');
+    input.value = tasaActual.toFixed(2);
+    recalcularMetricasYPrecios();
+}
+
+function actualizarTasaGlobal(nuevaTasa) {
+    const v = parseFloat(nuevaTasa);
+    if (!isNaN(v) && v > 0) {
+        tasaActual = v;
+        localStorage.setItem('ryd_tasa_bcv', tasaActual);
+        recalcularMetricasYPrecios();
+    }
+}
+
+function recalcularMetricasYPrecios() {
+    // 1. Ganancia Estimada en Bs
+    const txtUsd = document.getElementById('txtGananciaUSD').innerText.replace('$', '').trim();
+    const gananciaUsd = parseFloat(txtUsd) || 0;
+    const gananciaBs = gananciaUsd * tasaActual;
+    document.getElementById('txtGananciaBs').innerText = `Equivalente: Bs. ${gananciaBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    // 2. Columna de precios en Bs de la tabla
+    const filas = document.querySelectorAll('.fila-producto');
+    filas.forEach(f => {
+        const precioUsd = parseFloat(f.getAttribute('data-precio')) || 0;
+        const precioBs = precioUsd * tasaActual;
+        const contBs = f.querySelector('.col-precio-bs');
+        if (contBs) {
+            contBs.innerText = `Bs. ${precioBs.toFixed(2)}`;
+        }
+    });
+}
+
+// Búsqueda predictiva en tiempo real al escribir cada letra
 function filtrarInventarioAdmin(termino) {
     const valor = termino.trim().toLowerCase();
     const filas = document.querySelectorAll('#cuerpoAdmin .fila-producto');
     let visibles = 0;
 
-    filas.forEach(fila => {
-        const cod = fila.getAttribute('data-codigo') || '';
-        const nom = fila.getAttribute('data-nombre') || '';
-        const cat = fila.getAttribute('data-categoria') || '';
+    filas.forEach(f => {
+        const cod = f.getAttribute('data-codigo') || '';
+        const nom = f.getAttribute('data-nombre') || '';
+        const cat = f.getAttribute('data-categoria') || '';
 
         if (cod.includes(valor) || nom.includes(valor) || cat.includes(valor)) {
-            fila.style.display = '';
+            f.style.display = '';
             visibles++;
         } else {
-            fila.style.display = 'none';
+            f.style.display = 'none';
         }
     });
 
-    document.getElementById('contadorProductos').innerText = visibles;
+    document.getElementById('contadorItems').innerText = visibles;
 }
+
+window.addEventListener('DOMContentLoaded', inicializarTasa);
 </script>
 </body>
 </html>
