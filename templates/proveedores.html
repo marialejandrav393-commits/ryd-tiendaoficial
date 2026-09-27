@@ -177,7 +177,7 @@
     <div class="panel-luxury mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
             <h5 style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 1.05rem; margin: 0;">
-                Recepción de Facturas, Notas de Entrega y Fotos
+                Recepción Universal de Facturas, Notas y Fotos
             </h5>
             <span id="badgePaginas" class="badge bg-light text-dark border px-3 py-2" style="display: none; letter-spacing: 1px;">
                 Origen: <strong id="numPaginasTxt">Archivo</strong>
@@ -374,11 +374,9 @@ function iniciarProcesamientoFactura() {
 
     const nombre = (archivo.name || "").toLowerCase();
 
-    // 1. Archivo Excel
     if (nombre.endsWith('.xlsx') || nombre.endsWith('.xls') || nombre.endsWith('.csv')) {
         procesarExcelUniversal(archivo);
     } 
-    // 2. Imagen o Foto tomada con el celular / WhatsApp (OCR en el navegador)
     else if (archivo.type.startsWith('image/') || nombre.endsWith('.jpg') || nombre.endsWith('.jpeg') || nombre.endsWith('.png')) {
         txtEstado.innerText = "Leyendo texto óptico de la fotografía (OCR)...";
         Tesseract.recognize(
@@ -407,7 +405,6 @@ function iniciarProcesamientoFactura() {
             btn.disabled = false;
         });
     }
-    // 3. Archivo PDF (Procesamiento directo en backend)
     else {
         txtEstado.innerText = "Extrayendo páginas del documento PDF...";
         const formData = new FormData();
