@@ -57,7 +57,39 @@ def role_required(*roles):
     return decorator
 
 # --- RUTAS ---
+# --- RUTA DE RESTABLECIMIENTO DIRECTO DE CONTRASEÑA ---
+@app.route('/resetear_clave_admin')
+def resetear_clave_admin():
+    conn = obtener_conexion()
+    nueva_clave = 'admin2026'  # Puedes colocar aquí la contraseña que prefieras
+    
+    # 1. Si usas contraseñas en texto plano:
+    try:
+        conn.execute('UPDATE usuarios SET password = ? WHERE username = ?', (nueva_clave, 'admin'))
+    except Exception:
+        pass
 
+    # 2. Si usas contraseñas con hash (Werkzeug security):
+    try:
+        from werkzeug.security import generate_password_hash
+        conn.execute('UPDATE usuarios SET password = ? WHERE username = ?', (generate_password_hash(nueva_clave), 'admin'))
+    except Exception:
+        pass
+
+    # 3. Si por alguna razón el usuario admin no existiera, lo crea de inmediato
+    usuario_existe = conn.execute('SELECT id FROM usuarios WHERE username = ?', ('admin',)).fetchone()
+    if not usuario_existe:
+        try:
+            from werkzeug.security import generate_password_hash
+            conn.execute('INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)', 
+                         ('admin', generate_password_hash(nueva_clave), 'admin'))
+        except Exception:
+            conn.execute('INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)', 
+                         ('admin', nueva_clave, 'admin'))
+
+    conn.commit()
+    conn.close()
+    return f"<h2 style='font-family: sans-serif; color: #9D7B38; text-align: center; margin-top: 50px;'>Clave de administrador restablecida con éxito.<br><br>Usuario: <b>admin</b><br>Nueva Contraseña: <b>{nueva_clave}</b><br><br><a href='/login'>Ir a Iniciar Sesión</a></h2>"
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
