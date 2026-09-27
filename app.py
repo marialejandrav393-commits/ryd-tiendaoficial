@@ -465,6 +465,70 @@ def ticket(venta_id):
     if not venta:
         return "Comprobante no localizado", 404
     return render_template('ticket.html', venta=venta)
+# --- MÓDULO PROVEEDORES Y FACTURAS INTELIGENTES ---
+
+@app.route('/proveedores')
+def proveedores():
+    return render_template('proveedores.html')
+
+@app.route('/guardar_factura_proveedor', methods=['POST'])
+def guardar_factura_proveedor():
+    data = request.get_json()
+    proveedor = data.get('proveedor', 'Proveedor General')
+    telefono = data.get('telefono', '')
+    items = data.get('items', [])
+
+    if not items:
+        return jsonify({'exito': False, 'mensaje': 'Sin productos'}), 400
+
+    conn = obtener_conexion()
+    try:
+        # Registrar o verificar si existe el producto para actualizar o insertar
+        for it in items:
+            existente = conn.execute('SELECT id, stock FROM productos WHERE codigo = ?', (str(it['codigo']),)).fetchone()
+            if existente:
+                conn.execute('''
+                    UPDATE productos 
+                    SET nombre = ?, costo = ?, precio = ?, stock = stock + ?, categoria = ?, descuento = ?
+                    WHERE codigo = ?
+                ''', (
+                    str(it['nombre']),
+                    float(it['costo']),
+                    float(it['precio']),
+                    int(it['stock']),
+                    str(it['categoria']),
+                    float(it['descuento']),
+                    str(it['codigo'])
+                ))
+            else:
+                conn.execute('''
+                    INSERT INTO productos (codigo, nombre, costo, precio, stock, categoria, descuento)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    str(it['codigo']),
+                    str(it['nombre']),
+                    float(it['costo']),
+                    float(it['precio']),
+                    int(it['stock']),
+                    str(it['categoria']),
+                    float(it['descuento'])
+                ))
+        conn.commit()
+        conn.close()
+        return jsonify({'exito': True})
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'exito': False, 'mensaje': str(e)}), 500
+
+@app.route('/procesar_factura_ocr', methods=['POST'])
+def procesar_factura_ocr():
+    # Recibe el archivo de imagen o PDF y devuelve estructura lista para revisión
+    return jsonify({
+        'exito': True,
+        'comercio': '',
+        'items': []
+    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
