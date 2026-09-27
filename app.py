@@ -793,38 +793,5 @@ def procesar_factura_ocr():
     except Exception as e:
         return jsonify({'exito': False, 'mensaje': f'Error en procesamiento: {str(e)}'}), 500
 
-        return jsonify({
-            'exito': True,
-            'comercio': comercio,
-            'telefono': telefono,
-            'total_paginas': total_paginas,
-            'items': items
-        })
-
-    except Exception as e:
-        return jsonify({'exito': False, 'mensaje': f'Error en lectura: {str(e)}'}), 500
-
-        return jsonify({
-            'exito': True,
-            'comercio': comercio,
-            'telefono': telefono,
-            'total_paginas': total_paginas,
-            'items': items
-        })
-
-    except Exception as e:
-        return jsonify({'exito': False, 'mensaje': f'Error en lectura: {str(e)}'}), 500
-
-        return jsonify({
-            'exito': True,
-            'comercio': comercio,
-            'telefono': telefono,
-            'total_paginas': total_paginas,
-            'items': items
-        })
-
-    except Exception as e:
-        return jsonify({'exito': False, 'mensaje': f'Error en lectura multipágina: {str(e)}'}), 500
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
