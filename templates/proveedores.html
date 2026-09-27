@@ -2,124 +2,364 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>RyD - Gestión de Proveedores</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RyD - Gestión de Proveedores y Facturas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        @font-face {
-            font-family: 'AppleGaramond-Light';
-            src: local('AppleGaramond-Light'), local('Apple Garamond Light'), local('Apple Garamond');
+        :root {
+            --ryd-gold: #C5A059;
+            --ryd-gold-dark: #9D7B38;
+            --ryd-bg: #F8F5F0;
+            --ryd-surface: #FFFFFF;
+            --ryd-beige-card: #F2ECE1;
+            --ryd-border: #E8DEC8;
+            --ryd-border-light: #F4EFE6;
+            --ryd-text: #2C2620;
+            --ryd-muted: #827668;
+            --emboss-shadow: 4px 4px 10px rgba(180, 165, 140, 0.25), -4px -4px 10px rgba(255, 255, 255, 0.9);
+            --emboss-active: inset 2px 2px 5px rgba(180, 165, 140, 0.25), inset -2px -2px 5px rgba(255, 255, 255, 0.8);
         }
 
-        * { box-sizing: border-box; font-family: 'AppleGaramond-Light', 'Apple Garamond', Garamond, serif; margin: 0; padding: 0; }
-        body { background-color: #FBF9F5; color: #2C2C2C; padding: 30px; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #C5A059; padding-bottom: 15px; margin-bottom: 25px; }
-        .logo { font-size: 28px; color: #C5A059; letter-spacing: 2px; text-transform: uppercase; }
-        
-        .btn-top {
-            background-color: #1A1A1A;
-            color: #FFFFFF;
-            padding: 8px 16px;
+        body {
+            background-color: var(--ryd-bg);
+            color: var(--ryd-text);
+            font-family: 'Cinzel', 'Segoe UI', serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .header-bar {
+            background: var(--ryd-surface);
+            border-bottom: 1.5px solid var(--ryd-border);
+            padding: 16px 36px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.02);
+        }
+
+        .brand-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--ryd-gold);
+            letter-spacing: 3px;
             text-decoration: none;
-            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .panel-luxury {
+            background: var(--ryd-surface);
+            border: 1px solid var(--ryd-border);
+            border-radius: 12px;
+            box-shadow: var(--emboss-shadow);
+            padding: 24px;
+        }
+
+        .input-luxury {
+            background: #FAF7F2;
+            border: 1px solid var(--ryd-border);
+            border-radius: 6px;
+            color: var(--ryd-text);
+            padding: 8px 12px;
+            font-size: 0.88rem;
+        }
+        .input-luxury:focus {
+            border-color: var(--ryd-gold);
+            background: #FFFFFF;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.15);
+        }
+
+        .table-luxury thead th {
+            background: var(--ryd-beige-card);
+            color: var(--ryd-muted);
+            font-size: 0.72rem;
+            font-weight: 700;
             letter-spacing: 1px;
             text-transform: uppercase;
-            border-radius: 4px;
-            display: inline-block;
+            border-bottom: 1px solid var(--ryd-border);
+            padding: 12px 10px;
+        }
+        .table-luxury tbody td {
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--ryd-border-light);
+            vertical-align: middle;
         }
 
-        .card { background: #FFFFFF; border: 1px solid #E5DFD3; padding: 25px; margin-bottom: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
-        .card h3 { color: #C5A059; margin-bottom: 20px; font-size: 18px; text-transform: uppercase; border-bottom: 1px solid #F0EAE1; padding-bottom: 8px; }
+        .cell-input {
+            width: 100%;
+            background: transparent;
+            border: 1px solid transparent;
+            padding: 4px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--ryd-text);
+        }
+        .cell-input:focus {
+            background: #FFFFFF;
+            border-color: var(--ryd-gold);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(197, 160, 89, 0.2);
+        }
 
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-        .form-group { display: flex; flex-direction: column; }
-        .form-group label { font-size: 12px; color: #8C857B; margin-bottom: 5px; text-transform: uppercase; }
-        .form-group input, .form-group textarea { padding: 10px; border: 1px solid #E5DFD3; outline: none; font-size: 14px; }
+        .btn-gold {
+            background: linear-gradient(135deg, #D4B26F, #B89248);
+            border: none;
+            color: #FFFFFF;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(184, 146, 72, 0.25);
+            transition: all 0.2s ease;
+        }
+        .btn-gold:hover {
+            background: linear-gradient(135deg, #C5A059, #9D7B38);
+            color: #FFFFFF;
+        }
 
-        .btn-submit { background-color: #1A1A1A; color: #FFFFFF; border: none; padding: 12px; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; margin-top: 15px; width: 100%; }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #E5DFD3; font-size: 14px; }
-        th { background-color: #FAF8F3; color: #8C857B; text-transform: uppercase; font-size: 11px; }
+        .btn-outline-gold {
+            border: 1px solid var(--ryd-border);
+            background: var(--ryd-surface);
+            color: var(--ryd-text);
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 6px;
+            box-shadow: var(--emboss-shadow);
+        }
+        .btn-outline-gold:hover {
+            border-color: var(--ryd-gold);
+            background: var(--ryd-beige-card);
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        
-        <div class="header">
-            <div class="logo">Proveedores - RyD</div>
+<header class="header-bar d-flex justify-content-between align-items-center">
+    <a href="/admin" class="brand-title">RyD</a>
+    <div class="d-flex align-items-center">
+        <a href="/admin" class="btn btn-outline-gold btn-sm me-2">Panel Administrador</a>
+        <a href="/cajero/pos" class="btn btn-outline-gold btn-sm me-2">Terminal POS</a>
+        <a href="/logout" class="btn btn-link btn-sm text-muted text-decoration-none">Cerrar Sesión</a>
+    </div>
+</header>
+
+<div class="container my-4">
+    <!-- Panel Superior: Datos del Comercio y Carga de Factura -->
+    <div class="panel-luxury mb-4">
+        <h5 style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 1.05rem; margin-bottom: 20px; border-bottom: 1px solid var(--ryd-border); padding-bottom: 8px;">
+            Recepción y Procesamiento de Factura de Compra
+        </h5>
+
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px;">Nombre del Comercio / Proveedor</label>
+                <input type="text" id="nombreProveedor" class="form-control input-luxury" placeholder="Ej. Distribuidora Maxglow C.A.">
+            </div>
+            <div class="col-md-3">
+                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px;">Teléfono / Contacto</label>
+                <input type="text" id="telefonoProveedor" class="form-control input-luxury" placeholder="Ej. +58 412-1234567">
+            </div>
+            <div class="col-md-5">
+                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px;">Cargar Factura (Excel .xlsx, .csv, PDF o Foto)</label>
+                <input type="file" id="archivoFactura" class="form-control input-luxury" accept=".xlsx, .xls, .csv, .pdf, image/*" onchange="cargarFacturaArchivo(event)">
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Inventario Extraído y Editable -->
+    <div class="panel-luxury">
+        <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-                <a href="/admin" class="btn-top">Volver al Panel</a>
+                <h6 style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 0.95rem; margin: 0;">
+                    Items de la Factura para Incorporar a Inventario
+                </h6>
+                <small class="text-muted" style="font-size: 0.78rem;">Todos los campos son editables. El precio de venta se recalcula automáticamente con el margen y descuento.</small>
+            </div>
+            <div>
+                <button type="button" class="btn btn-outline-gold btn-sm me-2" onclick="agregarFilaManual()">+ Fila Manual</button>
+                <button type="button" class="btn btn-gold btn-sm" onclick="guardarFacturaEnInventario()">Guardar en Inventario</button>
             </div>
         </div>
 
-        <!-- FORMULARIO PROVEEDOR -->
-        <div class="card">
-            <h3>Registrar Proveedor</h3>
-            <form action="/admin/proveedores" method="POST">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Empresa / Nombre</label>
-                        <input type="text" name="nombre" required placeholder="Ej: Distribuidora Beauty">
-                    </div>
-                    <div class="form-group">
-                        <label>Persona de Contacto</label>
-                        <input type="text" name="contacto" placeholder="Ej: María Pérez">
-                    </div>
-                    <div class="form-group">
-                        <label>Teléfono</label>
-                        <input type="text" name="telefono" placeholder="+58 412...">
-                    </div>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" name="email" placeholder="contacto@ejemplo.com">
-                    </div>
-                </div>
-                <div class="form-group" style="margin-top: 15px;">
-                    <label>Notas / Dirección</label>
-                    <textarea name="notas" rows="2" placeholder="Detalles de entregas, notas de pago..."></textarea>
-                </div>
-                <button type="submit" class="btn-submit">Guardar Proveedor</button>
-            </form>
-        </div>
-
-        <!-- TABLA PROVEEDORES -->
-        <div class="card">
-            <h3>Lista de Proveedores</h3>
-            <table>
+        <div class="table-responsive">
+            <table class="table table-luxury align-middle mb-0" id="tablaFactura">
                 <thead>
                     <tr>
-                        <th>Nombre / Empresa</th>
-                        <th>Contacto</th>
-                        <th>Teléfono</th>
-                        <th>Email</th>
-                        <th>Notas</th>
-                        <th>Acción</th>
+                        <th style="width: 120px;">Código SKU</th>
+                        <th>Nombre del Producto</th>
+                        <th style="width: 90px;">Costo ($)</th>
+                        <th style="width: 90px;">Ganancia %</th>
+                        <th style="width: 90px;">Desc %</th>
+                        <th style="width: 100px;">Precio ($)</th>
+                        <th style="width: 80px;">Stock</th>
+                        <th style="width: 130px;">Categoría</th>
+                        <th style="width: 40px;"></th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for p in proveedores %}
+                <tbody id="cuerpoFactura">
+                    <!-- Fila por defecto -->
                     <tr>
-                        <td><strong>{{ p['nombre'] }}</strong></td>
-                        <td>{{ p['contacto'] or '-' }}</td>
-                        <td>{{ p['telefono'] or '-' }}</td>
-                        <td>{{ p['email'] or '-' }}</td>
-                        <td>{{ p['notas'] or '-' }}</td>
-                        <td>
-                            <a href="/admin/proveedores/eliminar/{{ p['id'] }}" style="color: #8C2D19; text-decoration: none;" onclick="return confirm('¿Eliminar este proveedor? Se desvinculará de sus productos.')">[Eliminar]</a>
-                        </td>
+                        <td><input type="text" class="cell-input col-codigo" value="PRV-001"></td>
+                        <td><input type="text" class="cell-input col-nombre" placeholder="Nombre del artículo"></td>
+                        <td><input type="number" step="0.01" class="cell-input col-costo" value="0.00" oninput="recalcularFila(this)"></td>
+                        <td><input type="number" step="1" class="cell-input col-ganancia" value="30" oninput="recalcularFila(this)"></td>
+                        <td><input type="number" step="1" class="cell-input col-descuento" value="0" oninput="recalcularFila(this)"></td>
+                        <td><input type="number" step="0.01" class="cell-input col-precio" value="0.00" style="font-weight: 700; color: var(--ryd-gold-dark);"></td>
+                        <td><input type="number" class="cell-input col-stock" value="1"></td>
+                        <td><input type="text" class="cell-input col-categoria" value="General"></td>
+                        <td class="text-center"><button class="btn btn-sm btn-outline-danger border-0 p-1" onclick="this.closest('tr').remove()">X</button></td>
                     </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="6" style="text-align: center; color: #8C857B; padding: 20px 0;">No hay proveedores registrados aún.</td>
-                    </tr>
-                    {% endfor %}
                 </tbody>
             </table>
         </div>
-
     </div>
+</div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// Recalcula el precio de venta en vivo según costo, ganancia % y descuento %
+function recalcularFila(input) {
+    const fila = input.closest('tr');
+    const costo = parseFloat(fila.querySelector('.col-costo').value) || 0;
+    const ganancia = parseFloat(fila.querySelector('.col-ganancia').value) || 0;
+    const descuento = parseFloat(fila.querySelector('.col-descuento').value) || 0;
+
+    // Precio Base = Costo * (1 + Ganancia/100)
+    let precio = costo * (1 + (ganancia / 100));
+    // Aplica descuento si existe
+    if (descuento > 0) {
+        precio = precio * (1 - (descuento / 100));
+    }
+
+    fila.querySelector('.col-precio').value = precio.toFixed(2);
+}
+
+function agregarFilaManual(codigo = '', nombre = '', costo = 0, stock = 1, categoria = 'General') {
+    const tbody = document.getElementById('cuerpoFactura');
+    const tr = document.createElement('tr');
+    const cod = codigo || ('PRV-' + String(tbody.children.length + 1).padStart(3, '0'));
+    const precioCalculado = (costo * 1.30).toFixed(2);
+
+    tr.innerHTML = `
+        <td><input type="text" class="cell-input col-codigo" value="${cod}"></td>
+        <td><input type="text" class="cell-input col-nombre" value="${nombre}" placeholder="Nombre del artículo"></td>
+        <td><input type="number" step="0.01" class="cell-input col-costo" value="${costo.toFixed(2)}" oninput="recalcularFila(this)"></td>
+        <td><input type="number" step="1" class="cell-input col-ganancia" value="30" oninput="recalcularFila(this)"></td>
+        <td><input type="number" step="1" class="cell-input col-descuento" value="0" oninput="recalcularFila(this)"></td>
+        <td><input type="number" step="0.01" class="cell-input col-precio" value="${precioCalculado}" style="font-weight: 700; color: var(--ryd-gold-dark);"></td>
+        <td><input type="number" class="cell-input col-stock" value="${stock}"></td>
+        <td><input type="text" class="cell-input col-categoria" value="${categoria}"></td>
+        <td class="text-center"><button class="btn btn-sm btn-outline-danger border-0 p-1" onclick="this.closest('tr').remove()">X</button></td>
+    `;
+    tbody.appendChild(tr);
+}
+
+// Procesa archivos Excel y CSV localmente
+function cargarFacturaArchivo(event) {
+    const archivo = event.target.files[0];
+    if (!archivo) return;
+
+    const nombre = archivo.name.toLowerCase();
+
+    if (nombre.endsWith('.xlsx') || nombre.endsWith('.xls') || nombre.endsWith('.csv')) {
+        const lector = new FileReader();
+        lector.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const primerHoja = workbook.Sheets[workbook.SheetNames[0]];
+            const filas = XLSX.utils.sheet_to_json(primerHoja, { header: 1 });
+
+            if (filas.length > 1) {
+                const tbody = document.getElementById('cuerpoFactura');
+                tbody.innerHTML = '';
+                
+                // Omite encabezado (fila 0) y recorre
+                for (let i = 1; i < filas.length; i++) {
+                    const row = filas[i];
+                    if (!row || row.length === 0) continue;
+                    
+                    const cod = row[0] ? String(row[0]).trim() : ('PRV-' + String(i).padStart(3, '0'));
+                    const nom = row[1] ? String(row[1]).trim() : 'Producto ' + i;
+                    const costo = parseFloat(row[2]) || 0.0;
+                    const stock = parseInt(row[3]) || 1;
+                    const cat = row[4] ? String(row[4]).trim() : 'General';
+                    agregarFilaManual(cod, nom, costo, stock, cat);
+                }
+            }
+        };
+        lector.readAsArrayBuffer(archivo);
+    } else {
+        // En caso de PDF o Foto, se envía al backend para lectura inteligente
+        const formData = new FormData();
+        formData.append('factura', archivo);
+
+        fetch('/procesar_factura_ocr', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.exito && data.items.length > 0) {
+                const tbody = document.getElementById('cuerpoFactura');
+                tbody.innerHTML = '';
+                data.items.forEach(it => {
+                    agregarFilaManual(it.codigo, it.nombre, it.costo, it.stock, it.categoria);
+                });
+                if (data.comercio) document.getElementById('nombreProveedor').value = data.comercio;
+            } else {
+                alert("Archivo recibido. Puedes ajustar los campos manualmente en la tabla.");
+            }
+        })
+        .catch(() => alert("Archivo cargado. Completa los detalles en la tabla."));
+    }
+}
+
+// Guarda todos los productos editados directo en la base de datos
+function guardarFacturaEnInventario() {
+    const proveedor = document.getElementById('nombreProveedor').value.trim();
+    const telefono = document.getElementById('telefonoProveedor').value.trim();
+    const filas = document.querySelectorAll('#cuerpoFactura tr');
+
+    const items = [];
+    filas.forEach(f => {
+        const codigo = f.querySelector('.col-codigo').value.trim();
+        const nombre = f.querySelector('.col-nombre').value.trim();
+        const costo = parseFloat(f.querySelector('.col-costo').value) || 0;
+        const ganancia = parseFloat(f.querySelector('.col-ganancia').value) || 0;
+        const descuento = parseFloat(f.querySelector('.col-descuento').value) || 0;
+        const precio = parseFloat(f.querySelector('.col-precio').value) || 0;
+        const stock = parseInt(f.querySelector('.col-stock').value) || 0;
+        const categoria = f.querySelector('.col-categoria').value.trim() || 'General';
+
+        if (codigo && nombre) {
+            items.push({ codigo, nombre, costo, ganancia, descuento, precio, stock, categoria });
+        }
+    });
+
+    if (items.length === 0) {
+        alert("Agrega al menos un producto a la tabla.");
+        return;
+    }
+
+    fetch('/guardar_factura_proveedor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            proveedor: proveedor,
+            telefono: telefono,
+            items: items
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.exito) {
+            alert("Inventario actualizado con éxito con los productos de la factura.");
+            window.location.href = '/admin';
+        } else {
+            alert("Error al guardar: " + data.mensaje);
+        }
+    })
+    .catch(() => alert("Error de comunicación con el servidor."));
+}
+</script>
 </body>
 </html>
