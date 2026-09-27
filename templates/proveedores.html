@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RyD - Gestión de Proveedores y Facturas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
             --ryd-gold: #C5A059;
@@ -17,6 +19,7 @@
             --ryd-text: #2C2620;
             --ryd-muted: #827668;
             --emboss-shadow: 4px 4px 10px rgba(180, 165, 140, 0.25), -4px -4px 10px rgba(255, 255, 255, 0.9);
+            --emboss-btn: 3px 3px 7px rgba(180, 165, 140, 0.28), -3px -3px 7px rgba(255, 255, 255, 0.9);
         }
 
         body {
@@ -62,7 +65,6 @@
             border-color: var(--ryd-gold);
             background: #FFFFFF;
             outline: none;
-            box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.15);
         }
 
         .table-scroll-container {
@@ -72,29 +74,20 @@
             border-radius: 8px;
             background: #FFFFFF;
         }
-
         .table-scroll-container::-webkit-scrollbar {
             width: 8px;
-        }
-        .table-scroll-container::-webkit-scrollbar-track {
-            background: var(--ryd-beige-card);
-            border-radius: 4px;
         }
         .table-scroll-container::-webkit-scrollbar-thumb {
             background: var(--ryd-border);
             border-radius: 4px;
-            border: 1px solid var(--ryd-beige-card);
-        }
-        .table-scroll-container::-webkit-scrollbar-thumb:hover {
-            background: var(--ryd-gold);
         }
 
         .table-luxury {
             margin-bottom: 0;
             border-collapse: separate;
             border-spacing: 0;
+            width: 100%;
         }
-
         .table-luxury thead th {
             position: sticky;
             top: 0;
@@ -105,11 +98,9 @@
             font-weight: 700;
             letter-spacing: 0.8px;
             text-transform: uppercase;
-            border-bottom: 1.5px solid var(--ryd-border);
+            border-bottom: 1px solid var(--ryd-border);
             padding: 12px 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
         }
-
         .table-luxury tbody td {
             padding: 8px;
             border-bottom: 1px solid var(--ryd-border-light);
@@ -121,7 +112,7 @@
             width: 100%;
             background: transparent;
             border: 1px solid transparent;
-            padding: 4px 6px;
+            padding: 4px;
             border-radius: 4px;
             font-size: 0.85rem;
             color: var(--ryd-text);
@@ -130,7 +121,6 @@
             background: #FFFFFF;
             border-color: var(--ryd-gold);
             outline: none;
-            box-shadow: 0 0 0 2px rgba(197, 160, 89, 0.2);
         }
 
         .cell-select {
@@ -142,11 +132,6 @@
             font-size: 0.82rem;
             color: var(--ryd-text);
             font-weight: 600;
-        }
-        .cell-select:focus {
-            background: #FFFFFF;
-            border-color: var(--ryd-gold);
-            outline: none;
         }
 
         .btn-gold {
@@ -173,11 +158,7 @@
             font-weight: 600;
             padding: 8px 16px;
             border-radius: 6px;
-            box-shadow: var(--emboss-shadow);
-        }
-        .btn-outline-gold:hover {
-            border-color: var(--ryd-gold);
-            background: var(--ryd-beige-card);
+            box-shadow: var(--emboss-btn);
         }
     </style>
 </head>
@@ -196,7 +177,7 @@
     <div class="panel-luxury mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
             <h5 style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 1.05rem; margin: 0;">
-                Recepción y Procesamiento de Factura
+                Recepción de Facturas, Notas de Entrega y Fotos
             </h5>
             <span id="badgePaginas" class="badge bg-light text-dark border px-3 py-2" style="display: none; letter-spacing: 1px;">
                 Origen: <strong id="numPaginasTxt">Archivo</strong>
@@ -205,15 +186,15 @@
 
         <div class="row g-3 align-items-end">
             <div class="col-md-3">
-                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px;">Nombre del Comercio / Proveedor</label>
-                <input type="text" id="nombreProveedor" class="form-control input-luxury" placeholder="Ej. Aura Profesional / Insumos">
+                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase;">Nombre del Comercio / Proveedor</label>
+                <input type="text" id="nombreProveedor" class="form-control input-luxury" placeholder="Ej. Miceli / Storefit / Hogar Ideal">
             </div>
             <div class="col-md-3">
-                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px;">Teléfono / Contacto</label>
-                <input type="text" id="telefonoProveedor" class="form-control input-luxury" placeholder="Ej. 04127494813">
+                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase;">Teléfono / Contacto</label>
+                <input type="text" id="telefonoProveedor" class="form-control input-luxury" placeholder="Ej. 04129583694">
             </div>
             <div class="col-md-4">
-                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px;">Seleccionar Factura (Excel, CSV, PDF o Foto)</label>
+                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase;">Seleccionar Archivo (Foto WhatsApp, PDF o Excel)</label>
                 <input type="file" id="archivoFactura" class="form-control input-luxury" accept=".xlsx, .xls, .csv, .pdf, image/*">
             </div>
             <div class="col-md-2">
@@ -225,11 +206,10 @@
 
         <div id="indicadorCarga" class="mt-3 text-center small text-muted" style="display: none; letter-spacing: 0.8px;">
             <span class="spinner-border spinner-border-sm text-warning me-2" role="status"></span>
-            Procesando documento y ordenando columnas de inventario...
+            <span id="txtEstadoCarga">Extrayendo texto y estructurando artículos...</span>
         </div>
     </div>
 
-    <!-- Tabla con Desplazamiento Vertical y Categorías -->
     <div class="panel-luxury">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
@@ -237,7 +217,7 @@
                     Items de la Factura para Incorporar a Inventario
                 </h6>
                 <small class="text-muted" style="font-size: 0.78rem;">
-                    Artículos listados: <strong id="contadorItems" style="color: var(--ryd-gold-dark);">0</strong>.
+                    Artículos listados: <strong id="contadorItems" style="color: var(--ryd-gold-dark);">0</strong>
                 </small>
             </div>
             <div>
@@ -264,7 +244,7 @@
                 </thead>
                 <tbody id="cuerpoFactura">
                     <tr>
-                        <td colspan="10" class="text-center py-5 text-muted small">Selecciona tu factura y presiona "Procesar Factura" para cargar los artículos.</td>
+                        <td colspan="10" class="text-center py-5 text-muted small">Selecciona tu factura o foto y presiona "Procesar Factura" para cargar los artículos.</td>
                     </tr>
                 </tbody>
             </table>
@@ -272,7 +252,6 @@
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const categoriasOficiales = [
     "Aparatología",
@@ -289,12 +268,12 @@ function normalizarCategoria(catTexto) {
     if (!catTexto) return "General";
     const c = catTexto.toString().toLowerCase().trim();
     if (c.includes("ceja") || c.includes("pestañ") || c.includes("lash")) return "Cejas y Pestañas";
-    if (c.includes("uña") || c.includes("nail")) return "Uñas";
+    if (c.includes("uña") || c.includes("nail") || c.includes("esmalte")) return "Uñas";
     if (c.includes("aparato") || c.includes("maquin") || c.includes("olla")) return "Aparatología";
-    if (c.includes("desechab") || c.includes("guante") || c.includes("gorro")) return "Desechables";
-    if (c.includes("cabel") || c.includes("capilar") || c.includes("peine")) return "Cabello";
+    if (c.includes("desechab") || c.includes("guante") || c.includes("gorro") || c.includes("hisopo")) return "Desechables";
+    if (c.includes("cabel") || c.includes("capilar") || c.includes("shampoo") || c.includes("alisado") || c.includes("blower")) return "Cabello";
     if (c.includes("intim") || c.includes("jabon")) return "Íntimo";
-    if (c.includes("insumo")) return "Insumos";
+    if (c.includes("insumo") || c.includes("atomizador") || c.includes("organizador")) return "Insumos";
     return "General";
 }
 
@@ -378,7 +357,102 @@ function agregarFilaManual(codigo = '', nombre = '', costoUnitario = 0, empaque 
     actualizarContador();
 }
 
-// LECTOR INTELIGENTE DE EXCEL / CSV CON MAPEO DINÁMICO DE COLUMNAS
+function iniciarProcesamientoFactura() {
+    const inputFile = document.getElementById('archivoFactura');
+    const archivo = inputFile.files[0];
+
+    if (!archivo) {
+        alert("Por favor selecciona un archivo o foto de factura antes de procesar.");
+        return;
+    }
+
+    const indicador = document.getElementById('indicadorCarga');
+    const txtEstado = document.getElementById('txtEstadoCarga');
+    const btn = document.getElementById('btnProcesarDoc');
+    indicador.style.display = 'block';
+    btn.disabled = true;
+
+    const nombre = (archivo.name || "").toLowerCase();
+
+    // 1. Archivo Excel
+    if (nombre.endsWith('.xlsx') || nombre.endsWith('.xls') || nombre.endsWith('.csv')) {
+        procesarExcelUniversal(archivo);
+    } 
+    // 2. Imagen o Foto tomada con el celular / WhatsApp (OCR en el navegador)
+    else if (archivo.type.startsWith('image/') || nombre.endsWith('.jpg') || nombre.endsWith('.jpeg') || nombre.endsWith('.png')) {
+        txtEstado.innerText = "Leyendo texto óptico de la fotografía (OCR)...";
+        Tesseract.recognize(
+            archivo,
+            'spa',
+            { logger: m => { if (m.status === 'recognizing text') txtEstado.innerText = `Leyendo imagen: ${Math.round(m.progress * 100)}%`; } }
+        ).then(({ data: { text } }) => {
+            txtEstado.innerText = "Interpretando artículos extraídos...";
+            const formData = new FormData();
+            formData.append('texto_ocr', text);
+
+            fetch('/procesar_factura_ocr', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => procesarRespuestaFactura(data, "Foto / Imagen"))
+            .catch(() => alert("Error al procesar el texto de la imagen."))
+            .finally(() => {
+                indicador.style.display = 'none';
+                btn.disabled = false;
+            });
+        }).catch(err => {
+            alert("No se pudo leer la imagen: " + err.message);
+            indicador.style.display = 'none';
+            btn.disabled = false;
+        });
+    }
+    // 3. Archivo PDF (Procesamiento directo en backend)
+    else {
+        txtEstado.innerText = "Extrayendo páginas del documento PDF...";
+        const formData = new FormData();
+        formData.append('factura', archivo);
+
+        fetch('/procesar_factura_ocr', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => procesarRespuestaFactura(data, (data.total_paginas || 1) + " páginas"))
+        .catch(() => alert("Error al procesar el archivo en el servidor."))
+        .finally(() => {
+            indicador.style.display = 'none';
+            btn.disabled = false;
+        });
+    }
+}
+
+function procesarRespuestaFactura(data, labelOrigen) {
+    if (data.exito && data.items && data.items.length > 0) {
+        if (data.comercio) document.getElementById('nombreProveedor').value = data.comercio;
+        if (data.telefono) document.getElementById('telefonoProveedor').value = data.telefono;
+
+        document.getElementById('badgePaginas').style.display = 'inline-block';
+        document.getElementById('numPaginasTxt').innerText = labelOrigen;
+
+        const tbody = document.getElementById('cuerpoFactura');
+        tbody.innerHTML = '';
+        data.items.forEach(it => {
+            agregarFilaManual(
+                it.codigo, 
+                it.nombre, 
+                it.costo, 
+                it.unidades_empaque || 1, 
+                it.cant_comprada || 1, 
+                it.categoria
+            );
+        });
+        actualizarContador();
+    } else {
+        alert("No se encontraron productos legibles en el documento.");
+    }
+}
+
 function procesarExcelUniversal(archivo) {
     const lector = new FileReader();
     lector.onload = function(e) {
@@ -393,7 +467,6 @@ function procesarExcelUniversal(archivo) {
                 return;
             }
 
-            // 1. Detectar en qué columna está cada dato buscando palabras clave
             let idxCat = -1, idxCod = -1, idxNom = -1, idxCosto = -1, idxPrecio = -1, idxStock = -1;
             let filaEncabezado = 0;
 
@@ -415,7 +488,6 @@ function procesarExcelUniversal(archivo) {
                 }
             }
 
-            // Asignaciones de respaldo si no hay encabezados con nombre exacto
             if (idxCod === -1) idxCod = 0;
             if (idxNom === -1) idxNom = 1;
             if (idxCosto === -1) idxCosto = 2;
@@ -433,7 +505,6 @@ function procesarExcelUniversal(archivo) {
                 const valCod = row[idxCod] ? String(row[idxCod]).trim() : '';
                 const valNom = row[idxNom] ? String(row[idxNom]).trim() : '';
 
-                // Omitir filas que sean encabezados repetidos o filas de totales
                 if (valCod.toLowerCase().includes("código") || valNom.toLowerCase().includes("producto") || valNom.toLowerCase().includes("total") || valCod.toLowerCase().includes("total")) continue;
                 if (!valNom && !valCod) continue;
 
@@ -444,16 +515,7 @@ function procesarExcelUniversal(archivo) {
                 const stock = idxStock !== -1 ? (parseInt(row[idxStock]) || 1) : 1;
                 const categoria = idxCat !== -1 ? (String(row[idxCat] || 'General').trim()) : 'General';
 
-                // Detección de empaque para productos que se venden por separado
-                let empaque = 1;
-                const nomLower = nom.toLowerCase();
-                if (nomLower.includes("docena")) empaque = 12;
-                else {
-                    const mPack = nomLower.match(/(?:paquete|caja|pack|set|x)\s*(\d+)/);
-                    if (mPack) empaque = parseInt(mPack[1]);
-                }
-
-                agregarFilaManual(cod, nom, costo, empaque, stock, categoria, precio);
+                agregarFilaManual(cod, nom, costo, 1, stock, categoria, precio);
                 contadorCargados++;
             }
 
@@ -468,71 +530,6 @@ function procesarExcelUniversal(archivo) {
         }
     };
     lector.readAsArrayBuffer(archivo);
-}
-
-function iniciarProcesamientoFactura() {
-    const inputFile = document.getElementById('archivoFactura');
-    const archivo = inputFile.files[0];
-
-    if (!archivo) {
-        alert("Por favor selecciona un archivo de factura antes de procesar.");
-        return;
-    }
-
-    const indicador = document.getElementById('indicadorCarga');
-    const btn = document.getElementById('btnProcesarDoc');
-    indicador.style.display = 'block';
-    btn.disabled = true;
-
-    const nombre = archivo.name.toLowerCase();
-
-    // Si es Excel (.xlsx, .xls) o CSV se procesa de forma nativa e instantánea
-    if (nombre.endsWith('.xlsx') || nombre.endsWith('.xls') || nombre.endsWith('.csv')) {
-        procesarExcelUniversal(archivo);
-    } 
-    // Si es PDF o Foto se envía al backend con soporte multipágina
-    else {
-        const formData = new FormData();
-        formData.append('factura', archivo);
-
-        fetch('/procesar_factura_ocr', {
-            method: 'POST',
-            body: formData
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.exito && data.items && data.items.length > 0) {
-                if (data.comercio) document.getElementById('nombreProveedor').value = data.comercio;
-                if (data.telefono) document.getElementById('telefonoProveedor').value = data.telefono;
-                
-                if (data.total_paginas) {
-                    document.getElementById('badgePaginas').style.display = 'inline-block';
-                    document.getElementById('numPaginasTxt').innerText = data.total_paginas + ' páginas';
-                }
-
-                const tbody = document.getElementById('cuerpoFactura');
-                tbody.innerHTML = '';
-                data.items.forEach(it => {
-                    agregarFilaManual(
-                        it.codigo, 
-                        it.nombre, 
-                        it.costo, 
-                        it.unidades_empaque, 
-                        it.cant_comprada, 
-                        it.categoria
-                    );
-                });
-                actualizarContador();
-            } else {
-                alert("No se encontraron productos legibles en las páginas del documento.");
-            }
-        })
-        .catch(() => alert("Error al procesar el archivo en el servidor."))
-        .finally(() => {
-            indicador.style.display = 'none';
-            btn.disabled = false;
-        });
-    }
 }
 
 function guardarFacturaEnInventario() {
