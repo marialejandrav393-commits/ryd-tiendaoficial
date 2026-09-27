@@ -52,27 +52,31 @@ def inicializar_db():
         )
     ''')
 
-    # Columnas opcionales por si la base ya existía
-    try:
-        cursor.execute('ALTER TABLE productos ADD COLUMN imagen TEXT')
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute('ALTER TABLE productos ADD COLUMN descuento REAL DEFAULT 0.0')
-    except sqlite3.OperationalError:
-        pass
+    # Columnas opcionales en productos
+    for col_def in ['imagen TEXT', 'descuento REAL DEFAULT 0.0', 'costo REAL DEFAULT 0.0']:
+        try:
+            cursor.execute(f'ALTER TABLE productos ADD COLUMN {col_def}')
+        except sqlite3.OperationalError:
+            pass
 
     # Tabla ventas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ventas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             fecha TEXT NOT NULL,
-            total REAL NOT NULL,
-            metodo_pago TEXT NOT NULL,
+            total REAL DEFAULT 0.0,
+            metodo_pago TEXT DEFAULT 'Efectivo $',
             referencia TEXT,
             usuario TEXT DEFAULT 'Cajero'
         )
     ''')
+
+    # Garantizar que ventas tenga todas sus columnas sin chocar con bases previas
+    for col_def in ['total REAL DEFAULT 0.0', 'metodo_pago TEXT DEFAULT "Efectivo $"', 'referencia TEXT', 'usuario TEXT DEFAULT "Cajero"']:
+        try:
+            cursor.execute(f'ALTER TABLE ventas ADD COLUMN {col_def}')
+        except sqlite3.OperationalError:
+            pass
 
     # Tabla detalle de ventas
     cursor.execute('''
@@ -98,7 +102,7 @@ def inicializar_db():
         )
     ''')
 
-    # Usuarios maestros predeterminados
+    # Usuarios maestros garantizados
     cursor.execute("SELECT id FROM usuarios WHERE username = 'admin'")
     if not cursor.fetchone():
         cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('admin', 'admin123', 'admin')")
@@ -130,7 +134,6 @@ def clasificar_categoria_ryd(descripcion):
         return "Insumos"
     return "General"
 
-
 def role_required(*roles):
     def decorator(f):
         @wraps(f)
@@ -154,13 +157,12 @@ def login():
         usuario = (request.form.get('username') or '').strip().lower()
         password = (request.form.get('password') or '').strip()
 
-        # 1. Acceso Directo de Emergencia Garantizado
+        # Acceso Directo de Emergencia Garantizado
         if usuario == 'admin' and password in ['admin123', 'admin2026', 'admin']:
             session['logged_in'] = True
             session['user_id'] = 1
             session['username'] = 'admin'
             session['user_role'] = 'admin'
-            session['carrito'] = []
             return redirect(url_for('admin'))
 
         if usuario == 'cajero' and password in ['cajero2026', 'cajero123', 'cajero']:
@@ -168,10 +170,9 @@ def login():
             session['user_id'] = 2
             session['username'] = 'cajero'
             session['user_role'] = 'cajero'
-            session['carrito'] = []
             return redirect(url_for('pos_cajero'))
 
-        # 2. Verificación en Base de Datos
+        # Verificación en base de datos
         conn = obtener_conexion()
         user_info = conn.execute(
             'SELECT * FROM usuarios WHERE LOWER(username) = ? AND password = ?',
@@ -185,7 +186,6 @@ def login():
             session['username'] = user_info['username']
             rol_obtenido = user_info['rol'] if 'rol' in user_info.keys() else 'cajero'
             session['user_role'] = rol_obtenido
-            session['carrito'] = []
 
             if rol_obtenido == 'admin':
                 return redirect(url_for('admin'))
@@ -306,7 +306,7 @@ def admin():
     conn = obtener_conexion()
     productos_raw = conn.execute('SELECT * FROM productos ORDER BY id DESC').fetchall()
 
-    # Cálculo contable al centavo
+    # Cálculo contable riguroso al centavo
     total_costo_inversion = 0.0
     total_valor_venta = 0.0
     ganancia_estimada = 0.0
@@ -320,8 +320,14 @@ def admin():
         total_valor_venta += (precio_u * stock_u)
         ganancia_estimada += ((precio_u - costo_u) * stock_u)
 
-    ventas_total_row = conn.execute('SELECT SUM(total) as total_ventas FROM ventas').fetchone()
-    total_ventas_usd = float(ventas_total_row['total_ventas'] or 0.0) if ventas_total_row else 0.0
+    # Consulta protegida contra inconsistencias de columnas en ventas
+    total_ventas_usd = 0.0
+    try:
+        ventas_total_row = conn.execute('SELECT SUM(total) as total_ventas FROM ventas').fetchone()
+        if ventas_total_row and ventas_total_row['total_ventas']:
+            total_ventas_usd = float(ventas_total_row['total_ventas'])
+    except Exception:
+        total_ventas_usd = 0.0
 
     conn.close()
 
@@ -627,10 +633,10 @@ def historial_ventas():
             ventas_lista.append({
                 'id': v['id'],
                 'fecha': v['fecha'],
-                'total': v['total'],
-                'metodo_pago': v['metodo_pago'],
-                'referencia': v['referencia'] or 'N/A',
-                'usuario': v['usuario'] or 'Cajero',
+                'total': v['total'] if 'total' in v.keys() else 0.0,
+                'metodo_pago': v['metodo_pago'] if 'metodo_pago' in v.keys() else 'Efectivo $',
+                'referencia': v['referencia'] if 'referencia' in v.keys() and v['referencia'] else 'N/A',
+                'usuario': v['usuario'] if 'usuario' in v.keys() and v['usuario'] else 'Cajero',
                 'items': detalles
             })
         conn.close()
@@ -645,13 +651,18 @@ def historial_ventas():
 def cierre_caja():
     conn = obtener_conexion()
     hoy = date.today().strftime('%Y-%m-%d')
-    ventas_hoy = conn.execute("SELECT * FROM ventas WHERE fecha LIKE ? ORDER BY id DESC", (f"{hoy}%",)).fetchall()
-
-    total_usd = sum(float(v['total']) for v in ventas_hoy)
-    metodos_totales = {}
-    for v in ventas_hoy:
-        m = v['metodo_pago']
-        metodos_totales[m] = metodos_totales.get(m, 0.0) + float(v['total'])
+    try:
+        ventas_hoy = conn.execute("SELECT * FROM ventas WHERE fecha LIKE ? ORDER BY id DESC", (f"{hoy}%",)).fetchall()
+        total_usd = sum(float(v['total'] or 0.0) for v in ventas_hoy if 'total' in v.keys())
+        metodos_totales = {}
+        for v in ventas_hoy:
+            m = v['metodo_pago'] if 'metodo_pago' in v.keys() else 'Efectivo $'
+            tot = float(v['total'] or 0.0) if 'total' in v.keys() else 0.0
+            metodos_totales[m] = metodos_totales.get(m, 0.0) + tot
+    except Exception:
+        ventas_hoy = []
+        total_usd = 0.0
+        metodos_totales = {}
 
     conn.close()
     return render_template('cierre_caja.html', ventas=ventas_hoy, total_usd=round(total_usd, 2), metodos=metodos_totales, fecha=hoy)
