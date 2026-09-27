@@ -521,14 +521,76 @@ def guardar_factura_proveedor():
         conn.close()
         return jsonify({'exito': False, 'mensaje': str(e)}), 500
 
+import io
+import re
+from pypdf import PdfReader
+
 @app.route('/procesar_factura_ocr', methods=['POST'])
 def procesar_factura_ocr():
-    # Recibe el archivo de imagen o PDF y devuelve estructura lista para revisión
-    return jsonify({
-        'exito': True,
-        'comercio': '',
-        'items': []
-    })
+    if 'factura' not in request.files:
+        return jsonify({'exito': False, 'mensaje': 'No se recibió ningún archivo'}), 400
+
+    archivo = request.files['factura']
+    nombre_archivo = archivo.filename.lower()
+
+    comercio = ""
+    telefono = ""
+    items = []
+
+    try:
+        # Lectura directa de archivos PDF
+        if nombre_archivo.endswith('.pdf'):
+            reader = PdfReader(io.BytesIO(archivo.read()))
+            texto_completo = ""
+            for page in reader.pages:
+                texto_completo += (page.extract_text() or "") + "\n"
+
+            # 1. Extraer el teléfono del proveedor
+            m_telf = re.search(r'Telf[:\s]*([0-9\+\-\s]+)', texto_completo, re.IGNORECASE)
+            if m_telf:
+                telefono = m_telf.group(1).strip()
+
+            # 2. Extraer el nombre del comercio
+            if "AURA" in texto_completo.upper():
+                comercio = "Aura Profesional"
+            else:
+                lineas = [l.strip() for l in texto_completo.split('\n') if l.strip()]
+                comercio = lineas[0] if lineas else "Proveedor General"
+
+            # 3. Extraer los artículos (Cantidad | Descripción | Precio Unitario | Total)
+            patron_items = re.compile(r'(\d+)\s*Und\.?\s*\|\s*([^|]+)\|\s*([0-9\.]+)\s*\|\s*([0-9\.]+)', re.IGNORECASE)
+            coincidencias = patron_items.findall(texto_completo)
+
+            for idx, (cant, desc, p_unit, tot) in enumerate(coincidencias, start=1):
+                desc_limpia = desc.strip().replace('\n', ' ')
+                codigo_generado = f"AUR-{str(idx).zfill(3)}"
+
+                # Clasificación de categoría automática
+                categoria = "Estética"
+                if any(x in desc_limpia.lower() for x in ['tijera', 'cortaunas', 'cuticula', 'lima']):
+                    categoria = "Uñas"
+                elif any(x in desc_limpia.lower() for x in ['peine', 'gorro', 'difusor', 'ondas']):
+                    categoria = "Cuidado Capilar"
+                elif any(x in desc_limpia.lower() for x in ['ventilador', 'pinzas']):
+                    categoria = "Accesorios"
+
+                items.append({
+                    'codigo': codigo_generado,
+                    'nombre': desc_limpia.title(),
+                    'costo': float(p_unit),
+                    'stock': int(cant),
+                    'categoria': categoria
+                })
+
+        return jsonify({
+            'exito': True,
+            'comercio': comercio,
+            'telefono': telefono,
+            'items': items
+        })
+
+    except Exception as e:
+        return jsonify({'exito': False, 'mensaje': f'Error al procesar el archivo: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
