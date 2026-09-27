@@ -213,6 +213,7 @@
         <span class="me-3 small text-muted">Sesión: <strong class="text-dark">{{ session.get('username') }}</strong></span>
         <a href="{{ url_for('pos_cajero') }}" class="btn btn-ryd-outline btn-sm me-2">POS Cajero</a>
         <a href="{{ url_for('index') }}" class="btn btn-ryd-outline btn-sm me-2">Ver Catálogo</a>
+        <a href="/proveedores" class="btn btn-ryd-outline btn-sm me-2">Proveedores y Facturas</a>
         <a href="/cierre-caja" class="btn btn-ryd-gold btn-sm me-2">Cierre de Caja</a>
         <a href="{{ url_for('logout') }}" class="btn btn-link btn-sm text-muted text-decoration-none">Cerrar Sesión</a>
     </div>
