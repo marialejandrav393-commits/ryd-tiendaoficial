@@ -68,15 +68,15 @@
         .table-luxury thead th {
             background: var(--ryd-beige-card);
             color: var(--ryd-muted);
-            font-size: 0.7rem;
+            font-size: 0.72rem;
             font-weight: 700;
             letter-spacing: 0.8px;
             text-transform: uppercase;
             border-bottom: 1px solid var(--ryd-border);
-            padding: 12px 6px;
+            padding: 12px 8px;
         }
         .table-luxury tbody td {
-            padding: 8px 6px;
+            padding: 8px;
             border-bottom: 1px solid var(--ryd-border-light);
             vertical-align: middle;
         }
@@ -87,7 +87,7 @@
             border: 1px solid transparent;
             padding: 4px;
             border-radius: 4px;
-            font-size: 0.84rem;
+            font-size: 0.85rem;
             color: var(--ryd-text);
         }
         .cell-input:focus {
@@ -144,10 +144,10 @@
     <div class="panel-luxury mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
             <h5 style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 1.05rem; margin: 0;">
-                Recepción y Procesamiento de Factura Multipágina
+                Recepción y Procesamiento de Factura
             </h5>
             <span id="badgePaginas" class="badge bg-light text-dark border px-3 py-2" style="display: none; letter-spacing: 1px;">
-                Páginas procesadas: <strong id="numPaginasTxt">1</strong>
+                Páginas Analizadas: <strong id="numPaginasTxt">0</strong>
             </span>
         </div>
 
@@ -161,7 +161,7 @@
                 <input type="text" id="telefonoProveedor" class="form-control input-luxury" placeholder="Ej. 04127494813">
             </div>
             <div class="col-md-4">
-                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px;">Seleccionar Factura (PDF multipágina, Excel o Foto)</label>
+                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px;">Seleccionar Factura (PDF completo, Excel o Foto)</label>
                 <input type="file" id="archivoFactura" class="form-control input-luxury" accept=".xlsx, .xls, .csv, .pdf, image/*">
             </div>
             <div class="col-md-2">
@@ -177,15 +177,15 @@
         </div>
     </div>
 
-    <!-- Panel de Inventario con Soporte para Venta Detal / Fraccionada -->
+    <!-- Tabla con las Columnas Habituales -->
     <div class="panel-luxury">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
                 <h6 style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 0.95rem; margin: 0;">
-                    Inventario Extraído (Venta Mayor y Detal)
+                    Items de la Factura para Incorporar a Inventario
                 </h6>
                 <small class="text-muted" style="font-size: 0.78rem;">
-                    Si compraste una caja o docena, ajusta "Unidades x Bulto". El sistema recalculará el costo individual y multiplicará el stock disponible automáticamente.
+                    Para artículos que traigan más de una unidad (docenas, cajas, paquetes), ajusta "Unid. Empaque" para venderlos por separado.
                 </small>
             </div>
             <div>
@@ -198,23 +198,21 @@
             <table class="table table-luxury align-middle mb-0" id="tablaFactura">
                 <thead>
                     <tr>
-                        <th style="width: 105px;">SKU</th>
+                        <th style="width: 110px;">Código SKU</th>
                         <th>Nombre del Producto</th>
-                        <th style="width: 75px;" title="Bultos comprados">Bultos</th>
-                        <th style="width: 80px;" title="Costo total de cada bulto">Costo Bulto</th>
-                        <th style="width: 85px;" title="Unidades que trae cada bulto o caja">Unid. x Bulto</th>
-                        <th style="width: 85px;" title="Costo por cada pieza individual">Costo Detal</th>
-                        <th style="width: 75px;">Margen %</th>
-                        <th style="width: 75px;">Desc %</th>
-                        <th style="width: 90px;" title="PVP al que se venderá al cliente">PVP Detal</th>
-                        <th style="width: 75px;" title="Piezas individuales que ingresarán a tienda">Stock Total</th>
-                        <th style="width: 110px;">Categoría</th>
+                        <th style="width: 85px;" title="Costo unitario por cada pieza individual">Costo ($)</th>
+                        <th style="width: 95px;" title="Unidades que vienen en el paquete si se vende por separado">Unid. Empaque</th>
+                        <th style="width: 80px;">Ganancia %</th>
+                        <th style="width: 80px;">Desc %</th>
+                        <th style="width: 95px;">Precio ($)</th>
+                        <th style="width: 80px;" title="Stock final en tienda">Stock</th>
+                        <th style="width: 120px;">Categoría</th>
                         <th style="width: 35px;"></th>
                     </tr>
                 </thead>
                 <tbody id="cuerpoFactura">
                     <tr>
-                        <td colspan="12" class="text-center py-4 text-muted small">Selecciona tu factura y presiona "Procesar Factura" para cargar todas las páginas y artículos.</td>
+                        <td colspan="10" class="text-center py-4 text-muted small">Selecciona tu factura y presiona "Procesar Factura" para cargar los productos de todas las páginas.</td>
                     </tr>
                 </tbody>
             </table>
@@ -223,32 +221,36 @@
 </div>
 
 <script>
-// Recalcula en vivo cuando se cambia costo, empaque, margen o descuento
 function recalcularFila(input) {
     const fila = input.closest('tr');
-    const bultos = parseInt(fila.querySelector('.col-bultos').value) || 1;
-    const costoBulto = parseFloat(fila.querySelector('.col-costo-bulto').value) || 0;
-    const unidadesXEmpaque = parseInt(fila.querySelector('.col-unidades-empaque').value) || 1;
+    let costoBase = parseFloat(fila.querySelector('.col-costo-base').value) || 0;
+    const empaque = parseInt(fila.querySelector('.col-empaque').value) || 1;
+    const cantComprada = parseInt(fila.querySelector('.col-cant-comprada').value) || 1;
     const ganancia = parseFloat(fila.querySelector('.col-ganancia').value) || 0;
     const descuento = parseFloat(fila.querySelector('.col-descuento').value) || 0;
 
-    // Costo individual por cada unidad que viene dentro
-    const costoDetal = costoBulto / (unidadesXEmpaque > 0 ? unidadesXEmpaque : 1);
-    fila.querySelector('.col-costo-detal').value = costoDetal.toFixed(2);
-
-    // Precio venta detal al público
-    let precioDetal = costoDetal * (1 + (ganancia / 100));
-    if (descuento > 0) {
-        precioDetal = precioDetal * (1 - (descuento / 100));
+    // Si se modifica directamente el costo en pantalla, actualizar la base
+    if (input.classList.contains('col-costo')) {
+        costoBase = parseFloat(input.value) * (empaque > 0 ? empaque : 1);
+        fila.querySelector('.col-costo-base').value = costoBase.toFixed(2);
     }
-    fila.querySelector('.col-precio-detal').value = precioDetal.toFixed(2);
 
-    // Stock total disponible en tienda para vender
-    const stockTotal = bultos * unidadesXEmpaque;
-    fila.querySelector('.col-stock-total').value = stockTotal;
+    // Costo por cada unidad individual que se vende por separado
+    const costoUnitario = costoBase / (empaque > 0 ? empaque : 1);
+    fila.querySelector('.col-costo').value = costoUnitario.toFixed(2);
+
+    // Precio de venta calculado con margen y descuento
+    let precio = costoUnitario * (1 + (ganancia / 100));
+    if (descuento > 0) {
+        precio = precio * (1 - (descuento / 100));
+    }
+    fila.querySelector('.col-precio').value = precio.toFixed(2);
+
+    // Stock total disponible en tienda para cobro
+    fila.querySelector('.col-stock').value = cantComprada * empaque;
 }
 
-function agregarFilaManual(codigo = '', nombre = '', costoBulto = 0, bultos = 1, unidadesXEmpaque = 1, categoria = 'General') {
+function agregarFilaManual(codigo = '', nombre = '', costoUnitario = 0, empaque = 1, cantComprada = 1, categoria = 'General') {
     const tbody = document.getElementById('cuerpoFactura');
     if (tbody.children.length === 1 && tbody.children[0].children.length === 1) {
         tbody.innerHTML = '';
@@ -256,21 +258,24 @@ function agregarFilaManual(codigo = '', nombre = '', costoBulto = 0, bultos = 1,
 
     const tr = document.createElement('tr');
     const cod = codigo || ('PRV-' + String(tbody.children.length + 1).padStart(3, '0'));
-    const costoDetal = costoBulto / (unidadesXEmpaque > 0 ? unidadesXEmpaque : 1);
-    const pvpDetal = (costoDetal * 1.30).toFixed(2);
-    const stockTotal = bultos * unidadesXEmpaque;
+    const precioCalculado = (costoUnitario * 1.30).toFixed(2);
+    const stockTotal = cantComprada * empaque;
+    const costoBaseTotal = (costoUnitario * empaque).toFixed(2);
 
     tr.innerHTML = `
         <td><input type="text" class="cell-input col-codigo" value="${cod}"></td>
         <td><input type="text" class="cell-input col-nombre" value="${nombre}" placeholder="Nombre del artículo"></td>
-        <td><input type="number" class="cell-input col-bultos" value="${bultos}" min="1" oninput="recalcularFila(this)"></td>
-        <td><input type="number" step="0.01" class="cell-input col-costo-bulto" value="${costoBulto.toFixed(2)}" oninput="recalcularFila(this)"></td>
-        <td><input type="number" class="cell-input col-unidades-empaque" value="${unidadesXEmpaque}" min="1" oninput="recalcularFila(this)" title="Indica cuántas unidades vienen en la caja"></td>
-        <td><input type="number" step="0.01" class="cell-input col-costo-detal" value="${costoDetal.toFixed(2)}" readonly style="color: var(--ryd-muted);"></td>
+        <td>
+            <input type="number" step="0.01" class="cell-input col-costo" value="${costoUnitario.toFixed(2)}" oninput="recalcularFila(this)">
+            <!-- Campos ocultos para mantener las proporciones matemáticas exactas -->
+            <input type="hidden" class="col-costo-base" value="${costoBaseTotal}">
+            <input type="hidden" class="col-cant-comprada" value="${cantComprada}">
+        </td>
+        <td><input type="number" class="cell-input col-empaque" value="${empaque}" min="1" oninput="recalcularFila(this)" title="Indica cuántas unidades vienen si se vende por separado"></td>
         <td><input type="number" step="1" class="cell-input col-ganancia" value="30" oninput="recalcularFila(this)"></td>
         <td><input type="number" step="1" class="cell-input col-descuento" value="0" oninput="recalcularFila(this)"></td>
-        <td><input type="number" step="0.01" class="cell-input col-precio-detal" value="${pvpDetal}" style="font-weight: 700; color: var(--ryd-gold-dark);"></td>
-        <td><input type="number" class="cell-input col-stock-total" value="${stockTotal}" readonly style="font-weight: 700;"></td>
+        <td><input type="number" step="0.01" class="cell-input col-precio" value="${precioCalculado}" style="font-weight: 700; color: var(--ryd-gold-dark);"></td>
+        <td><input type="number" class="cell-input col-stock" value="${stockTotal}"></td>
         <td><input type="text" class="cell-input col-categoria" value="${categoria}"></td>
         <td class="text-center"><button class="btn btn-sm btn-outline-danger border-0 p-1" onclick="this.closest('tr').remove()">X</button></td>
     `;
@@ -315,9 +320,9 @@ function iniciarProcesamientoFactura() {
                 agregarFilaManual(
                     it.codigo, 
                     it.nombre, 
-                    it.costo_bulto, 
-                    it.bultos, 
-                    it.unidades_por_paquete, 
+                    it.costo, 
+                    it.unidades_empaque, 
+                    it.cant_comprada, 
                     it.categoria
                 );
             });
@@ -345,24 +350,15 @@ function guardarFacturaEnInventario() {
 
         const codigo = colCod.value.trim();
         const nombre = colNom.value.trim();
-        const costoUnitario = parseFloat(f.querySelector('.col-costo-detal').value) || 0;
+        const costo = parseFloat(f.querySelector('.col-costo').value) || 0;
         const ganancia = parseFloat(f.querySelector('.col-ganancia').value) || 0;
         const descuento = parseFloat(f.querySelector('.col-descuento').value) || 0;
-        const precioDetal = parseFloat(f.querySelector('.col-precio-detal').value) || 0;
-        const stockTotal = parseInt(f.querySelector('.col-stock-total').value) || 0;
+        const precio = parseFloat(f.querySelector('.col-precio').value) || 0;
+        const stock = parseInt(f.querySelector('.col-stock').value) || 0;
         const categoria = f.querySelector('.col-categoria').value.trim() || 'General';
 
         if (codigo && nombre) {
-            items.push({ 
-                codigo, 
-                nombre, 
-                costo: costoUnitario, 
-                ganancia, 
-                descuento, 
-                precio: precioDetal, 
-                stock: stockTotal, 
-                categoria 
-            });
+            items.push({ codigo, nombre, costo, ganancia, descuento, precio, stock, categoria });
         }
     });
 
@@ -383,7 +379,7 @@ function guardarFacturaEnInventario() {
     .then(res => res.json())
     .then(data => {
         if (data.exito) {
-            alert("Inventario actualizado con éxito. Todos los productos ingresaron a precio de unidad y con el stock multiplicado.");
+            alert("Inventario actualizado con éxito con todos los productos extraídos.");
             window.location.href = '/admin';
         } else {
             alert("Error al guardar: " + data.mensaje);
