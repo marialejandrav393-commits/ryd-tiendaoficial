@@ -701,6 +701,47 @@ def procesar_factura_ocr():
 
     except Exception as e:
         return jsonify({'exito': False, 'mensaje': f'Error en procesamiento: {str(e)}'}), 500
+# --- MÓDULO HISTORIAL DE VENTAS ---
+
+@app.route('/ventas')
+def historial_ventas():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+        
+    conn = obtener_conexion()
+    try:
+        # Consulta todas las ventas ordenadas desde la más reciente
+        ventas_raw = conn.execute('''
+            SELECT id, fecha, total, metodo_pago, referencia, usuario 
+            FROM ventas 
+            ORDER BY id DESC
+        ''').fetchall()
+        
+        ventas_lista = []
+        for v in ventas_raw:
+            # Extrae los artículos que componen cada ticket
+            detalles = conn.execute('''
+                SELECT nombre_producto, cantidad, precio_unitario, subtotal 
+                FROM detalle_ventas 
+                WHERE venta_id = ?
+            ''', (v['id'],)).fetchall()
+            
+            ventas_lista.append({
+                'id': v['id'],
+                'fecha': v['fecha'],
+                'total': v['total'],
+                'metodo_pago': v['metodo_pago'],
+                'referencia': v['referencia'] or 'N/A',
+                'usuario': v['usuario'] or 'Cajero',
+                'items': detalles
+            })
+            
+        conn.close()
+        return render_template('ventas.html', ventas=ventas_lista)
+    except Exception as e:
+        conn.close()
+        # Si la tabla aún no tiene registros o columnas opcionales, renderiza lista vacía sin error
+        return render_template('ventas.html', ventas=[])
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
