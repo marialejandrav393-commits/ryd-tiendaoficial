@@ -11,6 +11,7 @@
         :root {
             --ryd-gold: #C5A059;
             --ryd-gold-dark: #9D7B38;
+            --ryd-gold-light: #DFCA98;
             --ryd-bg: #F8F5F0;
             --ryd-surface: #FFFFFF;
             --ryd-beige-card: #F2ECE1;
@@ -18,14 +19,16 @@
             --ryd-border-light: #F4EFE6;
             --ryd-text: #2C2620;
             --ryd-muted: #827668;
-            --emboss-shadow: 4px 4px 10px rgba(180, 165, 140, 0.25), -4px -4px 10px rgba(255, 255, 255, 0.9);
+            --emboss-shadow: 4px 4px 10px rgba(180, 165, 140, 0.3), -4px -4px 10px rgba(255, 255, 255, 0.95);
             --emboss-btn: 3px 3px 7px rgba(180, 165, 140, 0.28), -3px -3px 7px rgba(255, 255, 255, 0.9);
+            --emboss-active: inset 2px 2px 5px rgba(180, 165, 140, 0.3), inset -2px -2px 5px rgba(255, 255, 255, 0.85);
         }
 
         body {
             background-color: var(--ryd-bg);
             color: var(--ryd-text);
-            font-family: 'Cinzel', 'Segoe UI', serif;
+            font-family: 'Cinzel', 'Playfair Display', 'Cormorant Garamond', 'Segoe UI', serif;
+            letter-spacing: 0.3px;
             margin: 0;
             padding: 0;
         }
@@ -34,6 +37,7 @@
             background: var(--ryd-surface);
             border-bottom: 1.5px solid var(--ryd-border);
             padding: 16px 36px;
+            box-shadow: 0 4px 20px rgba(70, 60, 45, 0.03);
         }
 
         .brand-title {
@@ -56,15 +60,74 @@
         .input-luxury {
             background: #FAF7F2;
             border: 1px solid var(--ryd-border);
-            border-radius: 6px;
+            border-radius: 8px;
             color: var(--ryd-text);
-            padding: 9px 12px;
+            padding: 10px 14px;
             font-size: 0.88rem;
+            box-shadow: inset 1px 1px 3px rgba(180, 165, 140, 0.12);
         }
         .input-luxury:focus {
             border-color: var(--ryd-gold);
             background: #FFFFFF;
             outline: none;
+        }
+
+        .btn-3d {
+            background: var(--ryd-surface);
+            border: 1px solid var(--ryd-border);
+            color: var(--ryd-text);
+            font-weight: 700;
+            font-size: 0.78rem;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            padding: 9px 18px;
+            border-radius: 9px;
+            box-shadow: var(--emboss-btn);
+            transition: all 0.18s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+        .btn-3d:hover {
+            border-color: var(--ryd-gold);
+            color: var(--ryd-gold-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-3d-gold {
+            background: linear-gradient(135deg, #DFCA98, #B89248);
+            border: 1px solid #C5A059;
+            color: #FFFFFF;
+            box-shadow: 0 4px 12px rgba(184, 146, 72, 0.28), var(--emboss-btn);
+        }
+        .btn-3d-gold:hover {
+            background: linear-gradient(135deg, #D4B26F, #A6823C);
+            color: #FFFFFF;
+        }
+
+        .nav-tabs-luxury {
+            border-bottom: 1.5px solid var(--ryd-border);
+            gap: 10px;
+        }
+        .nav-tab-item {
+            padding: 10px 22px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.82rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-radius: 9px 9px 0 0;
+            color: var(--ryd-muted);
+            border: 1px solid transparent;
+            background: transparent;
+        }
+        .nav-tab-item.active {
+            background: var(--ryd-surface);
+            color: var(--ryd-gold-dark);
+            border: 1px solid var(--ryd-border);
+            border-bottom: 2px solid var(--ryd-surface);
+            margin-bottom: -1.5px;
+            box-shadow: 0 -3px 8px rgba(180, 165, 140, 0.12);
         }
 
         .table-scroll-container {
@@ -134,31 +197,21 @@
             font-weight: 600;
         }
 
-        .btn-gold {
-            background: linear-gradient(135deg, #D4B26F, #B89248);
-            border: none;
-            color: #FFFFFF;
-            font-weight: 700;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            padding: 10px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(184, 146, 72, 0.25);
-            transition: all 0.2s ease;
-        }
-        .btn-gold:hover {
-            background: linear-gradient(135deg, #C5A059, #9D7B38);
-            color: #FFFFFF;
-        }
-
-        .btn-outline-gold {
-            border: 1px solid var(--ryd-border);
+        .supplier-card {
             background: var(--ryd-surface);
-            color: var(--ryd-text);
-            font-weight: 600;
-            padding: 8px 16px;
-            border-radius: 6px;
+            border: 1px solid var(--ryd-border);
+            border-radius: 12px;
+            padding: 18px;
             box-shadow: var(--emboss-btn);
+            transition: all 0.18s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .supplier-card:hover {
+            border-color: var(--ryd-gold);
+            transform: translateY(-2px);
         }
     </style>
 </head>
@@ -166,88 +219,159 @@
 
 <header class="header-bar d-flex justify-content-between align-items-center">
     <a href="/admin" class="brand-title">RyD</a>
-    <div class="d-flex align-items-center">
-        <a href="/admin" class="btn btn-outline-gold btn-sm me-2">Panel Administrador</a>
-        <a href="/cajero/pos" class="btn btn-outline-gold btn-sm me-2">Terminal POS</a>
+    <div class="d-flex align-items-center gap-2">
+        <a href="/exportar_inventario_excel" class="btn-3d" title="Descarga el inventario estructurado">Exportar Excel Oficial</a>
+        <a href="/admin" class="btn-3d">Panel Administrador</a>
+        <a href="/cajero/pos" class="btn-3d">Terminal POS</a>
         <a href="/logout" class="btn btn-link btn-sm text-muted text-decoration-none">Cerrar Sesión</a>
     </div>
 </header>
 
 <div class="container-fluid px-4 my-4">
-    <div class="panel-luxury mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
-            <h5 style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 1.05rem; margin: 0;">
-                Recepción Universal de Facturas, Notas y Fotos
-            </h5>
-            <span id="badgePaginas" class="badge bg-light text-dark border px-3 py-2" style="display: none; letter-spacing: 1px;">
-                Origen: <strong id="numPaginasTxt">Archivo</strong>
-            </span>
+    <!-- Pestañas de Vista -->
+    <div class="d-flex nav-tabs-luxury mb-4">
+        <button type="button" id="tabBtnCarga" class="nav-tab-item active" onclick="cambiarPestana('carga')">
+            Recepción Universal de Facturas y Notas
+        </button>
+        <button type="button" id="tabBtnDirectorio" class="nav-tab-item" onclick="cambiarPestana('directorio')">
+            Directorio y Reposición de Proveedores ({{ proveedores_guardados|length }})
+        </button>
+    </div>
+
+    <!-- PESTAÑA 1: CARGA DE ARCHIVOS -->
+    <div id="seccionCarga">
+        <div class="panel-luxury mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                <h5 style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 1.05rem; margin: 0;">
+                    Recepción Universal de Documentos y Facturas
+                </h5>
+                <span id="badgePaginas" class="badge bg-light text-dark border px-3 py-2" style="display: none; letter-spacing: 1px;">
+                    Origen: <strong id="numPaginasTxt">Archivo</strong>
+                </span>
+            </div>
+
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase;">Nombre del Comercio / Proveedor</label>
+                    <input type="text" id="nombreProveedor" class="form-control input-luxury" placeholder="Ej. Miceli / Storefit / Hogar Ideal / Aura">
+                </div>
+                <div class="col-md-3">
+                    <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase;">Teléfono / Contacto WhatsApp</label>
+                    <input type="text" id="telefonoProveedor" class="form-control input-luxury" placeholder="Ej. 04129583694">
+                </div>
+                <div class="col-md-4">
+                    <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase;">Seleccionar Archivo (Foto WhatsApp, PDF o Excel)</label>
+                    <input type="file" id="archivoFactura" class="form-control input-luxury" accept=".xlsx, .xls, .csv, .pdf, image/*">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" id="btnProcesarDoc" class="btn-3d btn-3d-gold w-100 py-2" onclick="iniciarProcesamientoFactura()">
+                        Procesar Factura
+                    </button>
+                </div>
+            </div>
+
+            <div id="indicadorCarga" class="mt-3 text-center small text-muted" style="display: none; letter-spacing: 0.8px;">
+                <span class="spinner-border spinner-border-sm text-warning me-2" role="status"></span>
+                <span id="txtEstadoCarga">Extrayendo texto y estructurando artículos...</span>
+            </div>
         </div>
 
-        <div class="row g-3 align-items-end">
-            <div class="col-md-3">
-                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase;">Nombre del Comercio / Proveedor</label>
-                <input type="text" id="nombreProveedor" class="form-control input-luxury" placeholder="Ej. Miceli / Storefit / Hogar Ideal">
+        <div class="panel-luxury">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h6 style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 0.95rem; margin: 0;">
+                        Items Extraídos para Incorporar a Inventario
+                    </h6>
+                    <small class="text-muted" style="font-size: 0.78rem;">
+                        Artículos listados: <strong id="contadorItems" style="color: var(--ryd-gold-dark);">0</strong>
+                    </small>
+                </div>
+                <div>
+                    <button type="button" class="btn-3d me-2" onclick="agregarFilaManual()">+ Fila Manual</button>
+                    <button type="button" class="btn-3d btn-3d-gold" onclick="guardarFacturaEnInventario()">Guardar en Inventario</button>
+                </div>
             </div>
-            <div class="col-md-3">
-                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase;">Teléfono / Contacto</label>
-                <input type="text" id="telefonoProveedor" class="form-control input-luxury" placeholder="Ej. 04129583694">
-            </div>
-            <div class="col-md-4">
-                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase;">Seleccionar Archivo (Foto WhatsApp, PDF o Excel)</label>
-                <input type="file" id="archivoFactura" class="form-control input-luxury" accept=".xlsx, .xls, .csv, .pdf, image/*">
-            </div>
-            <div class="col-md-2">
-                <button type="button" id="btnProcesarDoc" class="btn btn-gold w-100 py-2" onclick="iniciarProcesamientoFactura()">
-                    Procesar Factura
-                </button>
-            </div>
-        </div>
 
-        <div id="indicadorCarga" class="mt-3 text-center small text-muted" style="display: none; letter-spacing: 0.8px;">
-            <span class="spinner-border spinner-border-sm text-warning me-2" role="status"></span>
-            <span id="txtEstadoCarga">Extrayendo texto y estructurando artículos...</span>
+            <div class="table-scroll-container">
+                <table class="table table-luxury align-middle" id="tablaFactura">
+                    <thead>
+                        <tr>
+                            <th style="width: 120px;">Código SKU</th>
+                            <th>Nombre del Producto</th>
+                            <th style="width: 85px;" title="Costo unitario individual">Costo ($)</th>
+                            <th style="width: 95px;" title="Unidades que vienen en el empaque">Unid. Empaque</th>
+                            <th style="width: 80px;">Ganancia %</th>
+                            <th style="width: 80px;">Desc %</th>
+                            <th style="width: 95px;">Precio ($)</th>
+                            <th style="width: 80px;" title="Stock final en tienda">Stock</th>
+                            <th style="width: 160px;">Categoría</th>
+                            <th style="width: 35px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="cuerpoFactura">
+                        <tr>
+                            <td colspan="10" class="text-center py-5 text-muted small">Selecciona tu factura o foto y presiona "Procesar Factura" para cargar los artículos.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <div class="panel-luxury">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <h6 style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 0.95rem; margin: 0;">
-                    Items de la Factura para Incorporar a Inventario
-                </h6>
-                <small class="text-muted" style="font-size: 0.78rem;">
-                    Artículos listados: <strong id="contadorItems" style="color: var(--ryd-gold-dark);">0</strong>
-                </small>
+    <!-- PESTAÑA 2: DIRECTORIO AUTOMÁTICO DE PROVEEDORES -->
+    <div id="seccionDirectorio" style="display: none;">
+        <div class="panel-luxury">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2 border-bottom pb-2">
+                <div>
+                    <h5 style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 1.05rem; margin: 0;">
+                        Directorio y Agenda Automática de Proveedores
+                    </h5>
+                    <small class="text-muted">Los proveedores y sus números de teléfono se guardan de forma automática cada vez que procesas una factura.</small>
+                </div>
+                <div style="max-width: 350px; width: 100%;">
+                    <input type="text" id="buscadorProveedores" class="form-control input-luxury" placeholder="Buscar proveedor por nombre o teléfono..." oninput="filtrarDirectorio(this.value)">
+                </div>
             </div>
-            <div>
-                <button type="button" class="btn btn-outline-gold btn-sm me-2" onclick="agregarFilaManual()">+ Fila Manual</button>
-                <button type="button" class="btn btn-gold btn-sm" onclick="guardarFacturaEnInventario()">Guardar en Inventario</button>
-            </div>
-        </div>
 
-        <div class="table-scroll-container">
-            <table class="table table-luxury align-middle" id="tablaFactura">
-                <thead>
-                    <tr>
-                        <th style="width: 115px;">Código SKU</th>
-                        <th>Nombre del Producto</th>
-                        <th style="width: 85px;" title="Costo unitario individual">Costo ($)</th>
-                        <th style="width: 95px;" title="Unidades que vienen en el empaque">Unid. Empaque</th>
-                        <th style="width: 80px;">Ganancia %</th>
-                        <th style="width: 80px;">Desc %</th>
-                        <th style="width: 95px;">Precio ($)</th>
-                        <th style="width: 80px;" title="Stock final en tienda">Stock</th>
-                        <th style="width: 160px;">Categoría</th>
-                        <th style="width: 35px;"></th>
-                    </tr>
-                </thead>
-                <tbody id="cuerpoFactura">
-                    <tr>
-                        <td colspan="10" class="text-center py-5 text-muted small">Selecciona tu factura o foto y presiona "Procesar Factura" para cargar los artículos.</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="row g-3" id="grillaProveedores">
+                {% for prov in proveedores_guardados %}
+                <div class="col-md-4 col-sm-6 tarjeta-prov" data-nombre="{{ prov.nombre|lower }}" data-telefono="{{ prov.telefono|lower }}">
+                    <div class="supplier-card">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="fw-bold m-0" style="color: var(--ryd-text); font-size: 0.95rem;">{{ prov.nombre }}</h6>
+                                <span class="badge bg-light text-dark border small">ID #{{ prov.id }}</span>
+                            </div>
+                            <p class="small text-muted mb-1">
+                                <strong>Teléfono:</strong> {{ prov.telefono if prov.telefono else 'No registrado' }}
+                            </p>
+                            <p class="small text-muted mb-1">
+                                <strong>Última Compra:</strong> {{ prov.ultima_compra if prov.ultima_compra else 'Reciente' }}
+                            </p>
+                            <p class="small text-muted mb-2">
+                                <strong>Total Comprado:</strong> ${{ "%.2f"|format(prov.total_compras) }}
+                            </p>
+                        </div>
+                        <div class="pt-2 border-top">
+                            {% if prov.telefono %}
+                            {% set tel_limpio = prov.telefono|replace(' ', '')|replace('-', '')|replace('+', '') %}
+                            {% set tel_wa = ('58' + tel_limpio[1:]) if tel_limpio.startswith('0') else tel_limpio %}
+                            <a href="https://wa.me/{{ tel_wa }}?text=Hola%20somos%20RyD,%20deseamos%20hacer%20un%20pedido%20de%20reposición%20de%20mercancía." 
+                               target="_blank" class="btn-3d btn-3d-gold w-100 py-2 text-center" style="font-size: 0.72rem;">
+                                Pedir por WhatsApp
+                            </a>
+                            {% else %}
+                            <button class="btn-3d w-100 py-2 text-center text-muted" disabled style="font-size: 0.72rem;">Sin Teléfono Registrado</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-12 text-center py-5 text-muted small">
+                    No hay proveedores registrados aún. Al procesar y guardar tu primera factura, se registrarán automáticamente aquí.
+                </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
 </div>
@@ -263,6 +387,33 @@ const categoriasOficiales = [
     "Íntimo",
     "General"
 ];
+
+function cambiarPestana(pestana) {
+    if (pestana === 'carga') {
+        document.getElementById('seccionCarga').style.display = 'block';
+        document.getElementById('seccionDirectorio').style.display = 'none';
+        document.getElementById('tabBtnCarga').classList.add('active');
+        document.getElementById('tabBtnDirectorio').classList.remove('active');
+    } else {
+        document.getElementById('seccionCarga').style.display = 'none';
+        document.getElementById('seccionDirectorio').style.display = 'block';
+        document.getElementById('tabBtnCarga').classList.remove('active');
+        document.getElementById('tabBtnDirectorio').classList.add('active');
+    }
+}
+
+function filtrarDirectorio(termino) {
+    const val = termino.trim().toLowerCase();
+    document.querySelectorAll('.tarjeta-prov').forEach(tarjeta => {
+        const nom = tarjeta.getAttribute('data-nombre') || '';
+        const tel = tarjeta.getAttribute('data-telefono') || '';
+        if (nom.includes(val) || tel.includes(val)) {
+            tarjeta.style.display = 'block';
+        } else {
+            tarjeta.style.display = 'none';
+        }
+    });
+}
 
 function normalizarCategoria(catTexto) {
     if (!catTexto) return "General";
@@ -576,8 +727,8 @@ function guardarFacturaEnInventario() {
     .then(res => res.json())
     .then(data => {
         if (data.exito) {
-            alert("Inventario guardado con exactitud matemática.");
-            window.location.href = '/admin';
+            alert("¡Inventario actualizado y proveedor registrado en el Directorio!");
+            window.location.reload();
         } else {
             alert("Error al guardar: " + data.mensaje);
         }
