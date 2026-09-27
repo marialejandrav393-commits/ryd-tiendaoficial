@@ -523,13 +523,38 @@ def guardar_factura_proveedor():
         return jsonify({'exito': False, 'mensaje': str(e)}), 500
 
 
+import io
+import re
+from pypdf import PdfReader
+
+def clasificar_categoria_ryd(descripcion):
+    desc = descripcion.lower()
+
+    if any(k in desc for k in ['olla', 'sm-200', 'ventilador', 'lampara', 'extractor', 'pulidor', 'drill', 'esterilizador', 'maquina']):
+        return "Aparatología"
+    if any(k in desc for k in ['pestañ', 'ceja', 'henna', 'lash', 'brow', 'volumen', 'pigmento']):
+        return "Cejas y Pestañas"
+    if any(k in desc for k in ['esmalte', 'lipstick', 'brush on', 'gel', 'finish', 'rubber', 'cuticula', 'protein', 'polygel', 'acrygel', 'serum', 'nail', 'primer', 'ultrabond', 'blossom', 'base coat', 'builder', 'tijera', 'cortauna', 'lima', 'punta', 'jelly', 'pincel', 'bledo', 'dappen', 'guillotina', 'empujador']):
+        return "Uñas"
+    if any(k in desc for k in ['gorro', 'guante', 'desechable', 'tapa boca', 'mascarilla', 'toalla', 'separador', 'palitos']):
+        return "Desechables"
+    if any(k in desc for k in ['peine', 'difusor', 'ondas', 'cepillo', 'shampoo', 'keratina', 'tinte', 'plancha']):
+        return "Cabello"
+    if any(k in desc for k in ['intimo', 'jabon intimo', 'cera depilatoria', 'roll on', 'banda depilacion']):
+        return "Íntimo"
+    if any(k in desc for k in ['alcohol', 'acetona', 'algodon', 'cleanser', 'sanitizante', 'exfoliante', 'espuma', 'sponge', 'mantequilla', 'gota cicatrizante']):
+        return "Insumos"
+
+    return "General"
+
+
 @app.route('/procesar_factura_ocr', methods=['POST'])
 def procesar_factura_ocr():
     if 'factura' not in request.files:
         return jsonify({'exito': False, 'mensaje': 'No se cargó ningún archivo'}), 400
 
     archivo = request.files['factura']
-    nombre = archivo.filename.lower()
+    nombre = (archivo.filename or "").lower()
 
     comercio = ""
     telefono = ""
@@ -537,6 +562,7 @@ def procesar_factura_ocr():
     total_paginas = 0
 
     try:
+        # Acepta tanto .pdf como .PDF
         if nombre.endswith('.pdf'):
             reader = PdfReader(io.BytesIO(archivo.read()))
             total_paginas = len(reader.pages)
@@ -545,6 +571,7 @@ def procesar_factura_ocr():
             for page in reader.pages:
                 texto_completo += "\n" + (page.extract_text() or "")
 
+            # 1. Comercio
             if "GOOD TIMES" in texto_completo.upper():
                 comercio = "Inversiones J.S Good Times C.A"
             elif "AURA" in texto_completo.upper():
@@ -558,6 +585,7 @@ def procesar_factura_ocr():
                 if not comercio and lineas_sup:
                     comercio = lineas_sup[0].title()
 
+            # 2. Teléfono
             m_tel = re.search(r'(?:Telf|Tel|Cel|WhatsApp)?[:\s]*(04\d{2}[\s\-]?\d{7}|\+?58[\s\-]?\d{10})', texto_completo, re.IGNORECASE)
             if m_tel:
                 telefono = m_tel.group(1).replace(" ", "").replace("-", "")
@@ -568,7 +596,7 @@ def procesar_factura_ocr():
 
             lineas = [l.strip() for l in texto_completo.split('\n') if l.strip()]
 
-            # Formato A: Nota de Despacho POS
+            # 3. Formato A: Nota de Despacho POS (fact roysviner dommar.PDF)
             i = 0
             while i < len(lineas):
                 linea_actual = lineas[i]
@@ -576,11 +604,12 @@ def procesar_factura_ocr():
                     break
 
                 m_qty = re.match(r'^(\d+)[,\.]00$', linea_actual)
-                if m_qty and i + 2 < len(lineas):
+                if m_qty and (i + 2) < len(lineas):
                     cant = int(m_qty.group(1))
                     desc = lineas[i + 1].strip()
                     price_line = lineas[i + 2].strip()
 
+                    # Separación matemática precisa: cantidad * costo_unitario == total
                     costo_encontrado = None
                     for split_pos in range(1, len(price_line)):
                         s1 = price_line[:split_pos].replace(',', '.')
@@ -605,15 +634,13 @@ def procesar_factura_ocr():
                             costo_encontrado = 0.0
 
                     if desc and costo_encontrado > 0:
-                        # EMPAQUE POR DEFECTO: 1 (Evita fraccionar tips, kits o cajas completas)
-                        empaque = 1
                         cat = clasificar_categoria_ryd(desc)
 
                         items.append({
                             'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
                             'nombre': desc.title(),
                             'costo': round(costo_encontrado, 2),
-                            'unidades_empaque': empaque,
+                            'unidades_empaque': 1,
                             'cant_comprada': cant,
                             'stock': cant,
                             'categoria': cat
@@ -622,7 +649,7 @@ def procesar_factura_ocr():
                         continue
                 i += 1
 
-            # Formato B: Factura Presupuesto Estándar
+            # 4. Formato B: Factura Presupuesto Estándar (roy damma aura.pdf)
             if not items:
                 clean_lines = [l.replace('|', ' ').strip() for l in lineas]
                 idx = 0
@@ -656,18 +683,28 @@ def procesar_factura_ocr():
                             continue
 
                     if desc and costo_compra > 0:
-                        empaque = 1
                         cat = clasificar_categoria_ryd(desc)
 
                         items.append({
                             'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
                             'nombre': desc.title(),
                             'costo': round(costo_compra, 2),
-                            'unidades_empaque': empaque,
+                            'unidades_empaque': 1,
                             'cant_comprada': cant,
                             'stock': cant,
                             'categoria': cat
                         })
+
+        return jsonify({
+            'exito': True,
+            'comercio': comercio,
+            'telefono': telefono,
+            'total_paginas': total_paginas,
+            'items': items
+        })
+
+    except Exception as e:
+        return jsonify({'exito': False, 'mensaje': f'Error en procesamiento: {str(e)}'}), 500
 
         return jsonify({
             'exito': True,
