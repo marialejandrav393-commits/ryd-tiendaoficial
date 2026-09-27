@@ -471,6 +471,8 @@ def ticket(venta_id):
 def proveedores():
     return render_template('proveedores.html')
 
+# --- MÓDULO PROVEEDORES Y FACTURAS INTELIGENTES (CON ANTI-DUPLICADOS) ---
+
 @app.route('/guardar_factura_proveedor', methods=['POST'])
 def guardar_factura_proveedor():
     data = request.get_json()
@@ -479,40 +481,39 @@ def guardar_factura_proveedor():
     items = data.get('items', [])
 
     if not items:
-        return jsonify({'exito': False, 'mensaje': 'Sin productos'}), 400
+        return jsonify({'exito': False, 'mensaje': 'Sin productos para registrar'}), 400
 
     conn = obtener_conexion()
     try:
-        # Registrar o verificar si existe el producto para actualizar o insertar
         for it in items:
-            existente = conn.execute('SELECT id, stock FROM productos WHERE codigo = ?', (str(it['codigo']),)).fetchone()
+            cod = str(it.get('codigo', '')).strip()
+            nom = str(it.get('nombre', '')).strip()
+            costo = float(it.get('costo', 0))
+            precio = float(it.get('precio', 0))
+            stock_nuevo = int(it.get('stock', 0))
+            cat = str(it.get('categoria', 'General')).strip()
+            desc = float(it.get('descuento', 0))
+
+            # 1. VERIFICAR ANTI-DUPLICADOS: Busca primero por código exacto o por nombre idéntico
+            existente = conn.execute(
+                'SELECT id, codigo, stock FROM productos WHERE UPPER(codigo) = UPPER(?) OR UPPER(TRIM(nombre)) = UPPER(?)',
+                (cod, nom)
+            ).fetchone()
+
             if existente:
+                # Si ya existe, NO DUPLICA: Suma el stock nuevo al existente y actualiza precio/costo
                 conn.execute('''
                     UPDATE productos 
-                    SET nombre = ?, costo = ?, precio = ?, stock = stock + ?, categoria = ?, descuento = ?
-                    WHERE codigo = ?
-                ''', (
-                    str(it['nombre']),
-                    float(it['costo']),
-                    float(it['precio']),
-                    int(it['stock']),
-                    str(it['categoria']),
-                    float(it['descuento']),
-                    str(it['codigo'])
-                ))
+                    SET costo = ?, precio = ?, stock = stock + ?, categoria = ?, descuento = ?
+                    WHERE id = ?
+                ''', (costo, precio, stock_nuevo, cat, desc, existente['id']))
             else:
+                # Si es un artículo completamente nuevo, lo inserta
                 conn.execute('''
                     INSERT INTO productos (codigo, nombre, costo, precio, stock, categoria, descuento)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    str(it['codigo']),
-                    str(it['nombre']),
-                    float(it['costo']),
-                    float(it['precio']),
-                    int(it['stock']),
-                    str(it['categoria']),
-                    float(it['descuento'])
-                ))
+                ''', (cod, nom, costo, precio, stock_nuevo, cat, desc))
+
         conn.commit()
         conn.close()
         return jsonify({'exito': True})
@@ -520,134 +521,6 @@ def guardar_factura_proveedor():
         conn.rollback()
         conn.close()
         return jsonify({'exito': False, 'mensaje': str(e)}), 500
-
-import io
-import re
-from pypdf import PdfReader
-
-import io
-import re
-from pypdf import PdfReader
-
-import io
-import re
-from pypdf import PdfReader
-
-import io
-import re
-from pypdf import PdfReader
-
-import io
-import re
-from pypdf import PdfReader
-
-def clasificar_categoria_ryd(descripcion):
-    desc = descripcion.lower()
-
-    # Aparatología
-    if any(k in desc for k in ['olla', 'sm-200', 'ventilador', 'lampara', 'extractor', 'pulidor', 'drill', 'esterilizador', 'maquina']):
-        return "Aparatología"
-
-    # Cejas y Pestañas
-    if any(k in desc for k in ['pestañ', 'ceja', 'henna', 'lash', 'brow', 'pinza', 'volumen', 'pigmento']):
-        return "Cejas y Pestañas"
-
-    # Uñas
-    if any(k in desc for k in ['tijera', 'cortauna', 'cuticula', 'lima', 'esmalte', 'gel', 'acrilico', 'monomero', 'pincel', 'tip', 'nail']):
-        return "Uñas"
-
-    # Desechables
-    if any(k in desc for k in ['gorro', 'guante', 'desechable', 'tapa boca', 'mascarilla', 'toalla desechable', 'cubrecama']):
-        return "Desechables"
-
-    # Cabello
-    if any(k in desc for k in ['peine', 'difusor', 'ondas', 'cepillo', 'shampoo', 'keratina', 'tinte', 'plancha cabello']):
-        return "Cabello"
-
-    # Íntimo / Depilación
-    if any(k in desc for k in ['intimo', 'cera depilatoria', 'roll on', 'banda depilacion', 'post depil']):
-        return "Íntimo"
-
-    # Insumos Generales
-    if any(k in desc for k in ['alcohol', 'acetona', 'algodon', 'cleanser', 'sanitizante', 'papel']):
-        return "Insumos"
-
-    return "General"
-
-
-import io
-import re
-from pypdf import PdfReader
-
-def clasificar_categoria_ryd(descripcion):
-    desc = descripcion.lower()
-
-    # Aparatología
-    if any(k in desc for k in ['olla', 'sm-200', 'ventilador', 'lampara', 'extractor', 'pulidor', 'drill', 'esterilizador', 'maquina']):
-        return "Aparatología"
-
-    # Cejas y Pestañas
-    if any(k in desc for k in ['pestañ', 'ceja', 'henna', 'lash', 'brow', 'volumen', 'pigmento']):
-        return "Cejas y Pestañas"
-
-    # Uñas
-    if any(k in desc for k in ['esmalte', 'lipstick', 'brush on', 'gel', 'finish', 'rubber', 'cuticula', 'protein', 'polygel', 'acrygel', 'serum', 'nail', 'primer', 'ultrabond', 'blossom', 'base coat', 'builder', 'tijera', 'cortauna', 'lima', 'punta', 'jelly', 'pincel', 'bledo', 'dappen', 'guillotina', 'empujador']):
-        return "Uñas"
-
-    # Desechables
-    if any(k in desc for k in ['gorro', 'guante', 'desechable', 'tapa boca', 'mascarilla', 'toalla', 'separador', 'palitos']):
-        return "Desechables"
-
-    # Cabello
-    if any(k in desc for k in ['peine', 'difusor', 'ondas', 'cepillo', 'shampoo', 'keratina', 'tinte', 'plancha']):
-        return "Cabello"
-
-    # Íntimo / Depilación
-    if any(k in desc for k in ['intimo', 'jabon intimo', 'cera depilatoria', 'roll on', 'banda depilacion']):
-        return "Íntimo"
-
-    # Insumos Generales
-    if any(k in desc for k in ['alcohol', 'acetona', 'algodon', 'cleanser', 'sanitizante', 'exfoliante', 'espuma', 'sponge', 'mantequilla', 'gota cicatrizante']):
-        return "Insumos"
-
-    return "General"
-
-import io
-import re
-from pypdf import PdfReader
-
-def clasificar_categoria_ryd(descripcion):
-    desc = descripcion.lower()
-
-    # Aparatología
-    if any(k in desc for k in ['olla', 'sm-200', 'ventilador', 'lampara', 'extractor', 'pulidor', 'drill', 'esterilizador', 'maquina']):
-        return "Aparatología"
-
-    # Cejas y Pestañas
-    if any(k in desc for k in ['pestañ', 'ceja', 'henna', 'lash', 'brow', 'volumen', 'pigmento']):
-        return "Cejas y Pestañas"
-
-    # Uñas
-    if any(k in desc for k in ['esmalte', 'lipstick', 'brush on', 'gel', 'finish', 'rubber', 'cuticula', 'protein', 'polygel', 'acrygel', 'serum', 'nail', 'primer', 'ultrabond', 'blossom', 'base coat', 'builder', 'tijera', 'cortauna', 'lima', 'punta', 'jelly', 'pincel', 'bledo', 'dappen', 'guillotina', 'empujador']):
-        return "Uñas"
-
-    # Desechables
-    if any(k in desc for k in ['gorro', 'guante', 'desechable', 'tapa boca', 'mascarilla', 'toalla', 'separador', 'palitos']):
-        return "Desechables"
-
-    # Cabello
-    if any(k in desc for k in ['peine', 'difusor', 'ondas', 'cepillo', 'shampoo', 'keratina', 'tinte', 'plancha']):
-        return "Cabello"
-
-    # Íntimo / Depilación
-    if any(k in desc for k in ['intimo', 'jabon intimo', 'cera depilatoria', 'roll on', 'banda depilacion']):
-        return "Íntimo"
-
-    # Insumos Generales
-    if any(k in desc for k in ['alcohol', 'acetona', 'algodon', 'cleanser', 'sanitizante', 'exfoliante', 'espuma', 'sponge', 'mantequilla', 'gota cicatrizante']):
-        return "Insumos"
-
-    return "General"
 
 
 @app.route('/procesar_factura_ocr', methods=['POST'])
@@ -672,7 +545,6 @@ def procesar_factura_ocr():
             for page in reader.pages:
                 texto_completo += "\n" + (page.extract_text() or "")
 
-            # 1. Comercio
             if "GOOD TIMES" in texto_completo.upper():
                 comercio = "Inversiones J.S Good Times C.A"
             elif "AURA" in texto_completo.upper():
@@ -686,7 +558,6 @@ def procesar_factura_ocr():
                 if not comercio and lineas_sup:
                     comercio = lineas_sup[0].title()
 
-            # 2. Teléfono
             m_tel = re.search(r'(?:Telf|Tel|Cel|WhatsApp)?[:\s]*(04\d{2}[\s\-]?\d{7}|\+?58[\s\-]?\d{10})', texto_completo, re.IGNORECASE)
             if m_tel:
                 telefono = m_tel.group(1).replace(" ", "").replace("-", "")
@@ -697,7 +568,7 @@ def procesar_factura_ocr():
 
             lineas = [l.strip() for l in texto_completo.split('\n') if l.strip()]
 
-            # 3. Formato A: Nota de Despacho POS
+            # Formato A: Nota de Despacho POS
             i = 0
             while i < len(lineas):
                 linea_actual = lineas[i]
@@ -734,33 +605,24 @@ def procesar_factura_ocr():
                             costo_encontrado = 0.0
 
                     if desc and costo_encontrado > 0:
-                        nom_lower = desc.lower()
+                        # EMPAQUE POR DEFECTO: 1 (Evita fraccionar tips, kits o cajas completas)
                         empaque = 1
-                        if 'docena' in nom_lower:
-                            empaque = 12
-                        else:
-                            m_pack = re.search(r'(?:paquete|caja|pack|set|x)\s*(\d+)', nom_lower)
-                            if m_pack:
-                                empaque = int(m_pack.group(1))
-
                         cat = clasificar_categoria_ryd(desc)
-                        costo_unit = round(costo_encontrado / empaque, 2)
-                        stock_calc = cant * empaque
 
                         items.append({
                             'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
                             'nombre': desc.title(),
-                            'costo': costo_unit,
+                            'costo': round(costo_encontrado, 2),
                             'unidades_empaque': empaque,
                             'cant_comprada': cant,
-                            'stock': stock_calc,
+                            'stock': cant,
                             'categoria': cat
                         })
                         i += 3
                         continue
                 i += 1
 
-            # 4. Formato B: Factura Presupuesto Estándar
+            # Formato B: Factura Presupuesto Estándar
             if not items:
                 clean_lines = [l.replace('|', ' ').strip() for l in lineas]
                 idx = 0
@@ -794,28 +656,29 @@ def procesar_factura_ocr():
                             continue
 
                     if desc and costo_compra > 0:
-                        nom_lower = desc.lower()
                         empaque = 1
-                        if 'docena' in nom_lower:
-                            empaque = 12
-                        else:
-                            m_pack = re.search(r'(?:paquete|caja|pack|set|x)\s*(\d+)', nom_lower)
-                            if m_pack:
-                                empaque = int(m_pack.group(1))
-
                         cat = clasificar_categoria_ryd(desc)
-                        costo_unit = round(costo_compra / empaque, 2)
-                        stock_calc = cant * empaque
 
                         items.append({
                             'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
                             'nombre': desc.title(),
-                            'costo': costo_unit,
+                            'costo': round(costo_compra, 2),
                             'unidades_empaque': empaque,
                             'cant_comprada': cant,
-                            'stock': stock_calc,
+                            'stock': cant,
                             'categoria': cat
                         })
+
+        return jsonify({
+            'exito': True,
+            'comercio': comercio,
+            'telefono': telefono,
+            'total_paginas': total_paginas,
+            'items': items
+        })
+
+    except Exception as e:
+        return jsonify({'exito': False, 'mensaje': f'Error en procesamiento: {str(e)}'}), 500
 
         return jsonify({
             'exito': True,
