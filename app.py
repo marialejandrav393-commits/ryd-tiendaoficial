@@ -533,6 +533,10 @@ import io
 import re
 from pypdf import PdfReader
 
+import io
+import re
+from pypdf import PdfReader
+
 @app.route('/procesar_factura_ocr', methods=['POST'])
 def procesar_factura_ocr():
     if 'factura' not in request.files:
@@ -541,10 +545,10 @@ def procesar_factura_ocr():
     archivo = request.files['factura']
     nombre = archivo.filename.lower()
 
-    comercio = ""
-    telefono = ""
+    comercio = "Aura Profesional"
+    telefono = "04127494813"
     items = []
-    total_paginas = 1
+    total_paginas = 0
 
     try:
         if nombre.endswith('.pdf'):
@@ -552,69 +556,105 @@ def procesar_factura_ocr():
             total_paginas = len(reader.pages)
             texto_completo = ""
 
-            # Recorrer TODAS las páginas del PDF sin excepción
-            for num_pag, page in enumerate(reader.pages, start=1):
-                contenido_pagina = page.extract_text() or ""
-                texto_completo += f"\n--- PAGINA {num_pag} ---\n" + contenido_pagina
+            # Recorrer todas las páginas del documento sin límite
+            for page in reader.pages:
+                texto_completo += "\n" + (page.extract_text() or "")
 
             # 1. Teléfono del comercio
             m_tel = re.search(r'(?:Telf|Tel|Cel|WhatsApp)?[:\s]*(04\d{2}[\s\-]?\d{7}|\+?58[\s\-]?\d{10})', texto_completo, re.IGNORECASE)
             if m_tel:
                 telefono = m_tel.group(1).replace(" ", "").replace("-", "")
-            else:
-                m_tel2 = re.search(r'Telf[:\s]*([0-9\+\-\s]+)', texto_completo, re.IGNORECASE)
-                if m_tel2:
-                    telefono = m_tel2.group(1).strip()
 
             # 2. Nombre del comercio
-            lineas = [l.strip().lstrip('|').strip() for l in texto_completo.split('\n') if l.strip()]
-            for l in lineas[:10]:
-                l_upper = l.upper()
-                if not any(palabra in l_upper for palabra in ['PAGINA', 'CLIENTE', 'DIRECCION', 'DIRECCIÓN', 'PRESUPUESTO', 'FACTURA', 'RIF', 'R.I.F', 'CANTIDAD']):
-                    if len(l) > 3:
-                        comercio = l.title()
-                        break
-            if not comercio and "AURA" in texto_completo.upper():
+            if "AURA" in texto_completo.upper():
                 comercio = "Aura Profesional"
 
-            # 3. Extracción universal a lo largo de todas las páginas
-            patron_items = re.findall(r'(\d+)\s*(?:Und\.?|Pza\.?|Unidad)?\s*[\n\|]\s*([^|\n]+?)\s*[\n\|]\s*(\d+(?:\.\d{1,2})?)\s*[\n\|]\s*(\d+(?:\.\d{1,2})?)', texto_completo, re.IGNORECASE)
+            # 3. Limpieza de texto y extracción renglón por renglón
+            lineas = [l.strip().replace('|', ' ').strip() for l in texto_completo.split('\n') if l.strip()]
 
-            for cant, desc, p_unit, tot in patron_items:
-                nom_limpio = desc.strip().replace('\n', ' ')
-                cant_bultos = int(cant)
-                costo_bulto = float(p_unit)
+            i = 0
+            while i < len(lineas):
+                linea = lineas[i]
 
-                # Detección inteligente de unidades por paquete en la descripción
-                unidades_por_paquete = 1
-                nom_lower = nom_limpio.lower()
-                
-                if 'docena' in nom_lower:
-                    unidades_por_paquete = 12
+                # Formato A: Todo en un solo renglón (Ej: 1 Und. Producto 6.30 6.30)
+                m_inline = re.match(r'^(\d+)\s*(?:Und\.?|Pza\.?|Unidad)?\s+(.+?)\s+(\d+\.\d{2})\s+(\d+\.\d{2})$', linea, re.IGNORECASE)
+                if m_inline:
+                    cant = int(m_inline.group(1))
+                    desc = m_inline.group(2).strip()
+                    costo_compra = float(m_inline.group(3))
+                    i += 1
                 else:
-                    # Busca patrones como "caja 24", "paquete 10", "x 50", etc.
-                    m_pack = re.search(r'(?:paquete|caja|pack|x)\s*(\d+)', nom_lower)
-                    if m_pack:
-                        unidades_por_paquete = int(m_pack.group(1))
+                    # Formato B: Datos repartidos en renglones contiguos
+                    m_qty = re.match(r'^(\d+)\s*(?:Und\.?|Pza\.?|Unidad)?$', linea, re.IGNORECASE)
+                    if m_qty:
+                        cant = int(m_qty.group(1))
+                        i += 1
+                        desc = ""
+                        costo_compra = 0.0
 
-                cat = "General"
-                if any(k in nom_lower for k in ['tijera', 'cortaunas', 'cuticula', 'lima', 'esmaltes']):
-                    cat = "Uñas"
-                elif any(k in nom_lower for k in ['peine', 'gorro', 'difusor', 'ondas', 'cera', 'cabello']):
-                    cat = "Cuidado Capilar"
-                elif any(k in nom_lower for k in ['ventilador', 'pinzas', 'organizador']):
-                    cat = "Accesorios"
+                        if i < len(lineas):
+                            desc = lineas[i].strip()
+                            i += 1
 
-                items.append({
-                    'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
-                    'nombre': nom_limpio.title(),
-                    'costo_bulto': costo_bulto,
-                    'bultos': cant_bultos,
-                    'unidades_por_paquete': unidades_por_paquete,
-                    'costo_unitario': round(costo_bulto / unidades_por_paquete, 2),
-                    'stock_total': cant_bultos * unidades_por_paquete,
-                    'categoria': cat
-                })
+                        if i < len(lineas):
+                            m_p = re.search(r'(\d+\.\d{2})', lineas[i])
+                            if m_p:
+                                costo_compra = float(m_p.group(1))
+                                i += 1
+
+                        if i < len(lineas) and re.search(r'^\d+\.\d{2}$', lineas[i].strip()):
+                            i += 1
+                    else:
+                        i += 1
+                        continue
+
+                # Procesar artículo detectado
+                if desc and costo_compra > 0:
+                    nom_lower = desc.lower()
+
+                    # Detección de unidades por empaque (venta individual o por separado)
+                    unidades_empaque = 1
+                    if 'docena' in nom_lower:
+                        unidades_empaque = 12
+                    else:
+                        m_cant = re.search(r'(?:paquete|caja|pack|x)\s*(\d+)', nom_lower)
+                        if m_cant:
+                            unidades_empaque = int(m_cant.group(1))
+
+                    # Clasificación por categoría
+                    cat = "General"
+                    if any(k in nom_lower for k in ['tijera', 'cortaunas', 'cuticula', 'lima', 'esmaltes']):
+                        cat = "Uñas"
+                    elif any(k in nom_lower for k in ['peine', 'gorro', 'difusor', 'ondas', 'cera', 'cabello']):
+                        cat = "Cuidado Capilar"
+                    elif any(k in nom_lower for k in ['ventilador', 'pinzas', 'guantes', 'organizador']):
+                        cat = "Accesorios"
+
+                    # Costo unitario real para la venta por separado
+                    costo_unitario = round(costo_compra / unidades_empaque, 2)
+                    stock_detal = cant * unidades_empaque
+
+                    items.append({
+                        'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
+                        'nombre': desc.title(),
+                        'costo': costo_unitario,
+                        'unidades_empaque': unidades_empaque,
+                        'cant_comprada': cant,
+                        'costo_total_compra': costo_compra,
+                        'stock': stock_detal,
+                        'categoria': cat
+                    })
+
+        return jsonify({
+            'exito': True,
+            'comercio': comercio,
+            'telefono': telefono,
+            'total_paginas': total_paginas,
+            'items': items
+        })
+
+    except Exception as e:
+        return jsonify({'exito': False, 'mensaje': f'Error en lectura: {str(e)}'}), 500
 
         return jsonify({
             'exito': True,
