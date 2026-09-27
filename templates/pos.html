@@ -57,7 +57,6 @@
             position: relative;
         }
 
-        /* Buscador Predictivo */
         .search-container {
             position: relative;
             width: 100%;
@@ -107,7 +106,6 @@
             background: var(--ryd-beige-card);
         }
 
-        /* Botones de Métodos de Pago en Relieve 3D */
         .payment-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -153,7 +151,6 @@
             display: block;
         }
 
-        /* Recuadro Destacado de Monto en Bolívares */
         .box-bs-destacado {
             background: linear-gradient(135deg, #FAF7F2, #F2ECE1);
             border: 1.5px solid var(--ryd-gold);
@@ -195,16 +192,18 @@
             align-items: center;
             gap: 6px;
         }
-        .rate-input {
+        /* Casilla de Tasa Protegida para el Cajero */
+        .rate-input-readonly {
             width: 80px;
-            background: #FFFFFF;
-            border: 1px solid var(--ryd-border);
-            border-radius: 5px;
+            background: transparent;
+            border: none;
             font-weight: 700;
             color: var(--ryd-gold-dark);
             text-align: center;
-            font-size: 0.85rem;
-            padding: 2px 4px;
+            font-size: 0.95rem;
+            cursor: not-allowed;
+            outline: none;
+            pointer-events: none;
         }
 
         .btn-3d {
@@ -220,6 +219,9 @@
             box-shadow: var(--emboss-btn);
             transition: all 0.18s ease;
             text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
         .btn-3d:hover {
             border-color: var(--ryd-gold);
@@ -256,6 +258,15 @@
             border-color: var(--ryd-gold);
             transform: translateY(-2px);
         }
+
+        /* Modal con Relieve para Autorización */
+        .modal-content-luxury {
+            background-color: var(--ryd-bg);
+            border: 1.5px solid var(--ryd-border);
+            border-radius: 14px;
+            box-shadow: var(--emboss-shadow);
+            padding: 24px;
+        }
     </style>
 </head>
 <body>
@@ -268,14 +279,19 @@
         </span>
     </div>
     <div class="d-flex align-items-center gap-2">
-        <!-- Control de Tasa en Caja -->
-        <div class="rate-badge-box me-2">
+        <!-- Tasa del Día: Bloqueada para el Cajero, visible en pantalla -->
+        <div class="rate-badge-box me-2" title="Tasa fijada por la administración">
             <span class="small text-muted fw-bold" style="font-size: 0.7rem; text-transform: uppercase;">Tasa Bs:</span>
-            <input type="number" id="inputTasaPos" class="rate-input" step="0.01" value="50.00" oninput="cambiarTasaPos(this.value)">
+            <input type="text" id="inputTasaPos" class="rate-input-readonly" readonly value="50.00">
         </div>
 
+        <!-- El botón Panel Admin SOLO se muestra si el usuario logueado es admin -->
+        {% if session.get('username') == 'admin' %}
         <a href="/admin" class="btn-3d me-1">Panel Admin</a>
-        <a href="/cierre-caja" class="btn-3d me-1" onclick="return confirm('Confirmar balance y finalizar turno')">Finalizar Turno</a>
+        {% endif %}
+
+        <!-- Finalizar Turno con Protección de Clave Administrativa -->
+        <button type="button" class="btn-3d me-1" onclick="abrirModalCierre()">Finalizar Turno</button>
         <a href="/logout" class="btn btn-link btn-sm text-muted text-decoration-none">Cerrar Sesión</a>
     </div>
 </header>
@@ -310,7 +326,7 @@
                 </div>
             </div>
 
-            <!-- Grilla Visual de Productos -->
+            <!-- Grilla Visual de Productos con Precios Duales ($ / Bs) -->
             <div class="panel-luxury" style="max-height: 65vh; overflow-y: auto;">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <span class="small fw-bold text-muted" style="letter-spacing: 1px; text-transform: uppercase;">Catálogo Disponible</span>
@@ -338,7 +354,7 @@
             </div>
         </div>
 
-        <!-- Panel Derecho: Carrito, Métodos en Relieve y Conversión a Bs -->
+        <!-- Panel Derecho: Carrito, Métodos de Pago y Liquidación -->
         <div class="col-lg-5">
             <div class="panel-luxury d-flex flex-column justify-content-between" style="min-height: 85vh;">
                 <div>
@@ -371,18 +387,18 @@
                         <h2 class="m-0 fw-bold" style="color: var(--ryd-gold-dark);" id="txtTotalUSD">$0.00</h2>
                     </div>
 
-                    <!-- Cuadro Destacado en Bolívares (Aparece al seleccionar Pago Móvil o Efectivo Bs) -->
+                    <!-- Cuadro Destacado en Bolívares con Tasa Oficial del Administrador -->
                     <div class="box-bs-destacado" id="cuadroTotalBs">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <span class="d-block fw-bold" style="font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; color: var(--ryd-muted);">Total a Cobrar en Bolívares</span>
-                                <small class="text-muted" id="txtTasaAplicada">Tasa del día: Bs. 50.00</small>
+                                <small class="text-muted" id="txtTasaAplicada">Tasa oficial fija</small>
                             </div>
                             <h3 class="m-0 fw-bold" style="color: var(--ryd-text);" id="txtTotalBs">Bs. 0.00</h3>
                         </div>
                     </div>
 
-                    <label class="small text-muted fw-bold mb-1" style="letter-spacing: 0.8px; text-transform: uppercase; font-size: 0.7rem;">Modalidad de Pago</label>
+                    <label class="small text-muted fw-bold mb-1" style="letter-spacing: 0.8px; text-transform: uppercase; font-size: 0.7rem;">Modalidad de Pago Requerida</label>
                     <div class="payment-grid mb-3">
                         <div class="payment-card active" onclick="seleccionarMetodo(this, 'Efectivo $')">
                             <span class="payment-card-title">Efectivo $</span>
@@ -410,9 +426,12 @@
                         </div>
                     </div>
 
+                    <!-- Campo de Registro Obligatorio según el método de pago -->
                     <div class="mb-3" id="bloqueReferencia" style="display: none;">
-                        <label class="small text-muted fw-bold mb-1" style="letter-spacing: 0.8px; text-transform: uppercase; font-size: 0.7rem;">Comprobante / Referencia Bancaria</label>
-                        <input type="text" id="inputReferencia" class="form-control search-input form-control-sm" placeholder="Registrar últimos 4 o 6 dígitos">
+                        <label class="small text-muted fw-bold mb-1" id="lblReferencia" style="letter-spacing: 0.8px; text-transform: uppercase; font-size: 0.7rem;">
+                            Comprobante / Referencia Bancaria (Obligatorio)
+                        </label>
+                        <input type="text" id="inputReferencia" class="form-control search-input form-control-sm" placeholder="Registrar referencia bancaria o desglose de pago mixto">
                     </div>
 
                     <button type="button" class="btn btn-action-gold w-100" onclick="procesarCobro()">
@@ -424,9 +443,31 @@
     </div>
 </div>
 
+<!-- Modal Emergente de Autorización Administrativa para Cierre de Turno -->
+<div class="modal fade" id="modalAutorizacionCierre" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-luxury">
+            <h6 class="fw-bold mb-2" style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 0.95rem; color: var(--ryd-gold-dark);">
+                Autorización de Cierre de Turno
+            </h6>
+            <p class="text-muted small mb-3">
+                Para consolidar el arqueo de caja y finalizar la sesión del cajero, ingrese la credencial del administrador:
+            </p>
+            <div class="mb-3">
+                <input type="password" id="claveAdminCierre" class="form-control search-input" placeholder="Contraseña de Administrador">
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn-3d py-2 px-3" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn-3d py-2 px-3" style="background: linear-gradient(135deg, #DFCA98, #B89248); color: #FFFFFF;" onclick="validarYFinalizarTurno()">Autorizar Cierre</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let carrito = [];
 let metodoSeleccionado = 'Efectivo $';
+// La tasa se recupera de la administración; el cajero solo la visualiza
 let tasaPos = parseFloat(localStorage.getItem('ryd_tasa_bcv')) || 50.00;
 
 const productosDisponibles = [
@@ -438,16 +479,6 @@ const productosDisponibles = [
 function iniciarPos() {
     document.getElementById('inputTasaPos').value = tasaPos.toFixed(2);
     actualizarTilesPreciosBs();
-}
-
-function cambiarTasaPos(val) {
-    const v = parseFloat(val);
-    if (!isNaN(v) && v > 0) {
-        tasaPos = v;
-        localStorage.setItem('ryd_tasa_bcv', tasaPos);
-        actualizarTilesPreciosBs();
-        renderizarCarrito();
-    }
 }
 
 function actualizarTilesPreciosBs() {
@@ -619,8 +650,6 @@ function renderizarCarrito() {
     });
 
     document.getElementById('txtTotalUSD').innerText = `$${totalUsd.toFixed(2)}`;
-    
-    // Cálculo en Bolívares con Tasa del Día
     const totalBs = totalUsd * tasaPos;
     document.getElementById('txtTotalBs').innerText = `Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     document.getElementById('txtTasaAplicada').innerText = `Tasa del día: Bs. ${tasaPos.toFixed(2)}`;
@@ -633,8 +662,9 @@ function seleccionarMetodo(elemento, metodo) {
 
     const cuadroBs = document.getElementById('cuadroTotalBs');
     const bloqueRef = document.getElementById('bloqueReferencia');
+    const lblRef = document.getElementById('lblReferencia');
+    const inputRef = document.getElementById('inputReferencia');
 
-    // Muestra el recuadro prominente de Bs si se paga en Bolívares o Pago Móvil
     if (['Efectivo Bs', 'Pago Móvil', 'Punto de Venta'].includes(metodo)) {
         cuadroBs.style.display = 'block';
     } else {
@@ -643,18 +673,35 @@ function seleccionarMetodo(elemento, metodo) {
 
     if (['Pago Móvil', 'Punto de Venta', 'Binance'].includes(metodo)) {
         bloqueRef.style.display = 'block';
+        lblRef.innerText = `Número de Comprobante / Referencia (${metodo}) - Requerido`;
+        inputRef.placeholder = "Ingrese los dígitos de la referencia bancaria";
+    } else if (metodo === 'Pago Mixto') {
+        bloqueRef.style.display = 'block';
+        lblRef.innerText = "Detalle de Pago Combinado (Ej: $5 efec + 300 Bs móvil) - Requerido";
+        inputRef.placeholder = "Detalle montos y formas de pago combinadas";
     } else {
         bloqueRef.style.display = 'none';
+        inputRef.value = '';
     }
 }
 
+// Validación integral antes de autorizar el cobro
 function procesarCobro() {
     if (carrito.length === 0) {
-        alert("Ingrese al menos un artículo en la cuenta.");
+        alert("Debe agregar al menos un artículo para emitir la factura de cobro.");
         return;
     }
 
     const referencia = document.getElementById('inputReferencia').value.trim();
+
+    // Verificación estricta de comprobante según la modalidad seleccionada
+    if (['Pago Móvil', 'Punto de Venta', 'Binance', 'Pago Mixto'].includes(metodoSeleccionado)) {
+        if (!referencia) {
+            alert(`Es obligatorio registrar el número de comprobante o referencia para la modalidad: ${metodoSeleccionado}.`);
+            document.getElementById('inputReferencia').focus();
+            return;
+        }
+    }
 
     fetch('/procesar_venta', {
         method: 'POST',
@@ -674,6 +721,31 @@ function procesarCobro() {
         }
     })
     .catch(() => alert("Error en comunicación con el servidor."));
+}
+
+// Manejo seguro del cierre de turno con clave de administrador
+let modalCierreInstance = null;
+function abrirModalCierre() {
+    const modalEl = document.getElementById('modalAutorizacionCierre');
+    modalCierreInstance = new bootstrap.Modal(modalEl);
+    document.getElementById('claveAdminCierre').value = '';
+    modalCierreInstance.show();
+}
+
+function validarYFinalizarTurno() {
+    const clave = document.getElementById('claveAdminCierre').value;
+    if (!clave) {
+        alert("Ingrese la contraseña de administrador.");
+        return;
+    }
+
+    // Validación de la clave del administrador
+    if (clave === 'admin123') {
+        modalCierreInstance.hide();
+        window.location.href = '/cierre-caja';
+    } else {
+        alert("Contraseña de administrador incorrecta. Cierre no autorizado.");
+    }
 }
 
 let html5QrCode = null;
@@ -711,5 +783,6 @@ window.addEventListener('DOMContentLoaded', () => {
     filtrarGrillaCatalogo('');
 });
 </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
