@@ -575,6 +575,44 @@ def clasificar_categoria_ryd(descripcion):
     return "General"
 
 
+import io
+import re
+from pypdf import PdfReader
+
+def clasificar_categoria_ryd(descripcion):
+    desc = descripcion.lower()
+
+    # Aparatología
+    if any(k in desc for k in ['olla', 'sm-200', 'ventilador', 'lampara', 'extractor', 'pulidor', 'drill', 'esterilizador', 'maquina']):
+        return "Aparatología"
+
+    # Cejas y Pestañas
+    if any(k in desc for k in ['pestañ', 'ceja', 'henna', 'lash', 'brow', 'volumen', 'pigmento']):
+        return "Cejas y Pestañas"
+
+    # Uñas
+    if any(k in desc for k in ['esmalte', 'lipstick', 'brush on', 'gel', 'finish', 'rubber', 'cuticula', 'protein', 'polygel', 'acrygel', 'serum', 'nail', 'primer', 'ultrabond', 'blossom', 'base coat', 'builder', 'tijera', 'cortauna', 'lima', 'punta', 'jelly', 'pincel', 'bledo', 'dappen', 'guillotina', 'empujador']):
+        return "Uñas"
+
+    # Desechables
+    if any(k in desc for k in ['gorro', 'guante', 'desechable', 'tapa boca', 'mascarilla', 'toalla', 'separador', 'palitos']):
+        return "Desechables"
+
+    # Cabello
+    if any(k in desc for k in ['peine', 'difusor', 'ondas', 'cepillo', 'shampoo', 'keratina', 'tinte', 'plancha']):
+        return "Cabello"
+
+    # Íntimo / Depilación
+    if any(k in desc for k in ['intimo', 'jabon intimo', 'cera depilatoria', 'roll on', 'banda depilacion']):
+        return "Íntimo"
+
+    # Insumos Generales
+    if any(k in desc for k in ['alcohol', 'acetona', 'algodon', 'cleanser', 'sanitizante', 'exfoliante', 'espuma', 'sponge', 'mantequilla', 'gota cicatrizante']):
+        return "Insumos"
+
+    return "General"
+
+
 @app.route('/procesar_factura_ocr', methods=['POST'])
 def procesar_factura_ocr():
     if 'factura' not in request.files:
@@ -583,8 +621,8 @@ def procesar_factura_ocr():
     archivo = request.files['factura']
     nombre = archivo.filename.lower()
 
-    comercio = "Aura Profesional"
-    telefono = "04127494813"
+    comercio = ""
+    telefono = ""
     items = []
     total_paginas = 0
 
@@ -595,77 +633,165 @@ def procesar_factura_ocr():
             texto_completo = ""
 
             for page in reader.pages:
-                txt = page.extract_text() or ""
-                texto_completo += "\n" + txt
+                texto_completo += "\n" + (page.extract_text() or "")
 
-            # Teléfono y Comercio
+            # 1. Detección del comercio emisor
+            if "GOOD TIMES" in texto_completo.upper():
+                comercio = "Inversiones J.S Good Times C.A"
+            elif "AURA" in texto_completo.upper():
+                comercio = "Aura Profesional"
+            else:
+                lineas_sup = [l.strip() for l in texto_completo.split('\n') if l.strip()][:15]
+                for l in lineas_sup:
+                    if any(k in l.upper() for k in ["C.A", "S.A", "INVERSIONES", "DISTRIBUIDORA", "COMERCIAL"]):
+                        comercio = l.title()
+                        break
+                if not comercio and lineas_sup:
+                    comercio = lineas_sup[0].title()
+
+            # 2. Detección de teléfono de contacto
             m_tel = re.search(r'(?:Telf|Tel|Cel|WhatsApp)?[:\s]*(04\d{2}[\s\-]?\d{7}|\+?58[\s\-]?\d{10})', texto_completo, re.IGNORECASE)
             if m_tel:
                 telefono = m_tel.group(1).replace(" ", "").replace("-", "")
+            else:
+                m_tel2 = re.search(r'Telf[:\s]*([0-9\+\-\s]+)', texto_completo, re.IGNORECASE)
+                if m_tel2:
+                    telefono = m_tel2.group(1).strip()
 
-            if "AURA" in texto_completo.upper():
-                comercio = "Aura Profesional"
+            lineas = [l.strip() for l in texto_completo.split('\n') if l.strip()]
 
-            lineas = [l.strip().replace('|', ' ').strip() for l in texto_completo.split('\n') if l.strip()]
-
+            # 3. Formato A: Nota de Despacho tipo POS (fact roysviner dommar.PDF)
             i = 0
             while i < len(lineas):
-                linea = lineas[i]
+                if "Lineas" in lines_check := lines[i] if i < len(lines := lineas) else "":
+                    break
+                if "SUBTTL" in lineas[i] or ("TOTAL" in lineas[i] and len(items) > 5):
+                    break
 
-                m_inline = re.match(r'^(\d+)\s*(?:Und\.?|Pza\.?|Unidad)?\s+(.+?)\s+(\d+\.\d{2})\s+(\d+\.\d{2})$', linea, re.IGNORECASE)
-                if m_inline:
-                    cant = int(m_inline.group(1))
-                    desc = m_inline.group(2).strip()
-                    costo_compra = float(m_inline.group(3))
-                    i += 1
-                else:
-                    m_qty = re.match(r'^(\d+)\s*(?:Und\.?|Pza\.?|Unidad)?$', linea, re.IGNORECASE)
-                    if m_qty:
-                        cant = int(m_qty.group(1))
-                        i += 1
-                        desc = ""
-                        costo_compra = 0.0
+                m_qty = re.match(r'^(\d+)[,\.]00$', lineas[i])
+                if m_qty and i + 2 < len(lineas):
+                    cant = int(m_qty.group(1))
+                    desc = lineas[i + 1].strip()
+                    price_line = lineas[i + 2].strip()
 
-                        if i < len(lineas):
-                            desc = lineas[i].strip()
-                            i += 1
+                    # Comprobación de integridad matemática (cantidad * costo unitario = total)
+                    costo_encontrado = None
+                    for split_pos in range(1, len(price_line)):
+                        s1 = price_line[:split_pos].replace(',', '.')
+                        s2 = price_line[split_pos:].replace(',', '.')
+                        try:
+                            f1 = float(s1)
+                            f2 = float(s2)
+                            if abs(cant * f2 - f1) < 0.05:
+                                costo_encontrado = f2
+                                break
+                            if abs(cant * f1 - f2) < 0.05:
+                                costo_encontrado = f1
+                                break
+                        except:
+                            continue
 
-                        if i < len(lineas):
-                            m_p = re.search(r'(\d+\.\d{2})', lineas[i])
-                            if m_p:
-                                costo_compra = float(m_p.group(1))
-                                i += 1
+                    if costo_encontrado is None:
+                        partes = re.findall(r'\d+[,\.]\d{2}', price_line)
+                        if partes:
+                            costo_encontrado = float(partes[-1].replace(',', '.'))
+                        else:
+                            costo_encontrado = 0.0
 
-                        if i < len(lineas) and re.search(r'^\d+\.\d{2}$', lineas[i].strip()):
-                            i += 1
-                    else:
-                        i += 1
+                    if desc and costo_encontrado > 0:
+                        nom_lower = desc.lower()
+                        empaque = 1
+                        if 'docena' in nom_lower:
+                            empaque = 12
+                        else:
+                            m_pack = re.search(r'(?:paquete|caja|pack|set|x)\s*(\d+)', nom_lower)
+                            if m_pack:
+                                empaque = int(m_pack.group(1))
+
+                        cat = clasificar_categoria_ryd(desc)
+                        costo_unit = round(costo_encontrado / empaque, 2)
+                        stock_calc = cant * empaque
+
+                        items.append({
+                            'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
+                            'nombre': desc.title(),
+                            'costo': costo_unit,
+                            'unidades_empaque': empaque,
+                            'cant_comprada': cant,
+                            'stock': stock_calc,
+                            'categoria': cat
+                        })
+                        i += 3
                         continue
+                i += 1
 
-                if desc and costo_compra > 0:
-                    nom_lower = desc.lower()
-
-                    unidades_empaque = 1
-                    if 'docena' in nom_lower:
-                        unidades_empaque = 12
+            # 4. Formato B: Factura Presupuesto Estándar (roy damma aura.pdf)
+            if not items:
+                clean_lines = [l.replace('|', ' ').strip() for l in lineas]
+                idx = 0
+                while idx < len(clean_lines):
+                    linea = clean_lines[idx]
+                    m_inline = re.match(r'^(\d+)\s*(?:Und\.?|Pza\.?|Unidad)?\s+(.+?)\s+(\d+[\.,]\d{2})\s+(\d+[\.,]\d{2})$', linea, re.IGNORECASE)
+                    if m_inline:
+                        cant = int(m_inline.group(1))
+                        desc = m_inline.group(2).strip()
+                        costo_compra = float(m_inline.group(3).replace(',', '.'))
+                        idx += 1
                     else:
-                        m_cant = re.search(r'(?:paquete|caja|pack|x)\s*(\d+)', nom_lower)
-                        if m_cant:
-                            unidades_empaque = int(m_cant.group(1))
+                        m_und = re.match(r'^(\d+)\s*(?:Und\.?|Pza\.?|Unidad)?$', linea, re.IGNORECASE)
+                        if m_und:
+                            cant = int(m_und.group(1))
+                            idx += 1
+                            desc = ""
+                            costo_compra = 0.0
+                            if idx < len(clean_lines):
+                                desc = clean_lines[idx].strip()
+                                idx += 1
+                            if idx < len(clean_lines):
+                                m_p = re.search(r'(\d+[\.,]\d{2})', clean_lines[idx])
+                                if m_p:
+                                    costo_compra = float(m_p.group(1).replace(',', '.'))
+                                    idx += 1
+                            if idx < len(clean_lines) and re.match(r'^\d+[\.,]\d{2}$', clean_lines[idx].strip()):
+                                idx += 1
+                        else:
+                            idx += 1
+                            continue
 
-                    categoria = clasificar_categoria_ryd(desc)
-                    costo_unitario = round(costo_compra / unidades_empaque, 2)
-                    stock_detal = cant * unidades_empaque
+                    if desc and costo_compra > 0:
+                        nom_lower = desc.lower()
+                        empaque = 1
+                        if 'docena' in nom_lower:
+                            empaque = 12
+                        else:
+                            m_pack = re.search(r'(?:paquete|caja|pack|set|x)\s*(\d+)', nom_lower)
+                            if m_pack:
+                                empaque = int(m_pack.group(1))
 
-                    items.append({
-                        'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
-                        'nombre': desc.title(),
-                        'costo': costo_unitario,
-                        'unidades_empaque': unidades_empaque,
-                        'cant_comprada': cant,
-                        'stock': stock_detal,
-                        'categoria': categoria
-                    })
+                        cat = clasificar_categoria_ryd(desc)
+                        costo_unit = round(costo_compra / empaque, 2)
+                        stock_calc = cant * empaque
+
+                        items.append({
+                            'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
+                            'nombre': desc.title(),
+                            'costo': costo_unit,
+                            'unidades_empaque': empaque,
+                            'cant_comprada': cant,
+                            'stock': stock_calc,
+                            'categoria': cat
+                        })
+
+        return jsonify({
+            'exito': True,
+            'comercio': comercio,
+            'telefono': telefono,
+            'total_paginas': total_paginas,
+            'items': items
+        })
+
+    except Exception as e:
+        return jsonify({'exito': False, 'mensaje': f'Error en procesamiento: {str(e)}'}), 500
 
         return jsonify({
             'exito': True,
