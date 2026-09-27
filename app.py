@@ -537,6 +537,44 @@ import io
 import re
 from pypdf import PdfReader
 
+import io
+import re
+from pypdf import PdfReader
+
+def clasificar_categoria_ryd(descripcion):
+    desc = descripcion.lower()
+
+    # Aparatología
+    if any(k in desc for k in ['olla', 'sm-200', 'ventilador', 'lampara', 'extractor', 'pulidor', 'drill', 'esterilizador', 'maquina']):
+        return "Aparatología"
+
+    # Cejas y Pestañas
+    if any(k in desc for k in ['pestañ', 'ceja', 'henna', 'lash', 'brow', 'pinza', 'volumen', 'pigmento']):
+        return "Cejas y Pestañas"
+
+    # Uñas
+    if any(k in desc for k in ['tijera', 'cortauna', 'cuticula', 'lima', 'esmalte', 'gel', 'acrilico', 'monomero', 'pincel', 'tip', 'nail']):
+        return "Uñas"
+
+    # Desechables
+    if any(k in desc for k in ['gorro', 'guante', 'desechable', 'tapa boca', 'mascarilla', 'toalla desechable', 'cubrecama']):
+        return "Desechables"
+
+    # Cabello
+    if any(k in desc for k in ['peine', 'difusor', 'ondas', 'cepillo', 'shampoo', 'keratina', 'tinte', 'plancha cabello']):
+        return "Cabello"
+
+    # Íntimo / Depilación
+    if any(k in desc for k in ['intimo', 'cera depilatoria', 'roll on', 'banda depilacion', 'post depil']):
+        return "Íntimo"
+
+    # Insumos Generales
+    if any(k in desc for k in ['alcohol', 'acetona', 'algodon', 'cleanser', 'sanitizante', 'papel']):
+        return "Insumos"
+
+    return "General"
+
+
 @app.route('/procesar_factura_ocr', methods=['POST'])
 def procesar_factura_ocr():
     if 'factura' not in request.files:
@@ -556,27 +594,24 @@ def procesar_factura_ocr():
             total_paginas = len(reader.pages)
             texto_completo = ""
 
-            # Recorrer todas las páginas del documento sin límite
             for page in reader.pages:
-                texto_completo += "\n" + (page.extract_text() or "")
+                txt = page.extract_text() or ""
+                texto_completo += "\n" + txt
 
-            # 1. Teléfono del comercio
+            # Teléfono y Comercio
             m_tel = re.search(r'(?:Telf|Tel|Cel|WhatsApp)?[:\s]*(04\d{2}[\s\-]?\d{7}|\+?58[\s\-]?\d{10})', texto_completo, re.IGNORECASE)
             if m_tel:
                 telefono = m_tel.group(1).replace(" ", "").replace("-", "")
 
-            # 2. Nombre del comercio
             if "AURA" in texto_completo.upper():
                 comercio = "Aura Profesional"
 
-            # 3. Limpieza de texto y extracción renglón por renglón
             lineas = [l.strip().replace('|', ' ').strip() for l in texto_completo.split('\n') if l.strip()]
 
             i = 0
             while i < len(lineas):
                 linea = lineas[i]
 
-                # Formato A: Todo en un solo renglón (Ej: 1 Und. Producto 6.30 6.30)
                 m_inline = re.match(r'^(\d+)\s*(?:Und\.?|Pza\.?|Unidad)?\s+(.+?)\s+(\d+\.\d{2})\s+(\d+\.\d{2})$', linea, re.IGNORECASE)
                 if m_inline:
                     cant = int(m_inline.group(1))
@@ -584,7 +619,6 @@ def procesar_factura_ocr():
                     costo_compra = float(m_inline.group(3))
                     i += 1
                 else:
-                    # Formato B: Datos repartidos en renglones contiguos
                     m_qty = re.match(r'^(\d+)\s*(?:Und\.?|Pza\.?|Unidad)?$', linea, re.IGNORECASE)
                     if m_qty:
                         cant = int(m_qty.group(1))
@@ -608,11 +642,9 @@ def procesar_factura_ocr():
                         i += 1
                         continue
 
-                # Procesar artículo detectado
                 if desc and costo_compra > 0:
                     nom_lower = desc.lower()
 
-                    # Detección de unidades por empaque (venta individual o por separado)
                     unidades_empaque = 1
                     if 'docena' in nom_lower:
                         unidades_empaque = 12
@@ -621,16 +653,7 @@ def procesar_factura_ocr():
                         if m_cant:
                             unidades_empaque = int(m_cant.group(1))
 
-                    # Clasificación por categoría
-                    cat = "General"
-                    if any(k in nom_lower for k in ['tijera', 'cortaunas', 'cuticula', 'lima', 'esmaltes']):
-                        cat = "Uñas"
-                    elif any(k in nom_lower for k in ['peine', 'gorro', 'difusor', 'ondas', 'cera', 'cabello']):
-                        cat = "Cuidado Capilar"
-                    elif any(k in nom_lower for k in ['ventilador', 'pinzas', 'guantes', 'organizador']):
-                        cat = "Accesorios"
-
-                    # Costo unitario real para la venta por separado
+                    categoria = clasificar_categoria_ryd(desc)
                     costo_unitario = round(costo_compra / unidades_empaque, 2)
                     stock_detal = cant * unidades_empaque
 
@@ -640,10 +663,20 @@ def procesar_factura_ocr():
                         'costo': costo_unitario,
                         'unidades_empaque': unidades_empaque,
                         'cant_comprada': cant,
-                        'costo_total_compra': costo_compra,
                         'stock': stock_detal,
-                        'categoria': cat
+                        'categoria': categoria
                     })
+
+        return jsonify({
+            'exito': True,
+            'comercio': comercio,
+            'telefono': telefono,
+            'total_paginas': total_paginas,
+            'items': items
+        })
+
+    except Exception as e:
+        return jsonify({'exito': False, 'mensaje': f'Error en lectura: {str(e)}'}), 500
 
         return jsonify({
             'exito': True,
