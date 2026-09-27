@@ -35,7 +35,7 @@
         .header-pos {
             background-color: var(--ryd-surface);
             border-bottom: 1.5px solid var(--ryd-border);
-            padding: 14px 28px;
+            padding: 12px 24px;
             box-shadow: 0 4px 20px rgba(70, 60, 45, 0.03);
         }
 
@@ -53,7 +53,7 @@
             border: 1px solid var(--ryd-border);
             border-radius: 12px;
             box-shadow: var(--emboss-shadow);
-            padding: 20px;
+            padding: 18px;
             position: relative;
         }
 
@@ -66,15 +66,13 @@
             border: 1px solid var(--ryd-border);
             border-radius: 9px;
             color: var(--ryd-text);
-            padding: 12px 16px;
+            padding: 11px 16px;
             font-size: 0.95rem;
             box-shadow: inset 1px 1px 4px rgba(180, 165, 140, 0.15);
-            transition: all 0.2s ease;
             width: 100%;
         }
         .search-input:focus {
             border-color: var(--ryd-gold);
-            box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2);
             background: #FFFFFF;
             outline: none;
         }
@@ -88,7 +86,7 @@
             border: 1px solid var(--ryd-border);
             border-radius: 9px;
             box-shadow: 0 8px 24px rgba(70, 60, 45, 0.15);
-            max-height: 290px;
+            max-height: 280px;
             overflow-y: auto;
             z-index: 1050;
             display: none;
@@ -109,59 +107,86 @@
         .payment-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 10px;
+            gap: 8px;
+            margin-top: 6px;
         }
         .payment-card {
             background: var(--ryd-surface);
             border: 1px solid var(--ryd-border);
-            border-radius: 10px;
-            padding: 12px 6px;
+            border-radius: 9px;
+            padding: 9px 4px;
             text-align: center;
             cursor: pointer;
             box-shadow: var(--emboss-btn);
-            transition: all 0.18s ease;
+            transition: all 0.15s ease;
             user-select: none;
-        }
-        .payment-card:hover {
-            border-color: var(--ryd-gold);
-            transform: translateY(-1px);
         }
         .payment-card.active {
             background: var(--ryd-beige-card);
             border-color: var(--ryd-gold);
             box-shadow: var(--emboss-active);
-            transform: translateY(1px);
         }
         .payment-card-title {
-            font-size: 0.78rem;
+            font-size: 0.74rem;
             font-weight: 700;
-            letter-spacing: 0.8px;
+            letter-spacing: 0.6px;
             text-transform: uppercase;
             color: var(--ryd-text);
-            margin: 0;
             display: block;
         }
         .payment-card-sub {
-            font-size: 0.65rem;
+            font-size: 0.62rem;
             color: var(--ryd-muted);
-            letter-spacing: 0.4px;
+            letter-spacing: 0.3px;
             text-transform: uppercase;
-            margin-top: 3px;
             display: block;
         }
 
-        .box-bs-destacado {
+        /* Balance Progresivo y Descuento en Tiempo Real */
+        .balance-box {
             background: linear-gradient(135deg, #FAF7F2, #F2ECE1);
-            border: 1.5px solid var(--ryd-gold);
+            border: 1.5px solid var(--ryd-border);
             border-radius: 10px;
-            padding: 12px 16px;
-            margin-bottom: 14px;
+            padding: 10px 14px;
+            margin-bottom: 10px;
             box-shadow: var(--emboss-btn);
-            display: none;
         }
 
-        /* Botones Separados 3D */
+        /* Teclado Táctil Numérico 3D Neumórfico */
+        .keypad-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .keypad-btn {
+            background: var(--ryd-surface);
+            border: 1px solid var(--ryd-border);
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--ryd-text);
+            padding: 10px 0;
+            box-shadow: var(--emboss-btn);
+            transition: all 0.12s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+        .keypad-btn:active {
+            transform: translateY(1px);
+            box-shadow: var(--emboss-active);
+        }
+        .keypad-btn-gold {
+            background: linear-gradient(135deg, #DFCA98, #B89248);
+            color: #FFFFFF;
+            font-size: 0.78rem;
+            letter-spacing: 0.5px;
+            border-color: #C5A059;
+        }
+
+        /* Botones Separados de Ejecución */
         .btn-pay-action {
             border: 1px solid var(--ryd-border);
             background: var(--ryd-surface);
@@ -169,53 +194,48 @@
             font-weight: 700;
             letter-spacing: 0.8px;
             text-transform: uppercase;
-            padding: 12px 8px;
+            padding: 12px 6px;
             border-radius: 9px;
             box-shadow: var(--emboss-btn);
-            font-size: 0.76rem;
+            font-size: 0.75rem;
             transition: all 0.18s ease;
             width: 100%;
         }
-        .btn-pay-action:hover {
+        .btn-pay-action:hover:not(:disabled) {
             border-color: var(--ryd-gold);
             color: var(--ryd-gold-dark);
             transform: translateY(-1px);
         }
-        .btn-pay-action:active {
-            box-shadow: var(--emboss-active);
-            transform: translateY(1px);
+        .btn-pay-action:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            box-shadow: none;
         }
-
         .btn-pay-gold {
             background: linear-gradient(135deg, #DFCA98, #B89248);
             border: 1px solid #C5A059;
             color: #FFFFFF;
             box-shadow: 0 4px 12px rgba(184, 146, 72, 0.28), var(--emboss-btn);
         }
-        .btn-pay-gold:hover {
-            background: linear-gradient(135deg, #D4B26F, #A6823C);
-            color: #FFFFFF;
-        }
 
         .rate-badge-box {
             background: var(--ryd-beige-card);
             border: 1px solid var(--ryd-border);
             border-radius: 8px;
-            padding: 6px 12px;
+            padding: 5px 10px;
             box-shadow: var(--emboss-active);
             display: flex;
             align-items: center;
             gap: 6px;
         }
         .rate-input-readonly {
-            width: 80px;
+            width: 75px;
             background: transparent;
             border: none;
             font-weight: 700;
             color: var(--ryd-gold-dark);
             text-align: center;
-            font-size: 0.95rem;
-            cursor: not-allowed;
+            font-size: 0.92rem;
             outline: none;
             pointer-events: none;
         }
@@ -228,38 +248,35 @@
             font-size: 0.75rem;
             letter-spacing: 0.6px;
             text-transform: uppercase;
-            padding: 8px 14px;
+            padding: 7px 12px;
             border-radius: 8px;
             box-shadow: var(--emboss-btn);
-            transition: all 0.18s ease;
             text-decoration: none;
-        }
-        .btn-3d:hover {
-            border-color: var(--ryd-gold);
-            color: var(--ryd-gold-dark);
+            display: inline-flex;
+            align-items: center;
         }
 
         .table-pos thead th {
             background: var(--ryd-beige-card);
             color: var(--ryd-muted);
-            font-size: 0.7rem;
+            font-size: 0.68rem;
             font-weight: 700;
             letter-spacing: 1.2px;
             text-transform: uppercase;
             border-bottom: 1px solid var(--ryd-border);
-            padding: 10px 12px;
+            padding: 8px 10px;
         }
         .table-pos tbody td {
-            padding: 12px;
+            padding: 10px;
             border-bottom: 1px solid var(--ryd-border-light);
-            font-size: 0.88rem;
+            font-size: 0.85rem;
         }
 
         .product-tile {
             background: var(--ryd-surface);
             border: 1px solid var(--ryd-border);
             border-radius: 8px;
-            padding: 12px;
+            padding: 10px;
             box-shadow: var(--emboss-btn);
             cursor: pointer;
             transition: all 0.15s ease;
@@ -283,14 +300,14 @@
 
 <header class="header-pos d-flex justify-content-between align-items-center">
     <div class="d-flex align-items-center">
-        <a href="/" class="brand-title me-4">RyD</a>
-        <span class="small text-muted" style="letter-spacing: 1px; text-transform: uppercase;">
+        <a href="/" class="brand-title me-3">RyD</a>
+        <span class="small text-muted" style="letter-spacing: 0.8px; text-transform: uppercase;">
             Terminal de Caja: <strong class="text-dark">{{ session.get('username', 'Cajero') }}</strong>
         </span>
     </div>
     <div class="d-flex align-items-center gap-2">
-        <div class="rate-badge-box me-2" title="Tasa oficial fijada por la administración">
-            <span class="small text-muted fw-bold" style="font-size: 0.7rem; text-transform: uppercase;">Tasa Bs:</span>
+        <div class="rate-badge-box me-1" title="Tasa oficial fijada por la administración">
+            <span class="small text-muted fw-bold" style="font-size: 0.68rem; text-transform: uppercase;">Tasa Bs:</span>
             <input type="text" id="inputTasaPos" class="rate-input-readonly" readonly value="50.00">
         </div>
 
@@ -305,7 +322,7 @@
 
 <div class="container-fluid p-3">
     <div class="row g-3">
-        <!-- Panel Izquierdo: Buscador y Catálogo -->
+        <!-- Panel Izquierdo: Catálogo y Buscador -->
         <div class="col-lg-7">
             <div class="panel-luxury mb-3">
                 <div class="row g-2 align-items-center">
@@ -333,8 +350,8 @@
                 </div>
             </div>
 
-            <div class="panel-luxury" style="max-height: 65vh; overflow-y: auto;">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="panel-luxury" style="max-height: 66vh; overflow-y: auto;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
                     <span class="small fw-bold text-muted" style="letter-spacing: 1px; text-transform: uppercase;">Catálogo Disponible</span>
                     <span class="small text-muted" id="contadorProductos"></span>
                 </div>
@@ -343,14 +360,14 @@
                     <div class="col-md-4 col-sm-6 item-producto" data-nombre="{{ p.nombre|lower }}" data-codigo="{{ p.codigo|lower }}">
                         <div class="product-tile d-flex flex-column justify-content-between" onclick="agregarPorObjeto('{{ p.codigo }}', '{{ p.nombre }}', {{ p.precio }}, {{ p.stock }})">
                             <div>
-                                <small class="fw-bold d-block" style="color: var(--ryd-gold-dark); font-size: 0.72rem; letter-spacing: 0.5px;">{{ p.codigo }}</small>
-                                <span class="d-block text-truncate fw-bold" style="font-size: 0.85rem;">{{ p.nombre }}</span>
+                                <small class="fw-bold d-block" style="color: var(--ryd-gold-dark); font-size: 0.7rem; letter-spacing: 0.5px;">{{ p.codigo }}</small>
+                                <span class="d-block text-truncate fw-bold" style="font-size: 0.82rem;">{{ p.nombre }}</span>
                             </div>
                             <div class="d-flex justify-content-between align-items-center mt-2">
-                                <span class="small text-muted">Stock: {{ p.stock }}</span>
+                                <span class="small text-muted" style="font-size: 0.72rem;">Stock: {{ p.stock }}</span>
                                 <div class="text-end">
-                                    <strong style="color: var(--ryd-text); font-size: 0.95rem;">${{ "%.2f"|format(p.precio) }}</strong>
-                                    <div class="small text-muted col-tile-bs" style="font-size: 0.72rem;"></div>
+                                    <strong style="color: var(--ryd-text); font-size: 0.92rem;">${{ "%.2f"|format(p.precio) }}</strong>
+                                    <div class="small text-muted col-tile-bs" style="font-size: 0.7rem;"></div>
                                 </div>
                             </div>
                         </div>
@@ -360,15 +377,15 @@
             </div>
         </div>
 
-        <!-- Panel Derecho: Carrito y Acciones de Cobro Separadas -->
+        <!-- Panel Derecho: Carrito, Teclado Táctil y Cobro Progresivo -->
         <div class="col-lg-5">
-            <div class="panel-luxury d-flex flex-column justify-content-between" style="min-height: 85vh;">
+            <div class="panel-luxury d-flex flex-column justify-content-between" style="min-height: 86vh;">
                 <div>
-                    <h6 class="fw-bold mb-3" style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 0.8rem; border-bottom: 1px solid var(--ryd-border); padding-bottom: 8px;">
+                    <h6 class="fw-bold mb-2" style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 0.78rem; border-bottom: 1px solid var(--ryd-border); padding-bottom: 6px;">
                         Detalle de Transacción
                     </h6>
 
-                    <div class="table-responsive" style="max-height: 28vh; overflow-y: auto;">
+                    <div class="table-responsive" style="max-height: 24vh; overflow-y: auto;">
                         <table class="table table-pos mb-0 align-middle">
                             <thead>
                                 <tr>
@@ -380,74 +397,98 @@
                             </thead>
                             <tbody id="cuerpoCarrito">
                                 <tr>
-                                    <td colspan="4" class="text-center py-4 text-muted small">Terminal en espera de artículos.</td>
+                                    <td colspan="4" class="text-center py-3 text-muted small">Terminal en espera de artículos.</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <div class="pt-3 border-top mt-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="small text-muted fw-bold" style="letter-spacing: 1px; text-transform: uppercase;">Monto Liquidación USD</span>
-                        <h2 class="m-0 fw-bold" style="color: var(--ryd-gold-dark);" id="txtTotalUSD">$0.00</h2>
-                    </div>
-
-                    <div class="box-bs-destacado" id="cuadroTotalBs">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="d-block fw-bold" style="font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; color: var(--ryd-muted);">Total a Cobrar en Bolívares</span>
-                                <small class="text-muted" id="txtTasaAplicada">Tasa oficial fija</small>
-                            </div>
-                            <h3 class="m-0 fw-bold" style="color: var(--ryd-text);" id="txtTotalBs">Bs. 0.00</h3>
+                <div class="pt-2 border-top mt-2">
+                    <!-- Monitor de Liquidación con Resta en Vivo -->
+                    <div class="balance-box">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-muted fw-bold" style="font-size: 0.7rem; text-transform: uppercase;">Total Liquidación:</span>
+                            <h3 class="m-0 fw-bold" style="color: var(--ryd-gold-dark);" id="txtTotalUSD">$0.00</h3>
                         </div>
+                        <div class="d-flex justify-content-between align-items-center border-top pt-1 mt-1">
+                            <div>
+                                <span class="d-block fw-bold" style="font-size: 0.68rem; text-transform: uppercase; color: var(--ryd-muted);">Monto Ingresado:</span>
+                                <strong id="txtMontoEntregado" style="font-size: 0.95rem; color: var(--ryd-text);">$0.00</strong>
+                            </div>
+                            <div class="text-end">
+                                <span class="d-block fw-bold" id="lblEstadoBalance" style="font-size: 0.68rem; text-transform: uppercase; color: #9E4D48;">Resta por Pagar:</span>
+                                <strong id="txtRestaBalance" style="font-size: 1.05rem; color: #9E4D48;">$0.00</strong>
+                            </div>
+                        </div>
+                        <div class="small text-muted text-end mt-1" id="txtEquivalenteBs" style="font-size: 0.72rem;"></div>
                     </div>
 
-                    <label class="small text-muted fw-bold mb-1" style="letter-spacing: 0.8px; text-transform: uppercase; font-size: 0.7rem;">Modalidad de Pago Requerida</label>
-                    <div class="payment-grid mb-3">
+                    <!-- Métodos de Pago -->
+                    <label class="small text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">Modalidad de Pago</label>
+                    <div class="payment-grid mb-2">
                         <div class="payment-card active" onclick="seleccionarMetodo(this, 'Efectivo $')">
                             <span class="payment-card-title">Efectivo $</span>
-                            <span class="payment-card-sub">Divisa Físico</span>
+                            <span class="payment-card-sub">Divisa</span>
                         </div>
                         <div class="payment-card" onclick="seleccionarMetodo(this, 'Efectivo Bs')">
                             <span class="payment-card-title">Efectivo Bs</span>
-                            <span class="payment-card-sub">Moneda Local</span>
+                            <span class="payment-card-sub">Local</span>
                         </div>
                         <div class="payment-card" onclick="seleccionarMetodo(this, 'Pago Móvil')">
                             <span class="payment-card-title">Pago Móvil</span>
-                            <span class="payment-card-sub">Interbancario</span>
+                            <span class="payment-card-sub">Banca</span>
                         </div>
-                        <div class="payment-card" onclick="seleccionarMetodo(this, 'Punto de Venta')">
+                        <div class="payment-card" onclick="seleccionarMetodo(this, 'Punto Venta')">
                             <span class="payment-card-title">Punto Venta</span>
-                            <span class="payment-card-sub">Débito / Lote</span>
+                            <span class="payment-card-sub">Tarjeta</span>
                         </div>
                         <div class="payment-card" onclick="seleccionarMetodo(this, 'Binance')">
                             <span class="payment-card-title">Binance</span>
-                            <span class="payment-card-sub">USDT Cripto</span>
+                            <span class="payment-card-sub">USDT</span>
                         </div>
                         <div class="payment-card" onclick="seleccionarMetodo(this, 'Pago Mixto')">
                             <span class="payment-card-title">Combinado</span>
-                            <span class="payment-card-sub">Dual / Mixto</span>
+                            <span class="payment-card-sub">Mixto</span>
                         </div>
                     </div>
 
-                    <div class="mb-3" id="bloqueReferencia" style="display: none;">
-                        <label class="small text-muted fw-bold mb-1" id="lblReferencia" style="letter-spacing: 0.8px; text-transform: uppercase; font-size: 0.7rem;">
-                            Comprobante / Referencia Bancaria (Obligatorio)
-                        </label>
-                        <input type="text" id="inputReferencia" class="form-control search-input form-control-sm" placeholder="Ingrese número de referencia bancaria">
+                    <!-- Teclado Numérico Táctil 3D -->
+                    <div class="keypad-grid mb-2">
+                        <button type="button" class="keypad-btn" onclick="presionarTecla('1')">1</button>
+                        <button type="button" class="keypad-btn" onclick="presionarTecla('2')">2</button>
+                        <button type="button" class="keypad-btn" onclick="presionarTecla('3')">3</button>
+                        <button type="button" class="keypad-btn keypad-btn-gold" onclick="presionarExacto()">EXACTO</button>
+
+                        <button type="button" class="keypad-btn" onclick="presionarTecla('4')">4</button>
+                        <button type="button" class="keypad-btn" onclick="presionarTecla('5')">5</button>
+                        <button type="button" class="keypad-btn" onclick="presionarTecla('6')">6</button>
+                        <button type="button" class="keypad-btn" style="color: #9E4D48;" onclick="presionarBorrar()">C</button>
+
+                        <button type="button" class="keypad-btn" onclick="presionarTecla('7')">7</button>
+                        <button type="button" class="keypad-btn" onclick="presionarTecla('8')">8</button>
+                        <button type="button" class="keypad-btn" onclick="presionarTecla('9')">9</button>
+                        <button type="button" class="keypad-btn" onclick="presionarTecla('.')">.</button>
+
+                        <button type="button" class="keypad-btn" onclick="presionarTecla('0')">0</button>
+                        <button type="button" class="keypad-btn" onclick="presionarTecla('00')">00</button>
+                        <button type="button" class="keypad-btn" style="grid-column: span 2; font-size: 0.72rem; text-transform: uppercase;" onclick="presionarRetroceso()">⌫ Borrar</button>
                     </div>
 
-                    <!-- Dos Botones de Acción Separados -->
+                    <div class="mb-2" id="bloqueReferencia" style="display: none;">
+                        <input type="text" id="inputReferencia" class="form-control search-input form-control-sm" placeholder="N° Referencia Bancaria (Obligatorio)">
+                    </div>
+
+                    <!-- Dos Botones de Acción (Se habilitan al completar el cobro) -->
                     <div class="row g-2">
                         <div class="col-6">
-                            <button type="button" class="btn-pay-action" onclick="ejecutarVenta(false)">
+                            <button type="button" id="btnRegistrarPago" class="btn-pay-action" disabled onclick="ejecutarVenta(false)">
                                 Registrar Pago
                             </button>
                         </div>
                         <div class="col-6">
-                            <button type="button" class="btn-pay-action btn-pay-gold" onclick="ejecutarVenta(true)">
-                                Emitir Comprobante
+                            <button type="button" id="btnEmitirTicket" class="btn-pay-action btn-pay-gold" disabled onclick="ejecutarVenta(true)">
+                                Emitir Nota Entrega
                             </button>
                         </div>
                     </div>
@@ -481,6 +522,7 @@
 let carrito = [];
 let metodoSeleccionado = 'Efectivo $';
 let tasaPos = parseFloat(localStorage.getItem('ryd_tasa_bcv')) || 50.00;
+let montoIngresadoStr = '';
 
 const productosDisponibles = [
     {% for p in productos %}
@@ -624,26 +666,27 @@ function cambiarCantidad(codigo, delta) {
     }
 }
 
+function calcularTotalVentaUSD() {
+    return carrito.reduce((acc, p) => acc + (p.precio * p.cantidad), 0);
+}
+
 function renderizarCarrito() {
     const tbody = document.getElementById('cuerpoCarrito');
     if (carrito.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted small">Terminal en espera de artículos.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted small">Terminal en espera de artículos.</td></tr>';
         document.getElementById('txtTotalUSD').innerText = '$0.00';
-        document.getElementById('txtTotalBs').innerText = 'Bs. 0.00';
+        montoIngresadoStr = '';
+        actualizarBalanceCobro();
         return;
     }
 
     tbody.innerHTML = '';
-    let totalUsd = 0;
-
     carrito.forEach(p => {
         const subtotal = p.precio * p.cantidad;
-        totalUsd += subtotal;
-
         tbody.innerHTML += `
             <tr>
                 <td>
-                    <span class="d-block text-truncate fw-bold" style="max-width: 160px;">${p.nombre}</span>
+                    <span class="d-block text-truncate fw-bold" style="max-width: 150px;">${p.nombre}</span>
                     <small class="text-muted">${p.codigo}</small>
                 </td>
                 <td class="text-center">
@@ -661,10 +704,74 @@ function renderizarCarrito() {
         `;
     });
 
+    const totalUsd = calcularTotalVentaUSD();
     document.getElementById('txtTotalUSD').innerText = `$${totalUsd.toFixed(2)}`;
-    const totalBs = totalUsd * tasaPos;
-    document.getElementById('txtTotalBs').innerText = `Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    document.getElementById('txtTasaAplicada').innerText = `Tasa del día: Bs. ${tasaPos.toFixed(2)}`;
+    document.getElementById('txtEquivalenteBs').innerText = `Equiv: Bs. ${(totalUsd * tasaPos).toLocaleString('es-VE', { minimumFractionDigits: 2 })}`;
+    actualizarBalanceCobro();
+}
+
+// Lógica del Teclado Táctil y Cobro con Resta en Tiempo Real
+function presionarTecla(digito) {
+    if (digito === '.' && montoIngresadoStr.includes('.')) return;
+    if (montoIngresadoStr.length > 8) return;
+    montoIngresadoStr += digito;
+    actualizarBalanceCobro();
+}
+
+function presionarBorrar() {
+    montoIngresadoStr = '';
+    actualizarBalanceCobro();
+}
+
+function presionarRetroceso() {
+    montoIngresadoStr = montoIngresadoStr.slice(0, -1);
+    actualizarBalanceCobro();
+}
+
+function presionarExacto() {
+    const total = calcularTotalVentaUSD();
+    montoIngresadoStr = total.toFixed(2);
+    actualizarBalanceCobro();
+}
+
+function actualizarBalanceCobro() {
+    const total = calcularTotalVentaUSD();
+    const ingresado = parseFloat(montoIngresadoStr) || 0.0;
+
+    document.getElementById('txtMontoEntregado').innerText = `$${ingresado.toFixed(2)}`;
+
+    const resta = total - ingresado;
+    const btnPago = document.getElementById('btnRegistrarPago');
+    const btnTicket = document.getElementById('btnEmitirTicket');
+    const lblEstado = document.getElementById('lblEstadoBalance');
+    const txtResta = document.getElementById('txtRestaBalance');
+
+    if (total === 0) {
+        lblEstado.innerText = "Resta por Pagar:";
+        lblEstado.style.color = "#9E4D48";
+        txtResta.innerText = "$0.00";
+        txtResta.style.color = "#9E4D48";
+        btnPago.disabled = true;
+        btnTicket.disabled = true;
+        return;
+    }
+
+    if (resta > 0.009) {
+        lblEstado.innerText = "Resta por Pagar:";
+        lblEstado.style.color = "#9E4D48";
+        txtResta.innerText = `$${resta.toFixed(2)}`;
+        txtResta.style.color = "#9E4D48";
+        btnPago.disabled = true;
+        btnTicket.disabled = true;
+    } else {
+        const cambio = Math.abs(resta);
+        lblEstado.innerText = cambio > 0.009 ? "Cambio / Vuelto:" : "Cuenta Completa:";
+        lblEstado.style.color = "#4D784E";
+        txtResta.innerText = `$${cambio.toFixed(2)}`;
+        txtResta.style.color = "#4D784E";
+        btnPago.disabled = false;
+        btnTicket.disabled = false;
+    }
 }
 
 function seleccionarMetodo(elemento, metodo) {
@@ -672,25 +779,15 @@ function seleccionarMetodo(elemento, metodo) {
     elemento.classList.add('active');
     metodoSeleccionado = metodo;
 
-    const cuadroBs = document.getElementById('cuadroTotalBs');
     const bloqueRef = document.getElementById('bloqueReferencia');
-    const lblRef = document.getElementById('lblReferencia');
     const inputRef = document.getElementById('inputReferencia');
 
-    if (['Efectivo Bs', 'Pago Móvil', 'Punto de Venta'].includes(metodo)) {
-        cuadroBs.style.display = 'block';
-    } else {
-        cuadroBs.style.display = 'none';
-    }
-
-    if (['Pago Móvil', 'Punto de Venta', 'Binance'].includes(metodo)) {
+    if (['Pago Móvil', 'Punto Venta', 'Binance'].includes(metodo)) {
         bloqueRef.style.display = 'block';
-        lblRef.innerText = `Número de Comprobante / Referencia (${metodo}) - Requerido`;
-        inputRef.placeholder = "Ingrese los dígitos de la referencia bancaria";
+        inputRef.placeholder = `N° Referencia (${metodo}) - Requerido`;
     } else if (metodo === 'Pago Mixto') {
         bloqueRef.style.display = 'block';
-        lblRef.innerText = "Detalle de Pago Combinado (Ej: $5 efec + 300 Bs móvil) - Requerido";
-        inputRef.placeholder = "Detalle montos y formas de pago combinadas";
+        inputRef.placeholder = "Detalle Mixto (Ej: $10 efectivo + Bs. 600 móvil)";
     } else {
         bloqueRef.style.display = 'none';
         inputRef.value = '';
@@ -705,9 +802,9 @@ function ejecutarVenta(emitirTicket = true) {
 
     const referencia = document.getElementById('inputReferencia').value.trim();
 
-    if (['Pago Móvil', 'Punto de Venta', 'Binance', 'Pago Mixto'].includes(metodoSeleccionado)) {
+    if (['Pago Móvil', 'Punto Venta', 'Binance', 'Pago Mixto'].includes(metodoSeleccionado)) {
         if (!referencia) {
-            alert(`Es obligatorio registrar la referencia para la modalidad: ${metodoSeleccionado}.`);
+            alert(`Es obligatorio registrar el comprobante o referencia bancaria para la modalidad: ${metodoSeleccionado}.`);
             document.getElementById('inputReferencia').focus();
             return;
         }
@@ -719,7 +816,7 @@ function ejecutarVenta(emitirTicket = true) {
         body: JSON.stringify({
             items: carrito,
             metodo_pago: metodoSeleccionado,
-            referencia: referencia
+            referencia: referencia || 'N/A'
         })
     })
     .then(res => res.json())
@@ -730,6 +827,7 @@ function ejecutarVenta(emitirTicket = true) {
             } else {
                 alert("¡Pago registrado con éxito en el sistema!");
                 carrito = [];
+                montoIngresadoStr = '';
                 renderizarCarrito();
                 document.getElementById('inputReferencia').value = '';
                 window.location.reload();
