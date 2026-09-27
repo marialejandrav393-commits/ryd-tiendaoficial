@@ -52,6 +52,13 @@
             border-radius: 12px;
             box-shadow: var(--emboss-shadow);
             padding: 20px;
+            position: relative;
+        }
+
+        /* Buscador predictivo inteligente */
+        .search-container {
+            position: relative;
+            width: 100%;
         }
 
         .search-input {
@@ -59,16 +66,49 @@
             border: 1px solid var(--ryd-border);
             border-radius: 8px;
             color: var(--ryd-text);
-            padding: 10px 14px;
+            padding: 12px 16px;
+            font-size: 0.95rem;
             box-shadow: inset 1px 1px 3px rgba(0,0,0,0.04);
+            transition: all 0.2s ease;
         }
         .search-input:focus {
             border-color: var(--ryd-gold);
-            box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.15);
+            box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.18);
             background: #FFFFFF;
+            outline: none;
         }
 
-        /* Cuadros de método de pago con relieve sofisticado */
+        /* Menú desplegable predictivo con relieve */
+        .search-results-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #FFFFFF;
+            border: 1px solid var(--ryd-border);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(70, 60, 45, 0.12);
+            max-height: 290px;
+            overflow-y: auto;
+            z-index: 1050;
+            display: none;
+            margin-top: 5px;
+        }
+
+        .search-result-item {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--ryd-border-light);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.15s ease;
+        }
+        .search-result-item:hover, .search-result-item.highlighted {
+            background: var(--ryd-beige-card);
+        }
+
+        /* Cuadros de método de pago con relieve */
         .payment-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -87,12 +127,10 @@
             transition: all 0.18s ease;
             user-select: none;
         }
-
         .payment-card:hover {
             border-color: var(--ryd-gold);
             transform: translateY(-1px);
         }
-
         .payment-card.active {
             background: var(--ryd-beige-card);
             border-color: var(--ryd-gold);
@@ -200,16 +238,25 @@
 
 <div class="container-fluid p-3">
     <div class="row g-3">
-        <!-- Panel Izquierdo: Escaneo y Catálogo -->
+        <!-- Panel Izquierdo: Buscador Predictivo y Catálogo -->
         <div class="col-lg-7">
             <div class="panel-luxury mb-3">
                 <div class="row g-2 align-items-center">
                     <div class="col-md-8">
-                        <label class="small text-muted fw-bold mb-1" style="letter-spacing: 0.8px; text-transform: uppercase; font-size: 0.7rem;">Lectura de Barra / Búsqueda</label>
-                        <input type="text" id="inputCodigoBarras" class="form-control search-input" placeholder="Escanear codigo SKU o ingresar manual..." autofocus>
+                        <label class="small text-muted fw-bold mb-1" style="letter-spacing: 0.8px; text-transform: uppercase; font-size: 0.7rem;">
+                            Búsqueda Predictiva de Artículos / Escáner
+                        </label>
+                        <div class="search-container">
+                            <input type="text" id="inputCodigoBarras" class="form-control search-input" 
+                                   placeholder="Escribe una letra o pasa el código..." 
+                                   autocomplete="off" autofocus oninput="ejecutarBusquedaPredictiva(this.value)">
+                            
+                            <!-- Menú flotante con resultados coincidentes en tiempo real -->
+                            <div id="resultadosPredictivos" class="search-results-dropdown"></div>
+                        </div>
                     </div>
                     <div class="col-md-4 d-flex align-items-end">
-                        <button type="button" class="btn btn-outline-secondary w-100" style="padding: 10px; border-radius: 8px;" onclick="toggleCamaraScanner()">
+                        <button type="button" class="btn btn-outline-secondary w-100" style="padding: 12px; border-radius: 8px;" onclick="toggleCamaraScanner()">
                             Escaner de Camara
                         </button>
                     </div>
@@ -221,10 +268,11 @@
                 </div>
             </div>
 
+            <!-- Grilla visual de productos -->
             <div class="panel-luxury" style="max-height: 65vh; overflow-y: auto;">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span class="small fw-bold text-muted" style="letter-spacing: 1px; text-transform: uppercase;">Catalogo en Existencia</span>
-                    <input type="text" id="filtroNombre" class="form-control search-input form-control-sm w-50" placeholder="Filtrar por nombre..." onkeyup="filtrarCatalogo()">
+                    <span class="small fw-bold text-muted" style="letter-spacing: 1px; text-transform: uppercase;">Catálogo Completo</span>
+                    <span class="small text-muted" id="contadorProductos"></span>
                 </div>
                 <div class="row g-2" id="gridProductos">
                     {% for p in productos %}
@@ -245,7 +293,7 @@
             </div>
         </div>
 
-        <!-- Panel Derecho: Carrito y Métodos en Relieve -->
+        <!-- Panel Derecho: Carrito y Cobro con Métodos en Relieve -->
         <div class="col-lg-5">
             <div class="panel-luxury d-flex flex-column justify-content-between" style="min-height: 85vh;">
                 <div>
@@ -278,7 +326,6 @@
                         <h2 class="m-0 fw-bold" style="color: var(--ryd-gold-dark);" id="txtTotalUSD">$0.00</h2>
                     </div>
 
-                    <!-- Cuadros de Selección de Métodos con Relieve -->
                     <label class="small text-muted fw-bold mb-1" style="letter-spacing: 0.8px; text-transform: uppercase; font-size: 0.7rem;">Modalidad de Pago</label>
                     <div class="payment-grid mb-3">
                         <div class="payment-card active" onclick="seleccionarMetodo(this, 'Efectivo $')">
@@ -330,24 +377,120 @@ const productosDisponibles = [
     {% endfor %}
 ];
 
+// 1. Buscador predictivo en tiempo real desde la primera letra
+function ejecutarBusquedaPredictiva(termino) {
+    const contenedor = document.getElementById('resultadosPredictivos');
+    const valor = termino.trim().toLowerCase();
+
+    // También sincroniza el filtrado en la grilla visual inferior
+    filtrarGrillaCatalogo(valor);
+
+    if (valor.length === 0) {
+        contenedor.style.display = 'none';
+        contenedor.innerHTML = '';
+        return;
+    }
+
+    // Filtra los productos que contengan las letras en el nombre o en el código
+    const coincidencias = productosDisponibles.filter(p => 
+        p.nombre.toLowerCase().includes(valor) || 
+        p.codigo.toLowerCase().includes(valor)
+    );
+
+    if (coincidencias.length === 0) {
+        contenedor.innerHTML = '<div class="p-3 text-muted small text-center">No se encontraron productos con esa coincidencia.</div>';
+        contenedor.style.display = 'block';
+        return;
+    }
+
+    // Construir la lista flotante
+    let html = '';
+    coincidencias.slice(0, 15).forEach(prod => { // Muestra hasta 15 sugerencias fluidas
+        html += `
+            <div class="search-result-item" onclick="seleccionarDesdePredictivo('${prod.codigo}')">
+                <div>
+                    <span class="d-block fw-bold text-dark" style="font-size: 0.88rem;">${prod.nombre}</span>
+                    <small style="color: var(--ryd-gold-dark); font-weight: 600;">${prod.codigo}</small>
+                    <span class="text-muted ms-2" style="font-size: 0.75rem;">Disponibles: ${prod.stock}</span>
+                </div>
+                <div class="text-end">
+                    <strong style="color: var(--ryd-text); font-size: 0.95rem;">$${prod.precio.toFixed(2)}</strong>
+                </div>
+            </div>
+        `;
+    });
+
+    contenedor.innerHTML = html;
+    contenedor.style.display = 'block';
+}
+
+function seleccionarDesdePredictivo(codigo) {
+    const prod = productosDisponibles.find(p => p.codigo === codigo);
+    if (prod) {
+        agregarPorObjeto(prod.codigo, prod.nombre, prod.precio, prod.stock);
+    }
+    // Limpia el buscador y cierra el menú
+    const input = document.getElementById('inputCodigoBarras');
+    input.value = '';
+    document.getElementById('resultadosPredictivos').style.display = 'none';
+    filtrarGrillaCatalogo('');
+    input.focus();
+}
+
+// Cerrar el menú desplegable si se hace clic fuera del buscador
+document.addEventListener('click', function(e) {
+    const contenedor = document.getElementById('resultadosPredictivos');
+    const input = document.getElementById('inputCodigoBarras');
+    if (!input.contains(e.target) && !contenedor.contains(e.target)) {
+        contenedor.style.display = 'none';
+    }
+});
+
+// Soporte para pistola láser o presionar Enter en el buscador
 document.getElementById('inputCodigoBarras').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
         const cod = this.value.trim().toUpperCase();
         if (cod) {
-            buscarYAgregarProducto(cod);
-            this.value = '';
+            const exacto = productosDisponibles.find(p => p.codigo.toUpperCase() === cod || p.codigo.toUpperCase().replace('-', '') === cod);
+            if (exacto) {
+                agregarPorObjeto(exacto.codigo, exacto.nombre, exacto.precio, exacto.stock);
+                this.value = '';
+                document.getElementById('resultadosPredictivos').style.display = 'none';
+                filtrarGrillaCatalogo('');
+            } else {
+                // Si no es un código exacto, agrega el primer resultado de la lista predictiva
+                const primeraCoincidencia = productosDisponibles.find(p => 
+                    p.nombre.toLowerCase().includes(cod.toLowerCase()) || 
+                    p.codigo.toLowerCase().includes(cod.toLowerCase())
+                );
+                if (primeraCoincidencia) {
+                    agregarPorObjeto(primeraCoincidencia.codigo, primeraCoincidencia.nombre, primeraCoincidencia.precio, primeraCoincidencia.stock);
+                    this.value = '';
+                    document.getElementById('resultadosPredictivos').style.display = 'none';
+                    filtrarGrillaCatalogo('');
+                } else {
+                    alert("No se encontró ningún artículo coincidente.");
+                }
+            }
         }
     }
 });
 
-function buscarYAgregarProducto(codigo) {
-    const prod = productosDisponibles.find(p => p.codigo.toUpperCase() === codigo || p.codigo.toUpperCase().replace('-', '') === codigo);
-    if (prod) {
-        agregarPorObjeto(prod.codigo, prod.nombre, prod.precio, prod.stock);
-    } else {
-        alert("Referencia no catalogada: " + codigo);
-    }
+function filtrarGrillaCatalogo(valor) {
+    const items = document.querySelectorAll('.item-producto');
+    let visibles = 0;
+    items.forEach(el => {
+        const nom = el.getAttribute('data-nombre');
+        const cod = el.getAttribute('data-codigo');
+        if (nom.includes(valor) || cod.includes(valor)) {
+            el.style.display = 'block';
+            visibles++;
+        } else {
+            el.style.display = 'none';
+        }
+    });
+    document.getElementById('contadorProductos').innerText = visibles + ' disponibles';
 }
 
 function agregarPorObjeto(codigo, nombre, precio, stock) {
@@ -356,13 +499,13 @@ function agregarPorObjeto(codigo, nombre, precio, stock) {
         if (item.cantidad < stock) {
             item.cantidad++;
         } else {
-            alert("Limite de inventario alcanzado (" + stock + " unidades disponibles).");
+            alert("Límite de inventario alcanzado (" + stock + " unidades disponibles).");
         }
     } else {
         if (stock > 0) {
             carrito.push({ codigo, nombre, precio, cantidad: 1, stock });
         } else {
-            alert("Existencia agotada en almacen.");
+            alert("Existencia agotada en almacén.");
         }
     }
     renderizarCarrito();
@@ -390,7 +533,7 @@ function cambiarCantidad(codigo, delta) {
 function renderizarCarrito() {
     const tbody = document.getElementById('cuerpoCarrito');
     if (carrito.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted small">Terminal en espera de articulos.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted small">Terminal en espera de artículos.</td></tr>';
         document.getElementById('txtTotalUSD').innerText = '$0.00';
         return;
     }
@@ -417,23 +560,13 @@ function renderizarCarrito() {
                 </td>
                 <td class="text-end fw-bold">$${subtotal.toFixed(2)}</td>
                 <td class="text-center">
-                    <button class="btn-delete-row" onclick="eliminarDelCarrito('${p.codigo}')" title="Retirar articulo">X</button>
+                    <button class="btn-delete-row" onclick="eliminarDelCarrito('${p.codigo}')" title="Retirar artículo">X</button>
                 </td>
             </tr>
         `;
     });
 
     document.getElementById('txtTotalUSD').innerText = `$${totalUsd.toFixed(2)}`;
-}
-
-function filtrarCatalogo() {
-    const busqueda = document.getElementById('filtroNombre').value.toLowerCase();
-    const items = document.querySelectorAll('.item-producto');
-    items.forEach(el => {
-        const nom = el.getAttribute('data-nombre');
-        const cod = el.getAttribute('data-codigo');
-        el.style.display = (nom.includes(busqueda) || cod.includes(busqueda)) ? 'block' : 'none';
-    });
 }
 
 function seleccionarMetodo(elemento, metodo) {
@@ -451,7 +584,7 @@ function seleccionarMetodo(elemento, metodo) {
 
 function procesarCobro() {
     if (carrito.length === 0) {
-        alert("Ingrese al menos un articulo en el detalle de venta.");
+        alert("Ingrese al menos un artículo en el detalle de venta.");
         return;
     }
 
@@ -474,7 +607,7 @@ function procesarCobro() {
             alert("Fallo de registro: " + data.mensaje);
         }
     })
-    .catch(() => alert("Error en comunicacion con el servidor."));
+    .catch(() => alert("Error en comunicación con el servidor."));
 }
 
 let html5QrCode = null;
@@ -487,11 +620,11 @@ function toggleCamaraScanner() {
             { facingMode: "environment" },
             { fps: 10, qrbox: { width: 250, height: 150 } },
             (decodedText) => {
-                buscarYAgregarProducto(decodedText.trim().toUpperCase());
+                seleccionarDesdePredictivo(decodedText.trim().toUpperCase());
                 detenerCamara();
             },
             () => {}
-        ).catch(err => alert("Sensor optico no accesible: " + err));
+        ).catch(err => alert("Sensor óptico no accesible: " + err));
     } else {
         detenerCamara();
     }
@@ -506,6 +639,11 @@ function detenerCamara() {
         document.getElementById('contenedorCamara').style.display = 'none';
     }
 }
+
+// Inicializar contador al cargar
+window.addEventListener('DOMContentLoaded', () => {
+    filtrarGrillaCatalogo('');
+});
 </script>
 </body>
 </html>
