@@ -5,9 +5,10 @@ import sqlite3
 import unicodedata
 from datetime import datetime, date
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file
 from werkzeug.utils import secure_filename
 from pypdf import PdfReader
+import pandas as pd
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_super_segura_ryd_2026'
@@ -37,6 +38,7 @@ def inicializar_db():
     conn = obtener_conexion()
     cursor = conn.cursor()
 
+    # Tabla productos
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS productos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,6 +59,21 @@ def inicializar_db():
         except sqlite3.OperationalError:
             pass
 
+    # Tabla proveedores automáticos
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS proveedores (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT UNIQUE NOT NULL,
+            telefono TEXT DEFAULT '',
+            contacto TEXT DEFAULT '',
+            direccion TEXT DEFAULT '',
+            rif TEXT DEFAULT '',
+            ultima_compra TEXT DEFAULT '',
+            total_compras REAL DEFAULT 0.0
+        )
+    ''')
+
+    # Tabla ventas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ventas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -199,16 +216,8 @@ def logout():
     flash('Has cerrado sesión.')
     return redirect(url_for('login'))
 
-@app.route('/resetear_clave_admin')
-def resetear_clave_admin():
-    conn = obtener_conexion()
-    conn.execute("UPDATE usuarios SET password = 'admin123' WHERE username = 'admin'")
-    conn.commit()
-    conn.close()
-    return "<h2 style='font-family: sans-serif; color: #9D7B38; text-align: center; margin-top: 50px;'>Clave restablecida a: <b>admin123</b><br><br><a href='/login'>Ir a Iniciar Sesión</a></h2>"
 
-
-# --- TERMINAL DE COBRO (POS) ---
+# --- PUNTO DE VENTA (POS) ---
 
 @app.route('/')
 def index():
@@ -252,9 +261,7 @@ def procesar_venta():
         if len(items) > 3:
             resumen_nombres += f" (+{len(items)-3} más)"
 
-        # Consulta de columnas existentes para evitar NOT NULL constraint failed
         cols_ventas = [col[1] for col in cursor.execute("PRAGMA table_info(ventas)").fetchall()]
-        
         campos = ['fecha', 'total', 'metodo_pago', 'referencia', 'usuario']
         valores = [fecha_hora, round(total_venta, 2), metodo_pago, referencia, usuario]
 
@@ -305,7 +312,7 @@ def ticket(venta_id):
     return render_template('ticket.html', venta=venta, detalles=detalles)
 
 
-# --- PANEL ADMINISTRADOR ---
+# --- PANEL ADMINISTRADOR Y EXPORTACIÓN EXCEL ---
 
 @app.route('/admin')
 @role_required('admin')
@@ -343,6 +350,50 @@ def admin():
         total_costo_inversion=round(total_costo_inversion, 2),
         total_valor_venta=round(total_valor_venta, 2),
         total_ventas_usd=round(total_ventas_usd, 2)
+    )
+
+@app.route('/exportar_inventario_excel')
+@role_required('admin')
+def exportar_inventario_excel():
+    conn = obtener_conexion()
+    productos = conn.execute('SELECT * FROM productos ORDER BY categoria ASC, nombre ASC').fetchall()
+    conn.close()
+
+    filas = []
+    for p in productos:
+        costo = float(p['costo'] or 0.0)
+        precio = float(p['precio'] or 0.0)
+        stock = int(p['stock'] or 0)
+        margen = round(((precio - costo) / costo) * 100, 1) if costo > 0 else 30.0
+        inv_costo = round(costo * stock, 2)
+        val_venta = round(precio * stock, 2)
+
+        filas.append({
+            'Categoría': p['categoria'],
+            'Código / SKU': p['codigo'],
+            'Producto / Descripción': p['nombre'],
+            'Costo Unit. ($)': costo,
+            'Descuento ($)': float(p['descuento'] or 0.0),
+            'Costo Net Unit. ($)': costo,
+            'Precio Venta ($)': precio,
+            '% Margen': f"{margen}%",
+            'Stock': stock,
+            'Inversión Total Costo ($)': inv_costo,
+            'Valor Total Venta ($)': val_venta
+        })
+
+    df = pd.DataFrame(filas)
+    salida = io.BytesIO()
+    with pd.ExcelWriter(salida, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Inventario RyD')
+
+    salida.seek(0)
+    nombre_archivo = f"Inventario_RyD_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    return send_file(
+        salida,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=nombre_archivo
     )
 
 @app.route('/agregar', methods=['GET', 'POST'])
@@ -414,24 +465,50 @@ def eliminar(id):
     return redirect(url_for('admin'))
 
 
-# --- MÓDULO UNIVERSAL DE IMPORTACIÓN (FACTURAS, NOTAS, FOTOS Y EXCEL) ---
+# --- MÓDULO DE PROVEEDORES Y PARSER UNIVERSAL MULTI-FORMATO ---
 
 @app.route('/proveedores')
 @role_required('admin')
 def proveedores():
-    return render_template('proveedores.html')
+    conn = obtener_conexion()
+    proveedores_lista = conn.execute('SELECT * FROM proveedores ORDER BY nombre ASC').fetchall()
+    conn.close()
+    return render_template('proveedores.html', proveedores_guardados=proveedores_lista)
 
 @app.route('/guardar_factura_proveedor', methods=['POST'])
 @role_required('admin')
 def guardar_factura_proveedor():
     data = request.get_json() or {}
     items = data.get('items', [])
+    proveedor_nom = (data.get('proveedor') or '').strip().title()
+    telefono_prov = (data.get('telefono') or '').strip()
 
     if not items:
         return jsonify({'exito': False, 'mensaje': 'Sin productos válidos para guardar'}), 400
 
     conn = obtener_conexion()
     try:
+        # Registro automático en el Directorio
+        if proveedor_nom and proveedor_nom != "Proveedor General":
+            monto_compra_actual = sum(float(it.get('costo', 0)) * int(it.get('stock', 0)) for it in items)
+            fecha_hoy = date.today().strftime('%Y-%m-%d')
+
+            prov_existente = conn.execute('SELECT id FROM proveedores WHERE UPPER(nombre) = ?', (proveedor_nom.upper(),)).fetchone()
+            if prov_existente:
+                conn.execute('''
+                    UPDATE proveedores 
+                    SET telefono = CASE WHEN ? != '' THEN ? ELSE telefono END,
+                        ultima_compra = ?,
+                        total_compras = total_compras + ?
+                    WHERE id = ?
+                ''', (telefono_prov, telefono_prov, fecha_hoy, round(monto_compra_actual, 2), prov_existente['id']))
+            else:
+                conn.execute('''
+                    INSERT INTO proveedores (nombre, telefono, ultima_compra, total_compras)
+                    VALUES (?, ?, ?, ?)
+                ''', (proveedor_nom, telefono_prov, fecha_hoy, round(monto_compra_actual, 2)))
+
+        # Actualización de inventario anti-duplicados
         for it in items:
             cod = str(it.get('codigo', '')).strip().upper()
             nom = str(it.get('nombre', '')).strip()
@@ -550,7 +627,7 @@ def procesar_factura_ocr():
                             'categoria': clasificar_categoria_ryd(desc_limpia)
                         })
 
-        # 3. TICKETS SENIAT / HOGAR IDEAL CON CÓDIGO Y NOMBRE SEPARADOS POR '/'
+        # 3. TICKETS SENIAT / HOGAR IDEAL
         if not items:
             for i, linea in enumerate(lineas):
                 if '/' in linea:
@@ -561,7 +638,6 @@ def procesar_factura_ocr():
                     qty = 1
                     cost = 0.0
 
-                    # Buscar cantidad y precio en renglones contiguos
                     for offset in [-1, 1]:
                         idx_check = i + offset
                         if 0 <= idx_check < len(lineas):
