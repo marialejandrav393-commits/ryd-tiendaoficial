@@ -529,6 +529,10 @@ import io
 import re
 from pypdf import PdfReader
 
+import io
+import re
+from pypdf import PdfReader
+
 @app.route('/procesar_factura_ocr', methods=['POST'])
 def procesar_factura_ocr():
     if 'factura' not in request.files:
@@ -540,81 +544,88 @@ def procesar_factura_ocr():
     comercio = ""
     telefono = ""
     items = []
+    total_paginas = 1
 
     try:
         if nombre.endswith('.pdf'):
             reader = PdfReader(io.BytesIO(archivo.read()))
-            texto = ""
-            for page in reader.pages:
-                texto += (page.extract_text() or "") + "\n"
+            total_paginas = len(reader.pages)
+            texto_completo = ""
 
-            # 1. Búsqueda de teléfono (formatos venezolanos 0412, 0414, 0424, 0416, 0426 o con prefijo Telf)
-            m_tel = re.search(r'(?:Telf|Tel|Cel|WhatsApp)?[:\s]*(04\d{2}[\s\-]?\d{7}|\+?58[\s\-]?\d{10})', texto, re.IGNORECASE)
+            # Recorrer TODAS las páginas del PDF sin excepción
+            for num_pag, page in enumerate(reader.pages, start=1):
+                contenido_pagina = page.extract_text() or ""
+                texto_completo += f"\n--- PAGINA {num_pag} ---\n" + contenido_pagina
+
+            # 1. Teléfono del comercio
+            m_tel = re.search(r'(?:Telf|Tel|Cel|WhatsApp)?[:\s]*(04\d{2}[\s\-]?\d{7}|\+?58[\s\-]?\d{10})', texto_completo, re.IGNORECASE)
             if m_tel:
                 telefono = m_tel.group(1).replace(" ", "").replace("-", "")
             else:
-                m_tel2 = re.search(r'Telf[:\s]*([0-9\+\-\s]+)', texto, re.IGNORECASE)
+                m_tel2 = re.search(r'Telf[:\s]*([0-9\+\-\s]+)', texto_completo, re.IGNORECASE)
                 if m_tel2:
                     telefono = m_tel2.group(1).strip()
 
-            # 2. Búsqueda de comercio emisor
-            lineas = [l.strip().lstrip('|').strip() for l in texto.split('\n') if l.strip()]
-            for l in lineas[:8]:
+            # 2. Nombre del comercio
+            lineas = [l.strip().lstrip('|').strip() for l in texto_completo.split('\n') if l.strip()]
+            for l in lineas[:10]:
                 l_upper = l.upper()
-                if not any(palabra in l_upper for palabra in ['CLIENTE', 'DIRECCION', 'DIRECCIÓN', 'PRESUPUESTO', 'FACTURA', 'RIF', 'R.I.F', 'CANTIDAD', 'FECHA']):
+                if not any(palabra in l_upper for palabra in ['PAGINA', 'CLIENTE', 'DIRECCION', 'DIRECCIÓN', 'PRESUPUESTO', 'FACTURA', 'RIF', 'R.I.F', 'CANTIDAD']):
                     if len(l) > 3:
                         comercio = l.title()
                         break
-            if not comercio and "AURA" in texto.upper():
+            if not comercio and "AURA" in texto_completo.upper():
                 comercio = "Aura Profesional"
 
-            # 3. Extracción de productos multilínea (Cantidad -> Nombre -> Costo Unitario -> Total)
-            # Cubre facturas con barras verticales '|' o saltos de renglón
-            patron_items = re.findall(r'(\d+)\s*(?:Und\.?|Pza\.?|Unidad)?\s*[\n\|]\s*([^|\n]+?)\s*[\n\|]\s*(\d+(?:\.\d{1,2})?)\s*[\n\|]\s*(\d+(?:\.\d{1,2})?)', texto, re.IGNORECASE)
-            
-            if patron_items:
-                for idx, (cant, desc, p_unit, tot) in enumerate(patron_items, 1):
-                    nom_limpio = desc.strip().replace('\n', ' ')
-                    
-                    cat = "General"
-                    if any(k in nom_limpio.lower() for k in ['tijera', 'cortaunas', 'cuticula', 'lima', 'esmaltes']):
-                        cat = "Uñas"
-                    elif any(k in nom_limpio.lower() for k in ['peine', 'gorro', 'difusor', 'ondas', 'cera', 'cabello']):
-                        cat = "Cuidado Capilar"
-                    elif any(k in nom_limpio.lower() for k in ['ventilador', 'pinzas', 'organizador']):
-                        cat = "Accesorios"
+            # 3. Extracción universal a lo largo de todas las páginas
+            patron_items = re.findall(r'(\d+)\s*(?:Und\.?|Pza\.?|Unidad)?\s*[\n\|]\s*([^|\n]+?)\s*[\n\|]\s*(\d+(?:\.\d{1,2})?)\s*[\n\|]\s*(\d+(?:\.\d{1,2})?)', texto_completo, re.IGNORECASE)
 
-                    items.append({
-                        'codigo': f"PRV-{str(idx).zfill(3)}",
-                        'nombre': nom_limpio.title(),
-                        'costo': float(p_unit),
-                        'stock': int(cant),
-                        'categoria': cat
-                    })
+            for cant, desc, p_unit, tot in patron_items:
+                nom_limpio = desc.strip().replace('\n', ' ')
+                cant_bultos = int(cant)
+                costo_bulto = float(p_unit)
 
-            # Método de respaldo línea por línea si la factura viene en columnas continuas
-            if not items:
-                for line in lineas:
-                    m = re.match(r'^(\d+)\s+(?:Und\.?\s+)?(.+?)\s+(\d+\.\d{2})\s+(\d+\.\d{2})$', line, re.IGNORECASE)
-                    if m:
-                        cant, desc, p_unit, _ = m.groups()
-                        items.append({
-                            'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
-                            'nombre': desc.strip().title(),
-                            'costo': float(p_unit),
-                            'stock': int(cant),
-                            'categoria': 'General'
-                        })
+                # Detección inteligente de unidades por paquete en la descripción
+                unidades_por_paquete = 1
+                nom_lower = nom_limpio.lower()
+                
+                if 'docena' in nom_lower:
+                    unidades_por_paquete = 12
+                else:
+                    # Busca patrones como "caja 24", "paquete 10", "x 50", etc.
+                    m_pack = re.search(r'(?:paquete|caja|pack|x)\s*(\d+)', nom_lower)
+                    if m_pack:
+                        unidades_por_paquete = int(m_pack.group(1))
+
+                cat = "General"
+                if any(k in nom_lower for k in ['tijera', 'cortaunas', 'cuticula', 'lima', 'esmaltes']):
+                    cat = "Uñas"
+                elif any(k in nom_lower for k in ['peine', 'gorro', 'difusor', 'ondas', 'cera', 'cabello']):
+                    cat = "Cuidado Capilar"
+                elif any(k in nom_lower for k in ['ventilador', 'pinzas', 'organizador']):
+                    cat = "Accesorios"
+
+                items.append({
+                    'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
+                    'nombre': nom_limpio.title(),
+                    'costo_bulto': costo_bulto,
+                    'bultos': cant_bultos,
+                    'unidades_por_paquete': unidades_por_paquete,
+                    'costo_unitario': round(costo_bulto / unidades_por_paquete, 2),
+                    'stock_total': cant_bultos * unidades_por_paquete,
+                    'categoria': cat
+                })
 
         return jsonify({
             'exito': True,
             'comercio': comercio,
             'telefono': telefono,
+            'total_paginas': total_paginas,
             'items': items
         })
 
     except Exception as e:
-        return jsonify({'exito': False, 'mensaje': f'Error en procesamiento local: {str(e)}'}), 500
+        return jsonify({'exito': False, 'mensaje': f'Error en lectura multipágina: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
