@@ -52,7 +52,6 @@ def inicializar_db():
         )
     ''')
 
-    # Columnas opcionales en productos
     for col_def in ['imagen TEXT', 'descuento REAL DEFAULT 0.0', 'costo REAL DEFAULT 0.0']:
         try:
             cursor.execute(f'ALTER TABLE productos ADD COLUMN {col_def}')
@@ -67,12 +66,18 @@ def inicializar_db():
             total REAL DEFAULT 0.0,
             metodo_pago TEXT DEFAULT 'Efectivo $',
             referencia TEXT,
-            usuario TEXT DEFAULT 'Cajero'
+            usuario TEXT DEFAULT 'Cajero',
+            producto_nombre TEXT DEFAULT ''
         )
     ''')
 
-    # Garantizar que ventas tenga todas sus columnas sin chocar con bases previas
-    for col_def in ['total REAL DEFAULT 0.0', 'metodo_pago TEXT DEFAULT "Efectivo $"', 'referencia TEXT', 'usuario TEXT DEFAULT "Cajero"']:
+    for col_def in [
+        'total REAL DEFAULT 0.0',
+        'metodo_pago TEXT DEFAULT "Efectivo $"',
+        'referencia TEXT',
+        'usuario TEXT DEFAULT "Cajero"',
+        'producto_nombre TEXT DEFAULT ""'
+    ]:
         try:
             cursor.execute(f'ALTER TABLE ventas ADD COLUMN {col_def}')
         except sqlite3.OperationalError:
@@ -102,7 +107,6 @@ def inicializar_db():
         )
     ''')
 
-    # Usuarios maestros garantizados
     cursor.execute("SELECT id FROM usuarios WHERE username = 'admin'")
     if not cursor.fetchone():
         cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('admin', 'admin123', 'admin')")
@@ -124,13 +128,13 @@ def clasificar_categoria_ryd(descripcion):
         return "Cejas y Pestañas"
     if any(k in desc for k in ['esmalte', 'lipstick', 'brush on', 'gel', 'finish', 'rubber', 'cuticula', 'protein', 'polygel', 'acrygel', 'serum', 'nail', 'primer', 'ultrabond', 'blossom', 'base coat', 'builder', 'tijera', 'cortauna', 'lima', 'punta', 'jelly', 'pincel', 'bledo', 'dappen', 'guillotina', 'empujador']):
         return "Uñas"
-    if any(k in desc for k in ['gorro', 'guante', 'desechable', 'tapa boca', 'mascarilla', 'toalla', 'separador', 'palitos']):
+    if any(k in desc for k in ['gorro', 'guante', 'desechable', 'tapa boca', 'mascarilla', 'toalla', 'separador', 'palitos', 'hisopo']):
         return "Desechables"
-    if any(k in desc for k in ['peine', 'difusor', 'ondas', 'cepillo', 'shampoo', 'keratina', 'tinte', 'plancha']):
+    if any(k in desc for k in ['shampoo', 'alisado', 'blower', 'tratamiento', 'peine', 'difusor', 'ondas', 'cepillo', 'keratina', 'tinte', 'plancha', 'cabello']):
         return "Cabello"
-    if any(k in desc for k in ['intimo', 'jabon intimo', 'cera depilatoria', 'roll on', 'banda depilacion']):
+    if any(k in desc for k in ['intimo', 'jabon', 'arandano', 'manzanilla', 'cera depilatoria', 'roll on', 'banda depilacion']):
         return "Íntimo"
-    if any(k in desc for k in ['alcohol', 'acetona', 'algodon', 'cleanser', 'sanitizante', 'exfoliante', 'espuma', 'sponge', 'mantequilla', 'gota cicatrizante']):
+    if any(k in desc for k in ['alcohol', 'acetona', 'algodon', 'cleanser', 'sanitizante', 'exfoliante', 'espuma', 'sponge', 'mantequilla', 'gota', 'atomizador', 'organizador', 'envase']):
         return "Insumos"
     return "General"
 
@@ -157,7 +161,6 @@ def login():
         usuario = (request.form.get('username') or '').strip().lower()
         password = (request.form.get('password') or '').strip()
 
-        # Acceso Directo de Emergencia Garantizado
         if usuario == 'admin' and password in ['admin123', 'admin2026', 'admin']:
             session['logged_in'] = True
             session['user_id'] = 1
@@ -172,7 +175,6 @@ def login():
             session['user_role'] = 'cajero'
             return redirect(url_for('pos_cajero'))
 
-        # Verificación en base de datos
         conn = obtener_conexion()
         user_info = conn.execute(
             'SELECT * FROM usuarios WHERE LOWER(username) = ? AND password = ?',
@@ -195,13 +197,11 @@ def login():
 
     return render_template('login.html')
 
-
 @app.route('/logout')
 def logout():
     session.clear()
     flash('Has cerrado sesión.')
     return redirect(url_for('login'))
-
 
 @app.route('/resetear_clave_admin')
 def resetear_clave_admin():
@@ -212,7 +212,7 @@ def resetear_clave_admin():
     return "<h2 style='font-family: sans-serif; color: #9D7B38; text-align: center; margin-top: 50px;'>Clave restablecida a: <b>admin123</b><br><br><a href='/login'>Ir a Iniciar Sesión</a></h2>"
 
 
-# --- RUTAS DE TIENDA Y PUNTO DE VENTA ---
+# --- TERMINAL DE COBRO (POS) ---
 
 @app.route('/')
 def index():
@@ -221,7 +221,6 @@ def index():
     if session.get('user_role') == 'admin':
         return redirect(url_for('admin'))
     return redirect(url_for('pos_cajero'))
-
 
 @app.route('/cajero/pos')
 @role_required('admin', 'cajero')
@@ -232,7 +231,6 @@ def pos_cajero():
     categorias = [row['categoria'] for row in categorias_rows if row['categoria']]
     conn.close()
     return render_template('pos.html', productos=productos, categorias=categorias)
-
 
 @app.route('/procesar_venta', methods=['POST'])
 def procesar_venta():
@@ -253,11 +251,23 @@ def procesar_venta():
     try:
         total_venta = sum(float(item['precio']) * int(item['cantidad']) for item in items)
         fecha_hora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        resumen_nombres = ", ".join([it['nombre'] for it in items[:3]])
+        if len(items) > 3:
+            resumen_nombres += f" y {len(items)-3} más"
 
-        cursor.execute('''
-            INSERT INTO ventas (fecha, total, metodo_pago, referencia, usuario)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (fecha_hora, round(total_venta, 2), metodo_pago, referencia, usuario))
+        # Inserción blindada contra esquemas antiguos
+        cols_ventas = [col[1] for col in cursor.execute("PRAGMA table_info(ventas)").fetchall()]
+        if 'producto_nombre' in cols_ventas:
+            cursor.execute('''
+                INSERT INTO ventas (fecha, total, metodo_pago, referencia, usuario, producto_nombre)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (fecha_hora, round(total_venta, 2), metodo_pago, referencia, usuario, resumen_nombres))
+        else:
+            cursor.execute('''
+                INSERT INTO ventas (fecha, total, metodo_pago, referencia, usuario)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (fecha_hora, round(total_venta, 2), metodo_pago, referencia, usuario))
+
         venta_id = cursor.lastrowid
 
         for it in items:
@@ -281,7 +291,6 @@ def procesar_venta():
         conn.close()
         return jsonify({'exito': False, 'mensaje': str(e)}), 500
 
-
 @app.route('/ticket/<int:venta_id>')
 def ticket(venta_id):
     if not session.get('logged_in'):
@@ -298,7 +307,7 @@ def ticket(venta_id):
     return render_template('ticket.html', venta=venta, detalles=detalles)
 
 
-# --- PANEL ADMINISTRADOR CON CONTABILIDAD EXACTA ---
+# --- PANEL ADMINISTRADOR ---
 
 @app.route('/admin')
 @role_required('admin')
@@ -306,7 +315,6 @@ def admin():
     conn = obtener_conexion()
     productos_raw = conn.execute('SELECT * FROM productos ORDER BY id DESC').fetchall()
 
-    # Cálculo contable riguroso al centavo
     total_costo_inversion = 0.0
     total_valor_venta = 0.0
     ganancia_estimada = 0.0
@@ -320,7 +328,6 @@ def admin():
         total_valor_venta += (precio_u * stock_u)
         ganancia_estimada += ((precio_u - costo_u) * stock_u)
 
-    # Consulta protegida contra inconsistencias de columnas en ventas
     total_ventas_usd = 0.0
     try:
         ventas_total_row = conn.execute('SELECT SUM(total) as total_ventas FROM ventas').fetchone()
@@ -339,7 +346,6 @@ def admin():
         total_valor_venta=round(total_valor_venta, 2),
         total_ventas_usd=round(total_ventas_usd, 2)
     )
-
 
 @app.route('/agregar', methods=['GET', 'POST'])
 @role_required('admin')
@@ -374,7 +380,6 @@ def agregar():
 
     return render_template('agregar.html')
 
-
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
 @role_required('admin')
 def editar(id):
@@ -401,7 +406,6 @@ def editar(id):
         return "Producto no encontrado", 404
     return render_template('editar.html', producto=producto)
 
-
 @app.route('/eliminar/<int:id>')
 @role_required('admin')
 def eliminar(id):
@@ -412,13 +416,12 @@ def eliminar(id):
     return redirect(url_for('admin'))
 
 
-# --- MÓDULO DE PROVEEDORES, FACTURAS Y OCR ---
+# --- MÓDULO DE PROVEEDORES Y PARSER UNIVERSAL DE FACTURAS/NOTAS ---
 
 @app.route('/proveedores')
 @role_required('admin')
 def proveedores():
     return render_template('proveedores.html')
-
 
 @app.route('/guardar_factura_proveedor', methods=['POST'])
 @role_required('admin')
@@ -468,56 +471,123 @@ def guardar_factura_proveedor():
         conn.close()
         return jsonify({'exito': False, 'mensaje': str(e)}), 500
 
-
 @app.route('/procesar_factura_ocr', methods=['POST'])
 @role_required('admin')
 def procesar_factura_ocr():
-    if 'factura' not in request.files:
-        return jsonify({'exito': False, 'mensaje': 'No se cargó ningún archivo'}), 400
-
-    archivo = request.files['factura']
-    nombre = (archivo.filename or "").lower()
+    # Acepta tanto archivos cargados como texto OCR extraído por el navegador
+    texto_directo = request.form.get('texto_ocr', '')
+    archivo = request.files.get('factura')
 
     comercio = ""
     telefono = ""
     items = []
-    total_paginas = 0
+    total_paginas = 1
 
     try:
-        if nombre.endswith('.pdf'):
+        texto_completo = ""
+
+        if archivo and (archivo.filename or "").lower().endswith('.pdf'):
             reader = PdfReader(io.BytesIO(archivo.read()))
             total_paginas = len(reader.pages)
-            texto_completo = ""
-
             for page in reader.pages:
                 texto_completo += "\n" + (page.extract_text() or "")
+        elif texto_directo:
+            texto_completo = texto_directo
 
-            if "GOOD TIMES" in texto_completo.upper():
-                comercio = "Inversiones J.S Good Times C.A"
-            elif "AURA" in texto_completo.upper():
-                comercio = "Aura Profesional"
-            else:
-                lineas_sup = [l.strip() for l in texto_completo.split('\n') if l.strip()][:15]
-                for l in lineas_sup:
-                    if any(k in l.upper() for k in ["C.A", "S.A", "INVERSIONES", "DISTRIBUIDORA", "COMERCIAL"]):
-                        comercio = l.title()
-                        break
-                if not comercio and lineas_sup:
-                    comercio = lineas_sup[0].title()
+        # 1. Detección de comercio y teléfono
+        up = texto_completo.upper()
+        if "MICELI" in up:
+            comercio = "Comercializadora Miceli Corp, S.A."
+            telefono = "04129583694"
+        elif "STOREFIT" in up:
+            comercio = "Storefit Internacional, C.A."
+            telefono = "04121100769"
+        elif "HOGAR IDEAL" in up:
+            comercio = "Hogar Ideal 1441, C.A."
+        elif "GOOD TIMES" in up:
+            comercio = "Inversiones J.S Good Times C.A"
+        elif "AURA" in up:
+            comercio = "Aura Profesional"
+            telefono = "04127494813"
 
-            m_tel = re.search(r'(?:Telf|Tel|Cel|WhatsApp)?[:\s]*(04\d{2}[\s\-]?\d{7}|\+?58[\s\-]?\d{10})', texto_completo, re.IGNORECASE)
+        if not telefono:
+            m_tel = re.search(r'(?:04\d{2}[\s\-]?\d{7}|\+?58[\s\-]?\d{10})', texto_completo)
             if m_tel:
-                telefono = m_tel.group(1).replace(" ", "").replace("-", "")
+                telefono = m_tel.group(0).replace(" ", "").replace("-", "")
 
-            lineas = [l.strip() for l in texto_completo.split('\n') if l.strip()]
+        lineas = [l.strip() for l in texto_completo.split('\n') if l.strip()]
 
-            # Formato A: Nota de Despacho POS
+        # 2. Parser para Notas de Entrega tipo Miceli (NE ROYVINER: Codigo, Desc, Cantidad, Precio, Total)
+        for linea in lineas:
+            m_miceli = re.match(r'^([A-Z0-9\-_]{3,15})\s+(.+?)\s+(\d+)\s+([0-9]+[,\.][0-9]{2})\s+([0-9]+[,\.][0-9]{2})$', linea, re.IGNORECASE)
+            if m_miceli:
+                cod, desc, cant, p_unit, _ = m_miceli.groups()
+                c_val = float(p_unit.replace(',', '.'))
+                q_val = int(cant)
+                items.append({
+                    'codigo': cod.upper(),
+                    'nombre': desc.strip().title(),
+                    'costo': c_val,
+                    'unidades_empaque': 1,
+                    'cant_comprada': q_val,
+                    'stock': q_val,
+                    'categoria': clasificar_categoria_ryd(desc)
+                })
+
+        # 3. Parser para Storefit (Unidades, Descripción, Precio Unitario, Total)
+        if not items:
+            for linea in lineas:
+                m_store = re.match(r'^(\d+)\s+(.+?)\s+\$?([0-9]+[,\.][0-9]{2})\s+\$?([0-9]+[,\.][0-9]{2})$', linea, re.IGNORECASE)
+                if m_store:
+                    cant, desc, p_unit, _ = m_store.groups()
+                    desc_limpia = desc.strip()
+                    if not any(k in desc_limpia.upper() for k in ['TOTAL', 'SUBTOTAL', 'SUB-TOTAL', 'ORDEN']):
+                        c_val = float(p_unit.replace(',', '.'))
+                        q_val = int(cant)
+                        items.append({
+                            'codigo': f"STR-{str(len(items) + 1).zfill(3)}",
+                            'nombre': desc_limpia.title(),
+                            'costo': c_val,
+                            'unidades_empaque': 1,
+                            'cant_comprada': q_val,
+                            'stock': q_val,
+                            'categoria': clasificar_categoria_ryd(desc_limpia)
+                        })
+
+        # 4. Parser para Tickets SENIAT / Hogar Ideal (1,000xBs5411.45 / SF8937-253 Nombre)
+        if not items:
+            idx = 0
+            while idx < len(lineas):
+                l_act = lineas[idx]
+                m_tkt_qty = re.search(r'(\d+)(?:[,\.]000)?\s*[xX]\s*(?:Bs\.?|\$)?\s*([0-9\.,]+)', l_act)
+                if m_tkt_qty and (idx + 1) < len(lineas):
+                    cant = int(m_tkt_qty.group(1))
+                    precio_u = float(m_tkt_qty.group(2).replace('.', '').replace(',', '.')) if ',' in m_tkt_qty.group(2) and '.' in m_tkt_qty.group(2) else float(m_tkt_qty.group(2).replace(',', '.'))
+                    desc_linea = lineas[idx + 1]
+                    partes = desc_linea.split('/', 1)
+                    cod = partes[0].strip() if len(partes) > 1 else f"TKT-{str(len(items)+1).zfill(3)}"
+                    nom = partes[1].strip() if len(partes) > 1 else desc_linea.strip()
+
+                    items.append({
+                        'codigo': cod.upper(),
+                        'nombre': nom.title(),
+                        'costo': round(precio_u, 2),
+                        'unidades_empaque': 1,
+                        'cant_comprada': cant,
+                        'stock': cant,
+                        'categoria': clasificar_categoria_ryd(nom)
+                    })
+                    idx += 2
+                    continue
+                idx += 1
+
+        # 5. Parser POS Good Times y Presupuestos Estándar (Fallback)
+        if not items:
             i = 0
             while i < len(lineas):
                 linea_actual = lineas[i]
                 if "Lineas" in linea_actual or "SUBTTL" in linea_actual or ("TOTAL" in linea_actual and len(items) > 5):
                     break
-
                 m_qty = re.match(r'^(\d+)[,\.]00$', linea_actual)
                 if m_qty and (i + 2) < len(lineas):
                     cant = int(m_qty.group(1))
@@ -529,26 +599,19 @@ def procesar_factura_ocr():
                         s1 = price_line[:split_pos].replace(',', '.')
                         s2 = price_line[split_pos:].replace(',', '.')
                         try:
-                            f1 = float(s1)
-                            f2 = float(s2)
+                            f1, f2 = float(s1), float(s2)
                             if abs(cant * f2 - f1) < 0.05:
-                                costo_encontrado = f2
-                                break
+                                costo_encontrado = f2; break
                             if abs(cant * f1 - f2) < 0.05:
-                                costo_encontrado = f1
-                                break
+                                costo_encontrado = f1; break
                         except:
                             continue
 
                     if costo_encontrado is None:
                         partes = re.findall(r'\d+[,\.]\d{2}', price_line)
-                        if partes:
-                            costo_encontrado = float(partes[-1].replace(',', '.'))
-                        else:
-                            costo_encontrado = 0.0
+                        costo_encontrado = float(partes[-1].replace(',', '.')) if partes else 0.0
 
                     if desc and costo_encontrado > 0:
-                        cat = clasificar_categoria_ryd(desc)
                         items.append({
                             'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
                             'nombre': desc.title(),
@@ -556,56 +619,11 @@ def procesar_factura_ocr():
                             'unidades_empaque': 1,
                             'cant_comprada': cant,
                             'stock': cant,
-                            'categoria': cat
+                            'categoria': clasificar_categoria_ryd(desc)
                         })
                         i += 3
                         continue
                 i += 1
-
-            # Formato B: Factura Presupuesto Estándar
-            if not items:
-                clean_lines = [l.replace('|', ' ').strip() for l in lineas]
-                idx = 0
-                while idx < len(clean_lines):
-                    linea = clean_lines[idx]
-                    m_inline = re.match(r'^(\d+)\s*(?:Und\.?|Pza\.?|Unidad)?\s+(.+?)\s+(\d+[\.,]\d{2})\s+(\d+[\.,]\d{2})$', linea, re.IGNORECASE)
-                    if m_inline:
-                        cant = int(m_inline.group(1))
-                        desc = m_inline.group(2).strip()
-                        costo_compra = float(m_inline.group(3).replace(',', '.'))
-                        idx += 1
-                    else:
-                        m_und = re.match(r'^(\d+)\s*(?:Und\.?|Pza\.?|Unidad)?$', linea, re.IGNORECASE)
-                        if m_und:
-                            cant = int(m_und.group(1))
-                            idx += 1
-                            desc = ""
-                            costo_compra = 0.0
-                            if idx < len(clean_lines):
-                                desc = clean_lines[idx].strip()
-                                idx += 1
-                            if idx < len(clean_lines):
-                                m_p = re.search(r'(\d+[\.,]\d{2})', clean_lines[idx])
-                                if m_p:
-                                    costo_compra = float(m_p.group(1).replace(',', '.'))
-                                    idx += 1
-                            if idx < len(clean_lines) and re.match(r'^\d+[\.,]\d{2}$', clean_lines[idx].strip()):
-                                idx += 1
-                        else:
-                            idx += 1
-                            continue
-
-                    if desc and costo_compra > 0:
-                        cat = clasificar_categoria_ryd(desc)
-                        items.append({
-                            'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
-                            'nombre': desc.title(),
-                            'costo': round(costo_compra, 2),
-                            'unidades_empaque': 1,
-                            'cant_comprada': cant,
-                            'stock': cant,
-                            'categoria': cat
-                        })
 
         return jsonify({
             'exito': True,
@@ -619,7 +637,7 @@ def procesar_factura_ocr():
         return jsonify({'exito': False, 'mensaje': f'Error en procesamiento: {str(e)}'}), 500
 
 
-# --- MÓDULOS DE HISTORIAL Y CIERRE DE CAJA ---
+# --- HISTORIAL Y CIERRE ---
 
 @app.route('/ventas')
 @role_required('admin')
@@ -645,7 +663,6 @@ def historial_ventas():
         conn.close()
         return render_template('ventas.html', ventas=[])
 
-
 @app.route('/cierre-caja')
 @role_required('admin')
 def cierre_caja():
@@ -666,7 +683,6 @@ def cierre_caja():
 
     conn.close()
     return render_template('cierre_caja.html', ventas=ventas_hoy, total_usd=round(total_usd, 2), metodos=metodos_totales, fecha=hoy)
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
