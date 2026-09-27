@@ -544,19 +544,24 @@ function guardarFacturaEnInventario() {
     filas.forEach(f => {
         const colCod = f.querySelector('.col-codigo');
         const colNom = f.querySelector('.col-nombre');
-        if (!colCod || !colNom) return;
+        const colCosto = f.querySelector('.col-costo');
+        const colPrecio = f.querySelector('.col-precio');
+        const colStock = f.querySelector('.col-stock');
+        const colCat = f.querySelector('.col-categoria');
+        const colDesc = f.querySelector('.col-descuento');
 
-        const codigo = colCod.value.trim();
+        if (!colCod || !colNom || !colCosto || !colPrecio || !colStock) return;
+
+        const codigo = colCod.value.trim().toUpperCase();
         const nombre = colNom.value.trim();
-        const costo = parseFloat(f.querySelector('.col-costo').value) || 0;
-        const ganancia = parseFloat(f.querySelector('.col-ganancia').value) || 0;
-        const descuento = parseFloat(f.querySelector('.col-descuento').value) || 0;
-        const precio = parseFloat(f.querySelector('.col-precio').value) || 0;
-        const stock = parseInt(f.querySelector('.col-stock').value) || 0;
-        const categoria = f.querySelector('.col-categoria').value.trim() || 'General';
+        const costo = parseFloat(colCosto.value) || 0;
+        const precio = parseFloat(colPrecio.value) || 0;
+        const stock = parseInt(colStock.value) || 0;
+        const categoria = colCat ? colCat.value.trim() : 'General';
+        const descuento = colDesc ? (parseFloat(colDesc.value) || 0) : 0;
 
-        if (codigo && nombre) {
-            items.push({ codigo, nombre, costo, ganancia, descuento, precio, stock, categoria });
+        if (codigo && nombre && costo >= 0 && precio >= 0) {
+            items.push({ codigo, nombre, costo, precio, stock, categoria, descuento });
         }
     });
 
@@ -577,7 +582,7 @@ function guardarFacturaEnInventario() {
     .then(res => res.json())
     .then(data => {
         if (data.exito) {
-            alert("Inventario actualizado con éxito con todos los productos extraídos.");
+            alert("Inventario guardado con exactitud matemática.");
             window.location.href = '/admin';
         } else {
             alert("Error al guardar: " + data.mensaje);
