@@ -292,27 +292,29 @@ function cargarFacturaArchivo(event) {
         const formData = new FormData();
         formData.append('factura', archivo);
 
-        fetch('/procesar_factura_ocr', {
+fetch('/procesar_factura_ocr', {
             method: 'POST',
             body: formData
         })
         .then(res => res.json())
         .then(data => {
             if (data.exito && data.items.length > 0) {
+                // Rellena comercio y teléfono automáticamente
+                if (data.comercio) document.getElementById('nombreProveedor').value = data.comercio;
+                if (data.telefono) document.getElementById('telefonoProveedor').value = data.telefono;
+                
+                // Llena la tabla con los 10 productos
                 const tbody = document.getElementById('cuerpoFactura');
                 tbody.innerHTML = '';
                 data.items.forEach(it => {
                     agregarFilaManual(it.codigo, it.nombre, it.costo, it.stock, it.categoria);
                 });
-                if (data.comercio) document.getElementById('nombreProveedor').value = data.comercio;
             } else {
-                alert("Archivo recibido. Puedes ajustar los campos manualmente en la tabla.");
+                alert("No se pudieron extraer datos del PDF. Puedes agregar los productos con '+ Fila Manual'.");
             }
         })
-        .catch(() => alert("Archivo cargado. Completa los detalles en la tabla."));
-    }
-}
-
+        .catch(() => alert("Error de comunicación con el servidor al procesar el PDF."));
+        
 // Guarda todos los productos editados directo en la base de datos
 function guardarFacturaEnInventario() {
     const proveedor = document.getElementById('nombreProveedor').value.trim();
