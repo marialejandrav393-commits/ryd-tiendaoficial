@@ -65,27 +65,63 @@
             box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.15);
         }
 
+        .table-scroll-container {
+            max-height: 58vh;
+            overflow-y: auto;
+            border: 1px solid var(--ryd-border);
+            border-radius: 8px;
+            background: #FFFFFF;
+        }
+
+        .table-scroll-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .table-scroll-container::-webkit-scrollbar-track {
+            background: var(--ryd-beige-card);
+            border-radius: 4px;
+        }
+        .table-scroll-container::-webkit-scrollbar-thumb {
+            background: var(--ryd-border);
+            border-radius: 4px;
+            border: 1px solid var(--ryd-beige-card);
+        }
+        .table-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: var(--ryd-gold);
+        }
+
+        .table-luxury {
+            margin-bottom: 0;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
         .table-luxury thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
             background: var(--ryd-beige-card);
             color: var(--ryd-muted);
             font-size: 0.72rem;
             font-weight: 700;
             letter-spacing: 0.8px;
             text-transform: uppercase;
-            border-bottom: 1px solid var(--ryd-border);
+            border-bottom: 1.5px solid var(--ryd-border);
             padding: 12px 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
         }
+
         .table-luxury tbody td {
             padding: 8px;
             border-bottom: 1px solid var(--ryd-border-light);
             vertical-align: middle;
+            background: #FFFFFF;
         }
 
         .cell-input {
             width: 100%;
             background: transparent;
             border: 1px solid transparent;
-            padding: 4px;
+            padding: 4px 6px;
             border-radius: 4px;
             font-size: 0.85rem;
             color: var(--ryd-text);
@@ -95,6 +131,22 @@
             border-color: var(--ryd-gold);
             outline: none;
             box-shadow: 0 0 0 2px rgba(197, 160, 89, 0.2);
+        }
+
+        .cell-select {
+            width: 100%;
+            background: transparent;
+            border: 1px solid transparent;
+            padding: 4px;
+            border-radius: 4px;
+            font-size: 0.82rem;
+            color: var(--ryd-text);
+            font-weight: 600;
+        }
+        .cell-select:focus {
+            background: #FFFFFF;
+            border-color: var(--ryd-gold);
+            outline: none;
         }
 
         .btn-gold {
@@ -161,7 +213,7 @@
                 <input type="text" id="telefonoProveedor" class="form-control input-luxury" placeholder="Ej. 04127494813">
             </div>
             <div class="col-md-4">
-                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px;">Seleccionar Factura (PDF completo, Excel o Foto)</label>
+                <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px;">Seleccionar Factura (PDF multipágina, Excel o Foto)</label>
                 <input type="file" id="archivoFactura" class="form-control input-luxury" accept=".xlsx, .xls, .csv, .pdf, image/*">
             </div>
             <div class="col-md-2">
@@ -177,7 +229,7 @@
         </div>
     </div>
 
-    <!-- Tabla con las Columnas Habituales -->
+    <!-- Tabla con Desplazamiento Vertical y Categorías -->
     <div class="panel-luxury">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
@@ -185,7 +237,7 @@
                     Items de la Factura para Incorporar a Inventario
                 </h6>
                 <small class="text-muted" style="font-size: 0.78rem;">
-                    Para artículos que traigan más de una unidad (docenas, cajas, paquetes), ajusta "Unid. Empaque" para venderlos por separado.
+                    Artículos listados: <strong id="contadorItems" style="color: var(--ryd-gold-dark);">0</strong>. Categorización automatizada para cada sección de la tienda.
                 </small>
             </div>
             <div>
@@ -194,25 +246,25 @@
             </div>
         </div>
 
-        <div class="table-responsive">
-            <table class="table table-luxury align-middle mb-0" id="tablaFactura">
+        <div class="table-scroll-container">
+            <table class="table table-luxury align-middle" id="tablaFactura">
                 <thead>
                     <tr>
                         <th style="width: 110px;">Código SKU</th>
                         <th>Nombre del Producto</th>
-                        <th style="width: 85px;" title="Costo unitario por cada pieza individual">Costo ($)</th>
-                        <th style="width: 95px;" title="Unidades que vienen en el paquete si se vende por separado">Unid. Empaque</th>
+                        <th style="width: 85px;" title="Costo unitario individual">Costo ($)</th>
+                        <th style="width: 95px;" title="Unidades que vienen en el empaque">Unid. Empaque</th>
                         <th style="width: 80px;">Ganancia %</th>
                         <th style="width: 80px;">Desc %</th>
                         <th style="width: 95px;">Precio ($)</th>
                         <th style="width: 80px;" title="Stock final en tienda">Stock</th>
-                        <th style="width: 120px;">Categoría</th>
+                        <th style="width: 155px;">Categoría</th>
                         <th style="width: 35px;"></th>
                     </tr>
                 </thead>
                 <tbody id="cuerpoFactura">
                     <tr>
-                        <td colspan="10" class="text-center py-4 text-muted small">Selecciona tu factura y presiona "Procesar Factura" para cargar los productos de todas las páginas.</td>
+                        <td colspan="10" class="text-center py-5 text-muted small">Selecciona tu factura y presiona "Procesar Factura" para cargar todos los artículos.</td>
                     </tr>
                 </tbody>
             </table>
@@ -221,6 +273,35 @@
 </div>
 
 <script>
+const categoriasOficiales = [
+    "Aparatología",
+    "Cejas y Pestañas",
+    "Uñas",
+    "Insumos",
+    "Desechables",
+    "Cabello",
+    "Íntimo",
+    "General"
+];
+
+function generarOptionsCategorias(seleccionada) {
+    let options = "";
+    categoriasOficiales.forEach(cat => {
+        const isSel = (cat.toLowerCase() === (seleccionada || "").toLowerCase()) ? "selected" : "";
+        options += `<option value="${cat}" ${isSel}>${cat}</option>`;
+    });
+    return options;
+}
+
+function actualizarContador() {
+    const filas = document.querySelectorAll('#cuerpoFactura tr');
+    let total = 0;
+    filas.forEach(f => {
+        if (f.querySelector('.col-codigo')) total++;
+    });
+    document.getElementById('contadorItems').innerText = total;
+}
+
 function recalcularFila(input) {
     const fila = input.closest('tr');
     let costoBase = parseFloat(fila.querySelector('.col-costo-base').value) || 0;
@@ -229,24 +310,19 @@ function recalcularFila(input) {
     const ganancia = parseFloat(fila.querySelector('.col-ganancia').value) || 0;
     const descuento = parseFloat(fila.querySelector('.col-descuento').value) || 0;
 
-    // Si se modifica directamente el costo en pantalla, actualizar la base
     if (input.classList.contains('col-costo')) {
         costoBase = parseFloat(input.value) * (empaque > 0 ? empaque : 1);
         fila.querySelector('.col-costo-base').value = costoBase.toFixed(2);
     }
 
-    // Costo por cada unidad individual que se vende por separado
     const costoUnitario = costoBase / (empaque > 0 ? empaque : 1);
     fila.querySelector('.col-costo').value = costoUnitario.toFixed(2);
 
-    // Precio de venta calculado con margen y descuento
     let precio = costoUnitario * (1 + (ganancia / 100));
     if (descuento > 0) {
         precio = precio * (1 - (descuento / 100));
     }
     fila.querySelector('.col-precio').value = precio.toFixed(2);
-
-    // Stock total disponible en tienda para cobro
     fila.querySelector('.col-stock').value = cantComprada * empaque;
 }
 
@@ -261,25 +337,30 @@ function agregarFilaManual(codigo = '', nombre = '', costoUnitario = 0, empaque 
     const precioCalculado = (costoUnitario * 1.30).toFixed(2);
     const stockTotal = cantComprada * empaque;
     const costoBaseTotal = (costoUnitario * empaque).toFixed(2);
+    const optionsHTML = generarOptionsCategorias(categoria);
 
     tr.innerHTML = `
         <td><input type="text" class="cell-input col-codigo" value="${cod}"></td>
         <td><input type="text" class="cell-input col-nombre" value="${nombre}" placeholder="Nombre del artículo"></td>
         <td>
             <input type="number" step="0.01" class="cell-input col-costo" value="${costoUnitario.toFixed(2)}" oninput="recalcularFila(this)">
-            <!-- Campos ocultos para mantener las proporciones matemáticas exactas -->
             <input type="hidden" class="col-costo-base" value="${costoBaseTotal}">
             <input type="hidden" class="col-cant-comprada" value="${cantComprada}">
         </td>
-        <td><input type="number" class="cell-input col-empaque" value="${empaque}" min="1" oninput="recalcularFila(this)" title="Indica cuántas unidades vienen si se vende por separado"></td>
+        <td><input type="number" class="cell-input col-empaque" value="${empaque}" min="1" oninput="recalcularFila(this)" title="Unidades que trae si se vende por separado"></td>
         <td><input type="number" step="1" class="cell-input col-ganancia" value="30" oninput="recalcularFila(this)"></td>
         <td><input type="number" step="1" class="cell-input col-descuento" value="0" oninput="recalcularFila(this)"></td>
         <td><input type="number" step="0.01" class="cell-input col-precio" value="${precioCalculado}" style="font-weight: 700; color: var(--ryd-gold-dark);"></td>
         <td><input type="number" class="cell-input col-stock" value="${stockTotal}"></td>
-        <td><input type="text" class="cell-input col-categoria" value="${categoria}"></td>
-        <td class="text-center"><button class="btn btn-sm btn-outline-danger border-0 p-1" onclick="this.closest('tr').remove()">X</button></td>
+        <td>
+            <select class="cell-select col-categoria">
+                ${optionsHTML}
+            </select>
+        </td>
+        <td class="text-center"><button class="btn btn-sm btn-outline-danger border-0 p-1" onclick="this.closest('tr').remove(); actualizarContador();">X</button></td>
     `;
     tbody.appendChild(tr);
+    actualizarContador();
 }
 
 function iniciarProcesamientoFactura() {
@@ -326,6 +407,7 @@ function iniciarProcesamientoFactura() {
                     it.categoria
                 );
             });
+            actualizarContador();
         } else {
             alert("No se encontraron productos legibles en las páginas del documento.");
         }
@@ -379,7 +461,7 @@ function guardarFacturaEnInventario() {
     .then(res => res.json())
     .then(data => {
         if (data.exito) {
-            alert("Inventario actualizado con éxito con todos los productos extraídos.");
+            alert("Inventario actualizado con éxito con sus categorías asignadas.");
             window.location.href = '/admin';
         } else {
             alert("Error al guardar: " + data.mensaje);
