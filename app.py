@@ -37,7 +37,6 @@ def inicializar_db():
     conn = obtener_conexion()
     cursor = conn.cursor()
 
-    # Tabla productos
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS productos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,14 +57,13 @@ def inicializar_db():
         except sqlite3.OperationalError:
             pass
 
-    # Tabla ventas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ventas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             fecha TEXT NOT NULL,
             total REAL DEFAULT 0.0,
             metodo_pago TEXT DEFAULT 'Efectivo $',
-            referencia TEXT,
+            referencia TEXT DEFAULT '',
             usuario TEXT DEFAULT 'Cajero',
             producto_nombre TEXT DEFAULT ''
         )
@@ -74,7 +72,7 @@ def inicializar_db():
     for col_def in [
         'total REAL DEFAULT 0.0',
         'metodo_pago TEXT DEFAULT "Efectivo $"',
-        'referencia TEXT',
+        'referencia TEXT DEFAULT ""',
         'usuario TEXT DEFAULT "Cajero"',
         'producto_nombre TEXT DEFAULT ""'
     ]:
@@ -83,7 +81,6 @@ def inicializar_db():
         except sqlite3.OperationalError:
             pass
 
-    # Tabla detalle de ventas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS detalle_ventas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -97,7 +94,6 @@ def inicializar_db():
         )
     ''')
 
-    # Tabla usuarios
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -134,7 +130,7 @@ def clasificar_categoria_ryd(descripcion):
         return "Cabello"
     if any(k in desc for k in ['intimo', 'jabon', 'arandano', 'manzanilla', 'cera depilatoria', 'roll on', 'banda depilacion']):
         return "Íntimo"
-    if any(k in desc for k in ['alcohol', 'acetona', 'algodon', 'cleanser', 'sanitizante', 'exfoliante', 'espuma', 'sponge', 'mantequilla', 'gota', 'atomizador', 'organizador', 'envase']):
+    if any(k in desc for k in ['alcohol', 'acetona', 'algodon', 'cleanser', 'sanitizante', 'exfoliante', 'espuma', 'sponge', 'mantequilla', 'gota', 'atomizador', 'organizador', 'envase', 'boligrafo', 'espejo', 'cesta']):
         return "Insumos"
     return "General"
 
@@ -153,7 +149,7 @@ def role_required(*roles):
     return decorator
 
 
-# --- RUTAS DE AUTENTICACIÓN ---
+# --- AUTENTICACIÓN ---
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -240,7 +236,7 @@ def procesar_venta():
     data = request.get_json() or {}
     items = data.get('items', [])
     metodo_pago = data.get('metodo_pago', 'Efectivo $')
-    referencia = data.get('referencia', '')
+    referencia = data.get('referencia', 'N/A')
     usuario = session.get('username', 'Cajero')
 
     if not items:
@@ -251,23 +247,25 @@ def procesar_venta():
     try:
         total_venta = sum(float(item['precio']) * int(item['cantidad']) for item in items)
         fecha_hora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         resumen_nombres = ", ".join([it['nombre'] for it in items[:3]])
         if len(items) > 3:
-            resumen_nombres += f" y {len(items)-3} más"
+            resumen_nombres += f" (+{len(items)-3} más)"
 
-        # Inserción blindada contra esquemas antiguos
+        # Consulta de columnas existentes para evitar NOT NULL constraint failed
         cols_ventas = [col[1] for col in cursor.execute("PRAGMA table_info(ventas)").fetchall()]
-        if 'producto_nombre' in cols_ventas:
-            cursor.execute('''
-                INSERT INTO ventas (fecha, total, metodo_pago, referencia, usuario, producto_nombre)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (fecha_hora, round(total_venta, 2), metodo_pago, referencia, usuario, resumen_nombres))
-        else:
-            cursor.execute('''
-                INSERT INTO ventas (fecha, total, metodo_pago, referencia, usuario)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (fecha_hora, round(total_venta, 2), metodo_pago, referencia, usuario))
+        
+        campos = ['fecha', 'total', 'metodo_pago', 'referencia', 'usuario']
+        valores = [fecha_hora, round(total_venta, 2), metodo_pago, referencia, usuario]
 
+        if 'producto_nombre' in cols_ventas:
+            campos.append('producto_nombre')
+            valores.append(resumen_nombres)
+
+        placeholders = ', '.join(['?'] * len(campos))
+        columnas_str = ', '.join(campos)
+
+        cursor.execute(f'INSERT INTO ventas ({columnas_str}) VALUES ({placeholders})', valores)
         venta_id = cursor.lastrowid
 
         for it in items:
@@ -289,7 +287,7 @@ def procesar_venta():
     except Exception as e:
         conn.rollback()
         conn.close()
-        return jsonify({'exito': False, 'mensaje': str(e)}), 500
+        return jsonify({'exito': False, 'mensaje': f"Error al procesar: {str(e)}"}), 500
 
 @app.route('/ticket/<int:venta_id>')
 def ticket(venta_id):
@@ -416,7 +414,7 @@ def eliminar(id):
     return redirect(url_for('admin'))
 
 
-# --- MÓDULO DE PROVEEDORES Y PARSER UNIVERSAL DE FACTURAS/NOTAS ---
+# --- MÓDULO UNIVERSAL DE IMPORTACIÓN (FACTURAS, NOTAS, FOTOS Y EXCEL) ---
 
 @app.route('/proveedores')
 @role_required('admin')
@@ -474,7 +472,6 @@ def guardar_factura_proveedor():
 @app.route('/procesar_factura_ocr', methods=['POST'])
 @role_required('admin')
 def procesar_factura_ocr():
-    # Acepta tanto archivos cargados como texto OCR extraído por el navegador
     texto_directo = request.form.get('texto_ocr', '')
     archivo = request.files.get('factura')
 
@@ -494,7 +491,6 @@ def procesar_factura_ocr():
         elif texto_directo:
             texto_completo = texto_directo
 
-        # 1. Detección de comercio y teléfono
         up = texto_completo.upper()
         if "MICELI" in up:
             comercio = "Comercializadora Miceli Corp, S.A."
@@ -517,9 +513,9 @@ def procesar_factura_ocr():
 
         lineas = [l.strip() for l in texto_completo.split('\n') if l.strip()]
 
-        # 2. Parser para Notas de Entrega tipo Miceli (NE ROYVINER: Codigo, Desc, Cantidad, Precio, Total)
+        # 1. NOTAS DE ENTREGA (Miceli / NE ROYVINER)
         for linea in lineas:
-            m_miceli = re.match(r'^([A-Z0-9\-_]{3,15})\s+(.+?)\s+(\d+)\s+([0-9]+[,\.][0-9]{2})\s+([0-9]+[,\.][0-9]{2})$', linea, re.IGNORECASE)
+            m_miceli = re.match(r'^([A-Z0-9\-_]{3,18})\s+(.+?)\s+(\d+)\s+([0-9]+[,\.][0-9]{2})\s+([0-9]+[,\.][0-9]{2})$', linea, re.IGNORECASE)
             if m_miceli:
                 cod, desc, cant, p_unit, _ = m_miceli.groups()
                 c_val = float(p_unit.replace(',', '.'))
@@ -534,7 +530,7 @@ def procesar_factura_ocr():
                     'categoria': clasificar_categoria_ryd(desc)
                 })
 
-        # 3. Parser para Storefit (Unidades, Descripción, Precio Unitario, Total)
+        # 2. NOTAS DE ENTREGA CON CANTIDAD AL INICIO (Storefit)
         if not items:
             for linea in lineas:
                 m_store = re.match(r'^(\d+)\s+(.+?)\s+\$?([0-9]+[,\.][0-9]{2})\s+\$?([0-9]+[,\.][0-9]{2})$', linea, re.IGNORECASE)
@@ -554,34 +550,43 @@ def procesar_factura_ocr():
                             'categoria': clasificar_categoria_ryd(desc_limpia)
                         })
 
-        # 4. Parser para Tickets SENIAT / Hogar Ideal (1,000xBs5411.45 / SF8937-253 Nombre)
+        # 3. TICKETS SENIAT / HOGAR IDEAL CON CÓDIGO Y NOMBRE SEPARADOS POR '/'
         if not items:
-            idx = 0
-            while idx < len(lineas):
-                l_act = lineas[idx]
-                m_tkt_qty = re.search(r'(\d+)(?:[,\.]000)?\s*[xX]\s*(?:Bs\.?|\$)?\s*([0-9\.,]+)', l_act)
-                if m_tkt_qty and (idx + 1) < len(lineas):
-                    cant = int(m_tkt_qty.group(1))
-                    precio_u = float(m_tkt_qty.group(2).replace('.', '').replace(',', '.')) if ',' in m_tkt_qty.group(2) and '.' in m_tkt_qty.group(2) else float(m_tkt_qty.group(2).replace(',', '.'))
-                    desc_linea = lineas[idx + 1]
-                    partes = desc_linea.split('/', 1)
-                    cod = partes[0].strip() if len(partes) > 1 else f"TKT-{str(len(items)+1).zfill(3)}"
-                    nom = partes[1].strip() if len(partes) > 1 else desc_linea.strip()
+            for i, linea in enumerate(lineas):
+                if '/' in linea:
+                    partes = linea.split('/', 1)
+                    sku = partes[0].strip().replace(' ', '')
+                    nom = partes[1].strip()
+                    
+                    qty = 1
+                    cost = 0.0
 
-                    items.append({
-                        'codigo': cod.upper(),
-                        'nombre': nom.title(),
-                        'costo': round(precio_u, 2),
-                        'unidades_empaque': 1,
-                        'cant_comprada': cant,
-                        'stock': cant,
-                        'categoria': clasificar_categoria_ryd(nom)
-                    })
-                    idx += 2
-                    continue
-                idx += 1
+                    # Buscar cantidad y precio en renglones contiguos
+                    for offset in [-1, 1]:
+                        idx_check = i + offset
+                        if 0 <= idx_check < len(lineas):
+                            m_q = re.search(r'(\d+)(?:[,\.]\d+)?\s*[xX]\s*(?:Bs\.?|\$)?\s*([0-9\.,]+)', lineas[idx_check])
+                            if m_q:
+                                qty = int(m_q.group(1))
+                                p_clean = m_q.group(2).replace('.', '').replace(',', '.') if (',' in m_q.group(2) and '.' in m_q.group(2)) else m_q.group(2).replace(',', '.')
+                                try:
+                                    cost = float(p_clean)
+                                    break
+                                except:
+                                    pass
 
-        # 5. Parser POS Good Times y Presupuestos Estándar (Fallback)
+                    if not any(k in nom.upper() for k in ['TOTAL', 'SUBTOTAL', 'DESCUENTO', 'EXENTO', 'IVA']):
+                        items.append({
+                            'codigo': sku.upper() if len(sku) > 2 else f"TKT-{str(len(items)+1).zfill(3)}",
+                            'nombre': nom.title(),
+                            'costo': round(cost, 2),
+                            'unidades_empaque': 1,
+                            'cant_comprada': qty,
+                            'stock': qty,
+                            'categoria': clasificar_categoria_ryd(nom)
+                        })
+
+        # 4. NOTA POS GOOD TIMES Y FACTURAS ESTÁNDAR
         if not items:
             i = 0
             while i < len(lineas):
