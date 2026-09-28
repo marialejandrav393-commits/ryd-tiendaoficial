@@ -228,7 +228,6 @@
 </header>
 
 <div class="container-fluid px-4 my-4">
-    <!-- Pestañas de Vista -->
     <div class="d-flex nav-tabs-luxury mb-4">
         <button type="button" id="tabBtnCarga" class="nav-tab-item active" onclick="cambiarPestana('carga')">
             Recepción Universal de Facturas y Notas
@@ -253,11 +252,11 @@
             <div class="row g-3 align-items-end">
                 <div class="col-md-3">
                     <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase;">Nombre del Comercio / Proveedor</label>
-                    <input type="text" id="nombreProveedor" class="form-control input-luxury" placeholder="Ej. Miceli / Storefit / Hogar Ideal / Aura">
+                    <input type="text" id="nombreProveedor" class="form-control input-luxury" placeholder="Ej. Todo Bella / Good Times / Miceli / Storefit">
                 </div>
                 <div class="col-md-3">
                     <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase;">Teléfono / Contacto WhatsApp</label>
-                    <input type="text" id="telefonoProveedor" class="form-control input-luxury" placeholder="Ej. 04129583694">
+                    <input type="text" id="telefonoProveedor" class="form-control input-luxury" placeholder="Ej. 04127494517">
                 </div>
                 <div class="col-md-4">
                     <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase;">Seleccionar Archivo (Foto WhatsApp, PDF o Excel)</label>
@@ -283,7 +282,7 @@
                         Items Extraídos para Incorporar a Inventario
                     </h6>
                     <small class="text-muted" style="font-size: 0.78rem;">
-                        Artículos listados: <strong id="contadorItems" style="color: var(--ryd-gold-dark);">0</strong>
+                        Artículos listados: <strong id="contadorItems" style="color: var(--ryd-gold-dark);">0</strong>. Códigos, margen y precios generados automáticamente.
                     </small>
                 </div>
                 <div>
@@ -298,8 +297,8 @@
                         <tr>
                             <th style="width: 120px;">Código SKU</th>
                             <th>Nombre del Producto</th>
-                            <th style="width: 85px;" title="Costo unitario individual">Costo ($)</th>
-                            <th style="width: 95px;" title="Unidades que vienen en el empaque">Unid. Empaque</th>
+                            <th style="width: 90px;" title="Costo unitario individual">Costo ($)</th>
+                            <th style="width: 90px;" title="Unidades que vienen en el empaque">Unid. Empaque</th>
                             <th style="width: 80px;">Ganancia %</th>
                             <th style="width: 80px;">Desc %</th>
                             <th style="width: 95px;">Precio ($)</th>
@@ -318,7 +317,7 @@
         </div>
     </div>
 
-    <!-- PESTAÑA 2: DIRECTORIO AUTOMÁTICO DE PROVEEDORES -->
+    <!-- PESTAÑA 2: DIRECTORIO DE PROVEEDORES -->
     <div id="seccionDirectorio" style="display: none;">
         <div class="panel-luxury">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2 border-bottom pb-2">
@@ -422,7 +421,7 @@ function normalizarCategoria(catTexto) {
     if (c.includes("uña") || c.includes("nail") || c.includes("esmalte")) return "Uñas";
     if (c.includes("aparato") || c.includes("maquin") || c.includes("olla")) return "Aparatología";
     if (c.includes("desechab") || c.includes("guante") || c.includes("gorro") || c.includes("hisopo")) return "Desechables";
-    if (c.includes("cabel") || c.includes("capilar") || c.includes("shampoo") || c.includes("alisado") || c.includes("blower")) return "Cabello";
+    if (c.includes("cabel") || c.includes("capilar") || c.includes("shampoo") || c.includes("alisado") || c.includes("blower") || c.includes("laminado") || c.includes("acondicionador") || c.includes("keratina")) return "Cabello";
     if (c.includes("intim") || c.includes("jabon")) return "Íntimo";
     if (c.includes("insumo") || c.includes("atomizador") || c.includes("organizador")) return "Insumos";
     return "General";
@@ -452,7 +451,7 @@ function recalcularFila(input) {
     let costoBase = parseFloat(fila.querySelector('.col-costo-base').value) || 0;
     const empaque = parseInt(fila.querySelector('.col-empaque').value) || 1;
     const cantComprada = parseInt(fila.querySelector('.col-cant-comprada').value) || 1;
-    const ganancia = parseFloat(fila.querySelector('.col-ganancia').value) || 0;
+    const ganancia = parseFloat(fila.querySelector('.col-ganancia').value) || 30;
     const descuento = parseFloat(fila.querySelector('.col-descuento').value) || 0;
 
     if (input.classList.contains('col-costo')) {
@@ -471,6 +470,7 @@ function recalcularFila(input) {
     fila.querySelector('.col-stock').value = cantComprada * empaque;
 }
 
+// Generación automática: calcula precio con margen del 30% y SKU correlativo
 function agregarFilaManual(codigo = '', nombre = '', costoUnitario = 0, empaque = 1, cantComprada = 1, categoria = 'General', precioSugerido = 0) {
     const tbody = document.getElementById('cuerpoFactura');
     if (tbody.children.length === 1 && tbody.children[0].children.length === 1) {
@@ -587,11 +587,11 @@ function procesarRespuestaFactura(data, labelOrigen) {
         tbody.innerHTML = '';
         data.items.forEach(it => {
             agregarFilaManual(
-                it.codigo, 
+                it.codigo || '', 
                 it.nombre, 
                 it.costo, 
                 it.unidades_empaque || 1, 
-                it.cant_comprada || 1, 
+                it.cant_comprada || it.stock || 1, 
                 it.categoria
             );
         });
