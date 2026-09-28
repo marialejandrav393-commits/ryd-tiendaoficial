@@ -6,7 +6,6 @@
     <title>RyD - Gestión de Proveedores y Facturas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
             --ryd-gold: #C5A059;
@@ -228,6 +227,7 @@
 </header>
 
 <div class="container-fluid px-4 my-4">
+    <!-- Pestañas de Vista -->
     <div class="d-flex nav-tabs-luxury mb-4">
         <button type="button" id="tabBtnCarga" class="nav-tab-item active" onclick="cambiarPestana('carga')">
             Recepción Universal de Facturas y Notas
@@ -255,7 +255,7 @@
                     <input type="text" id="nombreProveedor" class="form-control input-luxury" placeholder="Ej. Todo Bella / Good Times / Miceli / Storefit">
                 </div>
                 <div class="col-md-3">
-                    <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase;">Teléfono / Contacto WhatsApp</label>
+                    <label class="small text-muted fw-bold mb-1" style="font-size: 0.72rem; text-transform: uppercase;">Teléfono / Remitente WhatsApp (Editable)</label>
                     <input type="text" id="telefonoProveedor" class="form-control input-luxury" placeholder="Ej. 04127494517">
                 </div>
                 <div class="col-md-4">
@@ -282,7 +282,7 @@
                         Items Extraídos para Incorporar a Inventario
                     </h6>
                     <small class="text-muted" style="font-size: 0.78rem;">
-                        Artículos listados: <strong id="contadorItems" style="color: var(--ryd-gold-dark);">0</strong>. Códigos, margen y precios generados automáticamente.
+                        Artículos listados: <strong id="contadorItems" style="color: var(--ryd-gold-dark);">0</strong>. Códigos correlativos INS, margen 30% editable y precios recalculados al vuelo.
                     </small>
                 </div>
                 <div>
@@ -296,20 +296,18 @@
                     <thead>
                         <tr>
                             <th style="width: 120px;">Código SKU</th>
-                            <th>Nombre del Producto</th>
-                            <th style="width: 90px;" title="Costo unitario individual">Costo ($)</th>
-                            <th style="width: 90px;" title="Unidades que vienen en el empaque">Unid. Empaque</th>
-                            <th style="width: 80px;">Ganancia %</th>
-                            <th style="width: 80px;">Desc %</th>
-                            <th style="width: 95px;">Precio ($)</th>
-                            <th style="width: 80px;" title="Stock final en tienda">Stock</th>
-                            <th style="width: 160px;">Categoría</th>
+                            <th>Nombre o Descripción del Producto</th>
+                            <th style="width: 100px;">Costo ($)</th>
+                            <th style="width: 95px;" title="Margen editable">% Ganancia</th>
+                            <th style="width: 110px;">Precio Venta ($)</th>
+                            <th style="width: 90px;">Stock</th>
+                            <th style="width: 170px;">Categoría Asignada</th>
                             <th style="width: 35px;"></th>
                         </tr>
                     </thead>
                     <tbody id="cuerpoFactura">
                         <tr>
-                            <td colspan="10" class="text-center py-5 text-muted small">Selecciona tu factura o foto y presiona "Procesar Factura" para cargar los artículos.</td>
+                            <td colspan="8" class="text-center py-5 text-muted small">Selecciona tu factura, nota o foto y presiona "Procesar Factura" para cargar los artículos.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -317,15 +315,15 @@
         </div>
     </div>
 
-    <!-- PESTAÑA 2: DIRECTORIO DE PROVEEDORES -->
+    <!-- PESTAÑA 2: DIRECTORIO DE PROVEEDORES CON NÚMERO EDITABLE Y WHATSAPP -->
     <div id="seccionDirectorio" style="display: none;">
         <div class="panel-luxury">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2 border-bottom pb-2">
                 <div>
                     <h5 style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 1.05rem; margin: 0;">
-                        Directorio y Agenda Automática de Proveedores
+                        Directorio Automático de Proveedores y Pedidos WhatsApp
                     </h5>
-                    <small class="text-muted">Los proveedores y sus números de teléfono se guardan de forma automática cada vez que procesas una factura.</small>
+                    <small class="text-muted">Los proveedores se registran automáticamente. Puedes editar el número de remitente en cualquier momento para volver a pedir mercancía.</small>
                 </div>
                 <div style="max-width: 350px; width: 100%;">
                     <input type="text" id="buscadorProveedores" class="form-control input-luxury" placeholder="Buscar proveedor por nombre o teléfono..." oninput="filtrarDirectorio(this.value)">
@@ -341,9 +339,16 @@
                                 <h6 class="fw-bold m-0" style="color: var(--ryd-text); font-size: 0.95rem;">{{ prov.nombre }}</h6>
                                 <span class="badge bg-light text-dark border small">ID #{{ prov.id }}</span>
                             </div>
-                            <p class="small text-muted mb-1">
-                                <strong>Teléfono:</strong> {{ prov.telefono if prov.telefono else 'No registrado' }}
-                            </p>
+                            <div class="mb-2">
+                                <label class="small text-muted fw-bold d-block" style="font-size: 0.68rem; text-transform: uppercase;">Número Remitente WhatsApp:</label>
+                                <div class="d-flex gap-1 mt-1">
+                                    <input type="text" class="form-control input-luxury py-1 px-2 text-dark fw-bold input-tel-prov" 
+                                           id="tel_prov_{{ prov.id }}" value="{{ prov.telefono }}" placeholder="Ej: 04121234567" style="font-size: 0.8rem;">
+                                    <button type="button" class="btn-3d py-1 px-2" style="font-size: 0.68rem;" onclick="actualizarTelefonoProveedor({{ prov.id }})" title="Guardar cambio de número">
+                                        ✓
+                                    </button>
+                                </div>
+                            </div>
                             <p class="small text-muted mb-1">
                                 <strong>Última Compra:</strong> {{ prov.ultima_compra if prov.ultima_compra else 'Reciente' }}
                             </p>
@@ -352,16 +357,9 @@
                             </p>
                         </div>
                         <div class="pt-2 border-top">
-                            {% if prov.telefono %}
-                            {% set tel_limpio = prov.telefono|replace(' ', '')|replace('-', '')|replace('+', '') %}
-                            {% set tel_wa = ('58' + tel_limpio[1:]) if tel_limpio.startswith('0') else tel_limpio %}
-                            <a href="https://wa.me/{{ tel_wa }}?text=Hola%20somos%20RyD,%20deseamos%20hacer%20un%20pedido%20de%20reposición%20de%20mercancía." 
-                               target="_blank" class="btn-3d btn-3d-gold w-100 py-2 text-center" style="font-size: 0.72rem;">
+                            <button type="button" class="btn-3d btn-3d-gold w-100 py-2 text-center" style="font-size: 0.72rem;" onclick="abrirWhatsAppProveedor({{ prov.id }})">
                                 Pedir por WhatsApp
-                            </a>
-                            {% else %}
-                            <button class="btn-3d w-100 py-2 text-center text-muted" disabled style="font-size: 0.72rem;">Sin Teléfono Registrado</button>
-                            {% endif %}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -446,57 +444,37 @@ function actualizarContador() {
     document.getElementById('contadorItems').innerText = total;
 }
 
+// Recálculo dinámico: al editar Costo o Margen, se actualiza el Precio de Venta al instante
 function recalcularFila(input) {
     const fila = input.closest('tr');
-    let costoBase = parseFloat(fila.querySelector('.col-costo-base').value) || 0;
-    const empaque = parseInt(fila.querySelector('.col-empaque').value) || 1;
-    const cantComprada = parseInt(fila.querySelector('.col-cant-comprada').value) || 1;
-    const ganancia = parseFloat(fila.querySelector('.col-ganancia').value) || 30;
-    const descuento = parseFloat(fila.querySelector('.col-descuento').value) || 0;
+    const costo = parseFloat(fila.querySelector('.col-costo').value) || 0;
+    const ganancia = parseFloat(fila.querySelector('.col-ganancia').value) || 0;
 
-    if (input.classList.contains('col-costo')) {
-        costoBase = parseFloat(input.value) * (empaque > 0 ? empaque : 1);
-        fila.querySelector('.col-costo-base').value = costoBase.toFixed(2);
-    }
-
-    const costoUnitario = costoBase / (empaque > 0 ? empaque : 1);
-    fila.querySelector('.col-costo').value = costoUnitario.toFixed(2);
-
-    let precio = costoUnitario * (1 + (ganancia / 100));
-    if (descuento > 0) {
-        precio = precio * (1 - (descuento / 100));
-    }
-    fila.querySelector('.col-precio').value = precio.toFixed(2);
-    fila.querySelector('.col-stock').value = cantComprada * empaque;
+    const precioCalculado = costo * (1 + (ganancia / 100));
+    fila.querySelector('.col-precio').value = precioCalculado.toFixed(2);
 }
 
-// Generación automática: calcula precio con margen del 30% y SKU correlativo
-function agregarFilaManual(codigo = '', nombre = '', costoUnitario = 0, empaque = 1, cantComprada = 1, categoria = 'General', precioSugerido = 0) {
+// Generación 100% automatizada: código INS consecutivo, margen 30% inicial y precio
+function agregarFilaManual(nombre = '', costoUnitario = 0, stock = 1, categoria = 'General') {
     const tbody = document.getElementById('cuerpoFactura');
     if (tbody.children.length === 1 && tbody.children[0].children.length === 1) {
         tbody.innerHTML = '';
     }
 
     const tr = document.createElement('tr');
-    const cod = codigo || ('PRV-' + String(tbody.children.length + 1).padStart(3, '0'));
-    const precioFinal = precioSugerido > 0 ? precioSugerido.toFixed(2) : (costoUnitario * 1.30).toFixed(2);
-    const stockTotal = cantComprada * empaque;
-    const costoBaseTotal = (costoUnitario * empaque).toFixed(2);
+    const consecutivo = tbody.children.length + 1;
+    const cod = 'INS-' + String(consecutivo).padStart(3, '0');
+    const margenInicial = 30;
+    const precioCalculado = (costoUnitario * (1 + (margenInicial / 100))).toFixed(2);
     const optionsHTML = generarOptionsCategorias(categoria);
 
     tr.innerHTML = `
-        <td><input type="text" class="cell-input col-codigo" value="${cod}"></td>
+        <td><input type="text" class="cell-input col-codigo fw-bold" value="${cod}" readonly style="color: var(--ryd-gold-dark);"></td>
         <td><input type="text" class="cell-input col-nombre" value="${nombre}" placeholder="Nombre del artículo"></td>
-        <td>
-            <input type="number" step="0.01" class="cell-input col-costo" value="${costoUnitario.toFixed(2)}" oninput="recalcularFila(this)">
-            <input type="hidden" class="col-costo-base" value="${costoBaseTotal}">
-            <input type="hidden" class="col-cant-comprada" value="${cantComprada}">
-        </td>
-        <td><input type="number" class="cell-input col-empaque" value="${empaque}" min="1" oninput="recalcularFila(this)" title="Unidades que trae si se vende por separado"></td>
-        <td><input type="number" step="1" class="cell-input col-ganancia" value="30" oninput="recalcularFila(this)"></td>
-        <td><input type="number" step="1" class="cell-input col-descuento" value="0" oninput="recalcularFila(this)"></td>
-        <td><input type="number" step="0.01" class="cell-input col-precio" value="${precioFinal}" style="font-weight: 700; color: var(--ryd-gold-dark);"></td>
-        <td><input type="number" class="cell-input col-stock" value="${stockTotal}"></td>
+        <td><input type="number" step="0.01" class="cell-input col-costo" value="${costoUnitario.toFixed(2)}" oninput="recalcularFila(this)"></td>
+        <td><input type="number" step="1" class="cell-input col-ganancia fw-bold text-center" value="${margenInicial}" oninput="recalcularFila(this)" title="Margen editable (ej. 30%, 40%)"></td>
+        <td><input type="number" step="0.01" class="cell-input col-precio" value="${precioCalculado}" style="font-weight: 700; color: var(--ryd-gold-dark);"></td>
+        <td><input type="number" class="cell-input col-stock" value="${stock}" min="1"></td>
         <td>
             <select class="cell-select col-categoria">
                 ${optionsHTML}
@@ -508,12 +486,13 @@ function agregarFilaManual(codigo = '', nombre = '', costoUnitario = 0, empaque 
     actualizarContador();
 }
 
+// Ingesta universal: acepta PDF, fotos (OCR) y archivos Excel
 function iniciarProcesamientoFactura() {
     const inputFile = document.getElementById('archivoFactura');
     const archivo = inputFile.files[0];
 
     if (!archivo) {
-        alert("Por favor selecciona un archivo o foto de factura antes de procesar.");
+        alert("Por favor selecciona un archivo o foto antes de presionar procesar.");
         return;
     }
 
@@ -525,10 +504,8 @@ function iniciarProcesamientoFactura() {
 
     const nombre = (archivo.name || "").toLowerCase();
 
-    if (nombre.endsWith('.xlsx') || nombre.endsWith('.xls') || nombre.endsWith('.csv')) {
-        procesarExcelUniversal(archivo);
-    } 
-    else if (archivo.type.startsWith('image/') || nombre.endsWith('.jpg') || nombre.endsWith('.jpeg') || nombre.endsWith('.png')) {
+    // 1. Fotos de WhatsApp / Celular: OCR en navegador
+    if (archivo.type.startsWith('image/') || nombre.endsWith('.jpg') || nombre.endsWith('.jpeg') || nombre.endsWith('.png')) {
         txtEstado.innerText = "Leyendo texto óptico de la fotografía (OCR)...";
         Tesseract.recognize(
             archivo,
@@ -556,8 +533,9 @@ function iniciarProcesamientoFactura() {
             btn.disabled = false;
         });
     }
+    // 2. PDFs y Archivos Excel: Directo al servidor con pandas/pypdf
     else {
-        txtEstado.innerText = "Extrayendo páginas del documento PDF...";
+        txtEstado.innerText = "Procesando documento...";
         const formData = new FormData();
         formData.append('factura', archivo);
 
@@ -566,7 +544,7 @@ function iniciarProcesamientoFactura() {
             body: formData
         })
         .then(res => res.json())
-        .then(data => procesarRespuestaFactura(data, (data.total_paginas || 1) + " páginas"))
+        .then(data => procesarRespuestaFactura(data, nombre.endsWith('.pdf') ? (data.total_paginas + " pág.") : "Excel"))
         .catch(() => alert("Error al procesar el archivo en el servidor."))
         .finally(() => {
             indicador.style.display = 'none';
@@ -575,6 +553,7 @@ function iniciarProcesamientoFactura() {
     }
 }
 
+// Extracción limpia de 3 campos y armado de tabla con margen editable
 function procesarRespuestaFactura(data, labelOrigen) {
     if (data.exito && data.items && data.items.length > 0) {
         if (data.comercio) document.getElementById('nombreProveedor').value = data.comercio;
@@ -587,12 +566,10 @@ function procesarRespuestaFactura(data, labelOrigen) {
         tbody.innerHTML = '';
         data.items.forEach(it => {
             agregarFilaManual(
-                it.codigo || '', 
                 it.nombre, 
                 it.costo, 
-                it.unidades_empaque || 1, 
-                it.cant_comprada || it.stock || 1, 
-                it.categoria
+                it.stock || 1, 
+                it.categoria || 'General'
             );
         });
         actualizarContador();
@@ -601,85 +578,7 @@ function procesarRespuestaFactura(data, labelOrigen) {
     }
 }
 
-function procesarExcelUniversal(archivo) {
-    const lector = new FileReader();
-    lector.onload = function(e) {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const primerHoja = workbook.Sheets[workbook.SheetNames[0]];
-            const filas = XLSX.utils.sheet_to_json(primerHoja, { header: 1 });
-
-            if (!filas || filas.length < 2) {
-                alert("El archivo Excel no contiene suficientes datos.");
-                return;
-            }
-
-            let idxCat = -1, idxCod = -1, idxNom = -1, idxCosto = -1, idxPrecio = -1, idxStock = -1;
-            let filaEncabezado = 0;
-
-            for (let i = 0; i < Math.min(filas.length, 10); i++) {
-                const f = filas[i];
-                if (!f) continue;
-                for (let j = 0; j < f.length; j++) {
-                    const celda = String(f[j] || "").toLowerCase().trim();
-                    if (celda.includes("categor")) idxCat = j;
-                    if (celda.includes("código") || celda.includes("codigo") || celda.includes("sku")) idxCod = j;
-                    if (celda.includes("producto") || celda.includes("descripci") || celda.includes("nombre")) idxNom = j;
-                    if (celda.includes("costo unit") || celda.includes("costo net") || celda === "costo") idxCosto = j;
-                    if (celda.includes("precio venta") || celda === "precio" || celda === "pvp") idxPrecio = j;
-                    if (celda === "stock" || celda.includes("existencia") || celda.includes("cantidad")) idxStock = j;
-                }
-                if (idxNom !== -1 || idxCod !== -1) {
-                    filaEncabezado = i;
-                    break;
-                }
-            }
-
-            if (idxCod === -1) idxCod = 0;
-            if (idxNom === -1) idxNom = 1;
-            if (idxCosto === -1) idxCosto = 2;
-            if (idxPrecio === -1) idxPrecio = 3;
-            if (idxStock === -1) idxStock = 4;
-
-            const tbody = document.getElementById('cuerpoFactura');
-            tbody.innerHTML = '';
-            let contadorCargados = 0;
-
-            for (let i = filaEncabezado + 1; i < filas.length; i++) {
-                const row = filas[i];
-                if (!row || row.length === 0) continue;
-
-                const valCod = row[idxCod] ? String(row[idxCod]).trim() : '';
-                const valNom = row[idxNom] ? String(row[idxNom]).trim() : '';
-
-                if (valCod.toLowerCase().includes("código") || valNom.toLowerCase().includes("producto") || valNom.toLowerCase().includes("total") || valCod.toLowerCase().includes("total")) continue;
-                if (!valNom && !valCod) continue;
-
-                const cod = valCod || ('PRV-' + String(contadorCargados + 1).padStart(3, '0'));
-                const nom = valNom || 'Producto ' + (contadorCargados + 1);
-                const costo = parseFloat(row[idxCosto]) || 0.0;
-                const precio = idxPrecio !== -1 ? (parseFloat(row[idxPrecio]) || 0.0) : 0.0;
-                const stock = idxStock !== -1 ? (parseInt(row[idxStock]) || 1) : 1;
-                const categoria = idxCat !== -1 ? (String(row[idxCat] || 'General').trim()) : 'General';
-
-                agregarFilaManual(cod, nom, costo, 1, stock, categoria, precio);
-                contadorCargados++;
-            }
-
-            document.getElementById('badgePaginas').style.display = 'inline-block';
-            document.getElementById('numPaginasTxt').innerText = 'Excel (' + contadorCargados + ' productos)';
-
-        } catch (err) {
-            alert("Error al leer el archivo Excel: " + err.message);
-        } finally {
-            document.getElementById('indicadorCarga').style.display = 'none';
-            document.getElementById('btnProcesarDoc').disabled = false;
-        }
-    };
-    lector.readAsArrayBuffer(archivo);
-}
-
+// Guardado seguro en inventario y directorio
 function guardarFacturaEnInventario() {
     const proveedor = document.getElementById('nombreProveedor').value.trim();
     const telefono = document.getElementById('telefonoProveedor').value.trim();
@@ -690,23 +589,23 @@ function guardarFacturaEnInventario() {
         const colCod = f.querySelector('.col-codigo');
         const colNom = f.querySelector('.col-nombre');
         const colCosto = f.querySelector('.col-costo');
+        const colGanancia = f.querySelector('.col-ganancia');
         const colPrecio = f.querySelector('.col-precio');
         const colStock = f.querySelector('.col-stock');
         const colCat = f.querySelector('.col-categoria');
-        const colDesc = f.querySelector('.col-descuento');
 
         if (!colCod || !colNom || !colCosto || !colPrecio || !colStock) return;
 
         const codigo = colCod.value.trim().toUpperCase();
         const nombre = colNom.value.trim();
         const costo = parseFloat(colCosto.value) || 0;
+        const ganancia = parseFloat(colGanancia ? colGanancia.value : 30) || 30;
         const precio = parseFloat(colPrecio.value) || 0;
         const stock = parseInt(colStock.value) || 0;
         const categoria = colCat ? colCat.value.trim() : 'General';
-        const descuento = colDesc ? (parseFloat(colDesc.value) || 0) : 0;
 
         if (codigo && nombre && costo >= 0 && precio >= 0) {
-            items.push({ codigo, nombre, costo, precio, stock, categoria, descuento });
+            items.push({ codigo, nombre, costo, ganancia, precio, stock, categoria, descuento: 0 });
         }
     });
 
@@ -734,6 +633,46 @@ function guardarFacturaEnInventario() {
         }
     })
     .catch(() => alert("Error de conexión al guardar el inventario."));
+}
+
+// Teléfono de remitente editable en el Directorio
+function actualizarTelefonoProveedor(provId) {
+    const input = document.getElementById(`tel_prov_${provId}`);
+    const tel = input.value.trim();
+
+    fetch('/actualizar_proveedor_telefono', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: provId, telefono: tel })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.exito) {
+            alert("Número de teléfono actualizado con éxito.");
+        } else {
+            alert("No se pudo actualizar: " + data.mensaje);
+        }
+    })
+    .catch(() => alert("Error al actualizar el teléfono."));
+}
+
+function abrirWhatsAppProveedor(provId) {
+    const input = document.getElementById(`tel_prov_${provId}`);
+    const tel = input.value.trim();
+
+    if (!tel) {
+        alert("Por favor ingresa un número de teléfono para este proveedor.");
+        input.focus();
+        return;
+    }
+
+    let telLimpio = tel.replace(/[^0-9]/g, '');
+    if (telLimpio.startsWith('0')) {
+        telLimpio = '58' + telLimpio.substring(1);
+    }
+
+    const mensaje = encodeURIComponent("Hola, somos RyD. Deseamos hacer un pedido de reposición de mercancía.");
+    window.open(`https://wa.me/${telLimpio}?text=${mensaje}`, '_blank');
 }
 </script>
 </body>
