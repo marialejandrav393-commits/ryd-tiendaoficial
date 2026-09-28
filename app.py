@@ -38,6 +38,7 @@ def inicializar_db():
     conn = obtener_conexion()
     cursor = conn.cursor()
 
+    # 1. Tabla productos
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS productos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,6 +59,7 @@ def inicializar_db():
         except sqlite3.OperationalError:
             pass
 
+    # 2. Tabla proveedores (Blindada contra columnas faltantes)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS proveedores (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,6 +73,20 @@ def inicializar_db():
         )
     ''')
 
+    for col_prov in [
+        'telefono TEXT DEFAULT ""',
+        'contacto TEXT DEFAULT ""',
+        'direccion TEXT DEFAULT ""',
+        'rif TEXT DEFAULT ""',
+        'ultima_compra TEXT DEFAULT ""',
+        'total_compras REAL DEFAULT 0.0'
+    ]:
+        try:
+            cursor.execute(f'ALTER TABLE proveedores ADD COLUMN {col_prov}')
+        except sqlite3.OperationalError:
+            pass
+
+    # 3. Tabla ventas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ventas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,6 +111,7 @@ def inicializar_db():
         except sqlite3.OperationalError:
             pass
 
+    # 4. Tabla detalle de ventas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS detalle_ventas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,6 +125,7 @@ def inicializar_db():
         )
     ''')
 
+    # 5. Tabla usuarios
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -462,7 +480,7 @@ def eliminar(id):
     return redirect(url_for('admin'))
 
 
-# --- MOTOR UNIVERSAL DE EXTRACCIÓN (FACTURAS, NOTAS, FOTOS Y EXCEL) ---
+# --- MÓDULO DE PROVEEDORES Y PARSER UNIVERSAL MULTI-FORMATO ---
 
 @app.route('/proveedores')
 @role_required('admin')
@@ -484,14 +502,25 @@ def guardar_factura_proveedor():
         return jsonify({'exito': False, 'mensaje': 'Sin productos válidos para guardar'}), 400
 
     conn = obtener_conexion()
+    cursor = conn.cursor()
     try:
+        # 1. Asegurar dinámicamente las columnas en proveedores antes de insertar
+        cols_prov = [c[1] for c in cursor.execute("PRAGMA table_info(proveedores)").fetchall()]
+        for col_name, col_type in [('ultima_compra', 'TEXT DEFAULT ""'), ('total_compras', 'REAL DEFAULT 0.0'), ('telefono', 'TEXT DEFAULT ""')]:
+            if col_name not in cols_prov:
+                try:
+                    cursor.execute(f"ALTER TABLE proveedores ADD COLUMN {col_name} {col_type}")
+                except Exception:
+                    pass
+
+        # 2. Registro o actualización de proveedor en el Directorio
         if proveedor_nom and proveedor_nom != "Proveedor General":
             monto_compra_actual = sum(float(it.get('costo', 0)) * int(it.get('stock', 0)) for it in items)
             fecha_hoy = date.today().strftime('%Y-%m-%d')
 
-            prov_existente = conn.execute('SELECT id FROM proveedores WHERE UPPER(nombre) = ?', (proveedor_nom.upper(),)).fetchone()
+            prov_existente = cursor.execute('SELECT id FROM proveedores WHERE UPPER(nombre) = ?', (proveedor_nom.upper(),)).fetchone()
             if prov_existente:
-                conn.execute('''
+                cursor.execute('''
                     UPDATE proveedores 
                     SET telefono = CASE WHEN ? != '' THEN ? ELSE telefono END,
                         ultima_compra = ?,
@@ -499,11 +528,12 @@ def guardar_factura_proveedor():
                     WHERE id = ?
                 ''', (telefono_prov, telefono_prov, fecha_hoy, round(monto_compra_actual, 2), prov_existente['id']))
             else:
-                conn.execute('''
+                cursor.execute('''
                     INSERT INTO proveedores (nombre, telefono, ultima_compra, total_compras)
                     VALUES (?, ?, ?, ?)
                 ''', (proveedor_nom, telefono_prov, fecha_hoy, round(monto_compra_actual, 2)))
 
+        # 3. Guardado o actualización de inventario anti-duplicados
         for it in items:
             cod = str(it.get('codigo', '')).strip().upper()
             nom = str(it.get('nombre', '')).strip()
@@ -516,19 +546,19 @@ def guardar_factura_proveedor():
             if not cod or not nom:
                 continue
 
-            existente = conn.execute(
+            existente = cursor.execute(
                 'SELECT id, stock FROM productos WHERE UPPER(codigo) = ? OR UPPER(TRIM(nombre)) = ?',
                 (cod, nom.upper())
             ).fetchone()
 
             if existente:
-                conn.execute('''
+                cursor.execute('''
                     UPDATE productos 
                     SET costo = ?, precio = ?, stock = stock + ?, categoria = ?, descuento = ?
                     WHERE id = ?
                 ''', (costo, precio, stock_nuevo, cat, desc, existente['id']))
             else:
-                conn.execute('''
+                cursor.execute('''
                     INSERT INTO productos (codigo, nombre, costo, precio, stock, categoria, descuento)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 ''', (cod, nom, costo, precio, stock_nuevo, cat, desc))
