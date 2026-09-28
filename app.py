@@ -38,7 +38,6 @@ def inicializar_db():
     conn = obtener_conexion()
     cursor = conn.cursor()
 
-    # Tabla productos
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS productos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,7 +58,6 @@ def inicializar_db():
         except sqlite3.OperationalError:
             pass
 
-    # Tabla proveedores automáticos
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS proveedores (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,7 +71,6 @@ def inicializar_db():
         )
     ''')
 
-    # Tabla ventas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ventas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -143,7 +140,7 @@ def clasificar_categoria_ryd(descripcion):
         return "Uñas"
     if any(k in desc for k in ['gorro', 'guante', 'desechable', 'tapa boca', 'mascarilla', 'toalla', 'separador', 'palitos', 'hisopo']):
         return "Desechables"
-    if any(k in desc for k in ['shampoo', 'alisado', 'blower', 'tratamiento', 'peine', 'difusor', 'ondas', 'cepillo', 'keratina', 'tinte', 'plancha', 'cabello']):
+    if any(k in desc for k in ['shampoo', 'alisado', 'laminado', 'termoprotector', 'blower', 'tratamiento', 'peine', 'difusor', 'ondas', 'cepillo', 'keratina', 'tinte', 'plancha', 'cabello', 'acondicionador']):
         return "Cabello"
     if any(k in desc for k in ['intimo', 'jabon', 'arandano', 'manzanilla', 'cera depilatoria', 'roll on', 'banda depilacion']):
         return "Íntimo"
@@ -465,7 +462,7 @@ def eliminar(id):
     return redirect(url_for('admin'))
 
 
-# --- MÓDULO DE PROVEEDORES Y PARSER UNIVERSAL MULTI-FORMATO ---
+# --- MOTOR UNIVERSAL DE EXTRACCIÓN (FACTURAS, NOTAS, FOTOS Y EXCEL) ---
 
 @app.route('/proveedores')
 @role_required('admin')
@@ -488,7 +485,6 @@ def guardar_factura_proveedor():
 
     conn = obtener_conexion()
     try:
-        # Registro automático en el Directorio
         if proveedor_nom and proveedor_nom != "Proveedor General":
             monto_compra_actual = sum(float(it.get('costo', 0)) * int(it.get('stock', 0)) for it in items)
             fecha_hoy = date.today().strftime('%Y-%m-%d')
@@ -508,7 +504,6 @@ def guardar_factura_proveedor():
                     VALUES (?, ?, ?, ?)
                 ''', (proveedor_nom, telefono_prov, fecha_hoy, round(monto_compra_actual, 2)))
 
-        # Actualización de inventario anti-duplicados
         for it in items:
             cod = str(it.get('codigo', '')).strip().upper()
             nom = str(it.get('nombre', '')).strip()
@@ -569,7 +564,10 @@ def procesar_factura_ocr():
             texto_completo = texto_directo
 
         up = texto_completo.upper()
-        if "MICELI" in up:
+        if "TODOBELLA" in up or "TODO BELLA" in up:
+            comercio = "Todo Bella"
+            telefono = "04127494517"
+        elif "MICELI" in up:
             comercio = "Comercializadora Miceli Corp, S.A."
             telefono = "04129583694"
         elif "STOREFIT" in up:
@@ -588,92 +586,39 @@ def procesar_factura_ocr():
             if m_tel:
                 telefono = m_tel.group(0).replace(" ", "").replace("-", "")
 
-        lineas = [l.strip() for l in texto_completo.split('\n') if l.strip()]
+        lines = [l.strip() for l in texto_completo.split('\n') if l.strip()]
 
-        # 1. NOTAS DE ENTREGA (Miceli / NE ROYVINER)
-        for linea in lineas:
-            m_miceli = re.match(r'^([A-Z0-9\-_]{3,18})\s+(.+?)\s+(\d+)\s+([0-9]+[,\.][0-9]{2})\s+([0-9]+[,\.][0-9]{2})$', linea, re.IGNORECASE)
-            if m_miceli:
-                cod, desc, cant, p_unit, _ = m_miceli.groups()
-                c_val = float(p_unit.replace(',', '.'))
-                q_val = int(cant)
-                items.append({
-                    'codigo': cod.upper(),
-                    'nombre': desc.strip().title(),
-                    'costo': c_val,
-                    'unidades_empaque': 1,
-                    'cant_comprada': q_val,
-                    'stock': q_val,
-                    'categoria': clasificar_categoria_ryd(desc)
-                })
+        # FORMATO 1: Presupuestos y Notas Tabulares (Todo Bella, Aura, etc.)
+        for line in lines:
+            l_clean = line.replace('|', ' ').strip()
+            m_tb = re.match(r'^(\d+)\s*(?:Und\.?|Pza\.?|Unidad(?:es)?)?\s+(.+?)\s+([0-9]+[\.,][0-9]{2})\s+([0-9]+[\.,][0-9]{2})$', l_clean, re.IGNORECASE)
+            if m_tb:
+                cant = int(m_tb.group(1))
+                desc = m_tb.group(2).strip()
+                costo = float(m_tb.group(3).replace(',', '.'))
+                if not any(k in desc.upper() for k in ['SUBTOTAL', 'TOTAL', 'DESCRIPCION', 'CANTIDAD', 'ITEMS']):
+                    items.append({
+                        'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
+                        'nombre': desc.title(),
+                        'costo': costo,
+                        'unidades_empaque': 1,
+                        'cant_comprada': cant,
+                        'stock': cant,
+                        'categoria': clasificar_categoria_ryd(desc)
+                    })
 
-        # 2. NOTAS DE ENTREGA CON CANTIDAD AL INICIO (Storefit)
-        if not items:
-            for linea in lineas:
-                m_store = re.match(r'^(\d+)\s+(.+?)\s+\$?([0-9]+[,\.][0-9]{2})\s+\$?([0-9]+[,\.][0-9]{2})$', linea, re.IGNORECASE)
-                if m_store:
-                    cant, desc, p_unit, _ = m_store.groups()
-                    desc_limpia = desc.strip()
-                    if not any(k in desc_limpia.upper() for k in ['TOTAL', 'SUBTOTAL', 'SUB-TOTAL', 'ORDEN']):
-                        c_val = float(p_unit.replace(',', '.'))
-                        q_val = int(cant)
-                        items.append({
-                            'codigo': f"STR-{str(len(items) + 1).zfill(3)}",
-                            'nombre': desc_limpia.title(),
-                            'costo': c_val,
-                            'unidades_empaque': 1,
-                            'cant_comprada': q_val,
-                            'stock': q_val,
-                            'categoria': clasificar_categoria_ryd(desc_limpia)
-                        })
-
-        # 3. TICKETS SENIAT / HOGAR IDEAL
-        if not items:
-            for i, linea in enumerate(lineas):
-                if '/' in linea:
-                    partes = linea.split('/', 1)
-                    sku = partes[0].strip().replace(' ', '')
-                    nom = partes[1].strip()
-                    
-                    qty = 1
-                    cost = 0.0
-
-                    for offset in [-1, 1]:
-                        idx_check = i + offset
-                        if 0 <= idx_check < len(lineas):
-                            m_q = re.search(r'(\d+)(?:[,\.]\d+)?\s*[xX]\s*(?:Bs\.?|\$)?\s*([0-9\.,]+)', lineas[idx_check])
-                            if m_q:
-                                qty = int(m_q.group(1))
-                                p_clean = m_q.group(2).replace('.', '').replace(',', '.') if (',' in m_q.group(2) and '.' in m_q.group(2)) else m_q.group(2).replace(',', '.')
-                                try:
-                                    cost = float(p_clean)
-                                    break
-                                except:
-                                    pass
-
-                    if not any(k in nom.upper() for k in ['TOTAL', 'SUBTOTAL', 'DESCUENTO', 'EXENTO', 'IVA']):
-                        items.append({
-                            'codigo': sku.upper() if len(sku) > 2 else f"TKT-{str(len(items)+1).zfill(3)}",
-                            'nombre': nom.title(),
-                            'costo': round(cost, 2),
-                            'unidades_empaque': 1,
-                            'cant_comprada': qty,
-                            'stock': qty,
-                            'categoria': clasificar_categoria_ryd(nom)
-                        })
-
-        # 4. NOTA POS GOOD TIMES Y FACTURAS ESTÁNDAR
+        # FORMATO 2: Nota POS de Despacho (Good Times / fact roysviner)
         if not items:
             i = 0
-            while i < len(lineas):
-                linea_actual = lineas[i]
-                if "Lineas" in linea_actual or "SUBTTL" in linea_actual or ("TOTAL" in linea_actual and len(items) > 5):
+            while i < len(lines):
+                linea_act = lines[i]
+                if "Lineas" in linea_act or "SUBTTL" in linea_act or ("TOTAL" in linea_act and len(items) > 5):
                     break
-                m_qty = re.match(r'^(\d+)[,\.]00$', linea_actual)
-                if m_qty and (i + 2) < len(lineas):
+                m_qty = re.match(r'^(\d+)[,\.]00$', linea_act)
+                if m_qty and (i + 2) < len(lines):
                     cant = int(m_qty.group(1))
-                    desc = lineas[i + 1].strip()
-                    price_line = lineas[i + 2].strip()
+                    desc = lines[i + 1].strip()
+                    price_line = lines[i + 2].strip()
 
                     costo_encontrado = None
                     for split_pos in range(1, len(price_line)):
@@ -705,6 +650,75 @@ def procesar_factura_ocr():
                         i += 3
                         continue
                 i += 1
+
+        # FORMATO 3: Notas de Entrega con Código inicial (Miceli Corp / NE ROYVINER)
+        if not items:
+            for linea in lines:
+                m_miceli = re.match(r'^([A-Z0-9\-_]{3,18})\s+(.+?)\s+(\d+)\s+([0-9]+[,\.][0-9]{2})\s+([0-9]+[,\.][0-9]{2})$', linea, re.IGNORECASE)
+                if m_miceli:
+                    cod, desc, cant, p_unit, _ = m_miceli.groups()
+                    items.append({
+                        'codigo': cod.upper(),
+                        'nombre': desc.strip().title(),
+                        'costo': float(p_unit.replace(',', '.')),
+                        'unidades_empaque': 1,
+                        'cant_comprada': int(cant),
+                        'stock': int(cant),
+                        'categoria': clasificar_categoria_ryd(desc)
+                    })
+
+        # FORMATO 4: Notas con Cantidad y Signo Dólar (Storefit)
+        if not items:
+            for linea in lines:
+                m_store = re.match(r'^(\d+)\s+(.+?)\s+\$?([0-9]+[,\.][0-9]{2})\s+\$?([0-9]+[,\.][0-9]{2})$', linea, re.IGNORECASE)
+                if m_store:
+                    cant, desc, p_unit, _ = m_store.groups()
+                    desc_limpia = desc.strip()
+                    if not any(k in desc_limpia.upper() for k in ['TOTAL', 'SUBTOTAL', 'SUB-TOTAL', 'ORDEN', 'DESCRIPCION']):
+                        items.append({
+                            'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
+                            'nombre': desc_limpia.title(),
+                            'costo': float(p_unit.replace(',', '.')),
+                            'unidades_empaque': 1,
+                            'cant_comprada': int(cant),
+                            'stock': int(cant),
+                            'categoria': clasificar_categoria_ryd(desc_limpia)
+                        })
+
+        # FORMATO 5: Tickets de Caja Térmicos / SENIAT (Hogar Ideal)
+        if not items:
+            for i, linea in enumerate(lines):
+                if '/' in linea and not any(k in linea.upper() for k in ['FECHA', 'RAZ', 'CEDULA', 'RIF', 'DIR', 'VALENCIA']):
+                    partes = linea.split('/', 1)
+                    sku = partes[0].strip().replace(' ', '')
+                    nom = partes[1].strip()
+                    
+                    qty = 1
+                    cost = 0.0
+
+                    for offset in [-1, 1]:
+                        idx_check = i + offset
+                        if 0 <= idx_check < len(lines):
+                            m_q = re.search(r'(\d+)(?:[,\.]\d+)?\s*[xX]\s*(?:Bs\.?|\$)?\s*([0-9\.,]+)', lines[idx_check])
+                            if m_q:
+                                qty = int(m_q.group(1))
+                                p_clean = m_q.group(2).replace('.', '').replace(',', '.') if (',' in m_q.group(2) and '.' in m_q.group(2)) else m_q.group(2).replace(',', '.')
+                                try:
+                                    cost = float(p_clean)
+                                    break
+                                except:
+                                    pass
+
+                    if not any(k in nom.upper() for k in ['TOTAL', 'SUBTOTAL', 'DESCUENTO', 'EXENTO', 'IVA']):
+                        items.append({
+                            'codigo': sku.upper() if len(sku) > 2 else f"PRV-{str(len(items)+1).zfill(3)}",
+                            'nombre': nom.title(),
+                            'costo': round(cost, 2),
+                            'unidades_empaque': 1,
+                            'cant_comprada': qty,
+                            'stock': qty,
+                            'categoria': clasificar_categoria_ryd(nom)
+                        })
 
         return jsonify({
             'exito': True,
