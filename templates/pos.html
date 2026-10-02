@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RyD - Terminal de Cobro</title>
+    <title>RyD - Terminal de Cobro Integral</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
@@ -104,6 +104,7 @@
             background: var(--ryd-beige-card);
         }
 
+        /* Botones de Modalidad de Pago en Cuadrícula */
         .payment-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -120,6 +121,10 @@
             box-shadow: var(--emboss-btn);
             transition: all 0.15s ease;
             user-select: none;
+        }
+        .payment-card:hover {
+            border-color: var(--ryd-gold);
+            transform: translateY(-1px);
         }
         .payment-card.active {
             background: var(--ryd-beige-card);
@@ -142,17 +147,17 @@
             display: block;
         }
 
-        /* Balance Progresivo y Descuento en Tiempo Real */
+        /* Monitor Financiero y Balance */
         .balance-box {
             background: linear-gradient(135deg, #FAF7F2, #F2ECE1);
             border: 1.5px solid var(--ryd-border);
             border-radius: 10px;
-            padding: 10px 14px;
+            padding: 12px 14px;
             margin-bottom: 10px;
             box-shadow: var(--emboss-btn);
         }
 
-        /* Teclado Táctil Numérico 3D Neumórfico */
+        /* Teclado Táctil Numérico 3D */
         .keypad-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -181,12 +186,11 @@
         .keypad-btn-gold {
             background: linear-gradient(135deg, #DFCA98, #B89248);
             color: #FFFFFF;
-            font-size: 0.78rem;
+            font-size: 0.75rem;
             letter-spacing: 0.5px;
             border-color: #C5A059;
         }
 
-        /* Botones Separados de Ejecución */
         .btn-pay-action {
             border: 1px solid var(--ryd-border);
             background: var(--ryd-surface);
@@ -306,7 +310,7 @@
         </span>
     </div>
     <div class="d-flex align-items-center gap-2">
-        <div class="rate-badge-box me-1" title="Tasa oficial fijada por la administración">
+        <div class="rate-badge-box me-1" title="Tasa oficial del día fijada por el administrador">
             <span class="small text-muted fw-bold" style="font-size: 0.68rem; text-transform: uppercase;">Tasa Bs:</span>
             <input type="text" id="inputTasaPos" class="rate-input-readonly" readonly value="50.00">
         </div>
@@ -332,7 +336,7 @@
                         </label>
                         <div class="search-container">
                             <input type="text" id="inputCodigoBarras" class="form-control search-input" 
-                                   placeholder="Escribe una letra o pasa el código..." 
+                                   placeholder="Escribe una letra o código SKU..." 
                                    autocomplete="off" autofocus oninput="ejecutarBusquedaPredictiva(this.value)">
                             <div id="resultadosPredictivos" class="search-results-dropdown"></div>
                         </div>
@@ -377,7 +381,7 @@
             </div>
         </div>
 
-        <!-- Panel Derecho: Carrito, Teclado Táctil y Cobro Progresivo -->
+        <!-- Panel Derecho: Liquidación, Pago Mixto y Teclado Táctil -->
         <div class="col-lg-5">
             <div class="panel-luxury d-flex flex-column justify-content-between" style="min-height: 86vh;">
                 <div>
@@ -385,7 +389,7 @@
                         Detalle de Transacción
                     </h6>
 
-                    <div class="table-responsive" style="max-height: 24vh; overflow-y: auto;">
+                    <div class="table-responsive" style="max-height: 22vh; overflow-y: auto;">
                         <table class="table table-pos mb-0 align-middle">
                             <thead>
                                 <tr>
@@ -405,31 +409,41 @@
                 </div>
 
                 <div class="pt-2 border-top mt-2">
-                    <!-- Monitor de Liquidación con Resta en Vivo -->
+                    <!-- Monitor de Saldos en Vivo: USD y Bolívares -->
                     <div class="balance-box">
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="small text-muted fw-bold" style="font-size: 0.7rem; text-transform: uppercase;">Total Liquidación:</span>
+                            <div>
+                                <span class="small text-muted fw-bold d-block" style="font-size: 0.68rem; text-transform: uppercase;">Total a Pagar:</span>
+                                <small class="text-muted" id="txtTotalBsEquiv" style="font-size: 0.75rem;">Bs. 0.00</small>
+                            </div>
                             <h3 class="m-0 fw-bold" style="color: var(--ryd-gold-dark);" id="txtTotalUSD">$0.00</h3>
                         </div>
+
                         <div class="d-flex justify-content-between align-items-center border-top pt-1 mt-1">
                             <div>
-                                <span class="d-block fw-bold" style="font-size: 0.68rem; text-transform: uppercase; color: var(--ryd-muted);">Monto Ingresado:</span>
+                                <span class="d-block fw-bold" style="font-size: 0.68rem; text-transform: uppercase; color: var(--ryd-muted);">Total Cubierto:</span>
                                 <strong id="txtMontoEntregado" style="font-size: 0.95rem; color: var(--ryd-text);">$0.00</strong>
                             </div>
                             <div class="text-end">
                                 <span class="d-block fw-bold" id="lblEstadoBalance" style="font-size: 0.68rem; text-transform: uppercase; color: #9E4D48;">Resta por Pagar:</span>
                                 <strong id="txtRestaBalance" style="font-size: 1.05rem; color: #9E4D48;">$0.00</strong>
+                                <small class="d-block text-muted" id="txtRestaBs" style="font-size: 0.72rem;">(Bs. 0.00)</small>
                             </div>
                         </div>
-                        <div class="small text-muted text-end mt-1" id="txtEquivalenteBs" style="font-size: 0.72rem;"></div>
+
+                        <!-- Lista de Abonos en Pagos Combinados -->
+                        <div id="contenedorAbonos" class="mt-2 pt-1 border-top" style="display: none;">
+                            <span class="d-block small fw-bold text-muted mb-1" style="font-size: 0.65rem; text-transform: uppercase;">Desglose de Pagos Registrados:</span>
+                            <div id="listaAbonos" class="d-flex flex-column gap-1" style="max-height: 80px; overflow-y: auto;"></div>
+                        </div>
                     </div>
 
-                    <!-- Métodos de Pago -->
-                    <label class="small text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">Modalidad de Pago</label>
+                    <!-- Métodos de Pago Disponibles -->
+                    <label class="small text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">Seleccionar Modalidad de Pago</label>
                     <div class="payment-grid mb-2">
                         <div class="payment-card active" onclick="seleccionarMetodo(this, 'Efectivo $')">
                             <span class="payment-card-title">Efectivo $</span>
-                            <span class="payment-card-sub">Divisa</span>
+                            <span class="payment-card-sub">Divisas</span>
                         </div>
                         <div class="payment-card" onclick="seleccionarMetodo(this, 'Efectivo Bs')">
                             <span class="payment-card-title">Efectivo Bs</span>
@@ -437,7 +451,7 @@
                         </div>
                         <div class="payment-card" onclick="seleccionarMetodo(this, 'Pago Móvil')">
                             <span class="payment-card-title">Pago Móvil</span>
-                            <span class="payment-card-sub">Banca</span>
+                            <span class="payment-card-sub">Interbancario</span>
                         </div>
                         <div class="payment-card" onclick="seleccionarMetodo(this, 'Punto Venta')">
                             <span class="payment-card-title">Punto Venta</span>
@@ -449,11 +463,19 @@
                         </div>
                         <div class="payment-card" onclick="seleccionarMetodo(this, 'Pago Mixto')">
                             <span class="payment-card-title">Combinado</span>
-                            <span class="payment-card-sub">Mixto</span>
+                            <span class="payment-card-sub">Dual / Mixto</span>
                         </div>
                     </div>
 
-                    <!-- Teclado Numérico Táctil 3D -->
+                    <!-- Teclado Numérico Táctil con Selección de Divisa de Entrada -->
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small text-muted fw-bold" style="font-size: 0.68rem; text-transform: uppercase;">Ingreso de Dinero:</span>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary py-0 px-2 active" id="btnMonedaUSD" onclick="cambiarMonedaEntrada('USD')">En $</button>
+                            <button type="button" class="btn btn-outline-secondary py-0 px-2" id="btnMonedaBS" onclick="cambiarMonedaEntrada('BS')">En Bs</button>
+                        </div>
+                    </div>
+
                     <div class="keypad-grid mb-2">
                         <button type="button" class="keypad-btn" onclick="presionarTecla('1')">1</button>
                         <button type="button" class="keypad-btn" onclick="presionarTecla('2')">2</button>
@@ -475,11 +497,18 @@
                         <button type="button" class="keypad-btn" style="grid-column: span 2; font-size: 0.72rem; text-transform: uppercase;" onclick="presionarRetroceso()">⌫ Borrar</button>
                     </div>
 
+                    <!-- Botón para Agregar Abono en Pagos Combinados -->
+                    <div id="bloqueAgregarAbono" class="mb-2" style="display: none;">
+                        <button type="button" class="btn-3d w-100 py-1" onclick="agregarAbonoMixto()">
+                            + Registrar Abono de este Método
+                        </button>
+                    </div>
+
                     <div class="mb-2" id="bloqueReferencia" style="display: none;">
                         <input type="text" id="inputReferencia" class="form-control search-input form-control-sm" placeholder="N° Referencia Bancaria (Obligatorio)">
                     </div>
 
-                    <!-- Dos Botones de Acción (Se habilitan al completar el cobro) -->
+                    <!-- Botones de Ejecución y Emisión -->
                     <div class="row g-2">
                         <div class="col-6">
                             <button type="button" id="btnRegistrarPago" class="btn-pay-action" disabled onclick="ejecutarVenta(false)">
@@ -523,6 +552,8 @@ let carrito = [];
 let metodoSeleccionado = 'Efectivo $';
 let tasaPos = parseFloat(localStorage.getItem('ryd_tasa_bcv')) || 50.00;
 let montoIngresadoStr = '';
+let monedaEntrada = 'USD'; // 'USD' o 'BS'
+let abonosRegistrados = []; // Para pago mixto: [{metodo, montoUSD, montoBS, ref}]
 
 const productosDisponibles = [
     {% for p in productos %}
@@ -533,6 +564,13 @@ const productosDisponibles = [
 function iniciarPos() {
     document.getElementById('inputTasaPos').value = tasaPos.toFixed(2);
     actualizarTilesPreciosBs();
+}
+
+function cambiarMonedaEntrada(moneda) {
+    monedaEntrada = moneda;
+    document.getElementById('btnMonedaUSD').classList.toggle('active', moneda === 'USD');
+    document.getElementById('btnMonedaBS').classList.toggle('active', moneda === 'BS');
+    actualizarBalanceCobro();
 }
 
 function actualizarTilesPreciosBs() {
@@ -675,7 +713,9 @@ function renderizarCarrito() {
     if (carrito.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted small">Terminal en espera de artículos.</td></tr>';
         document.getElementById('txtTotalUSD').innerText = '$0.00';
+        document.getElementById('txtTotalBsEquiv').innerText = 'Bs. 0.00';
         montoIngresadoStr = '';
+        abonosRegistrados = [];
         actualizarBalanceCobro();
         return;
     }
@@ -705,15 +745,16 @@ function renderizarCarrito() {
     });
 
     const totalUsd = calcularTotalVentaUSD();
+    const totalBs = totalUsd * tasaPos;
     document.getElementById('txtTotalUSD').innerText = `$${totalUsd.toFixed(2)}`;
-    document.getElementById('txtEquivalenteBs').innerText = `Equiv: Bs. ${(totalUsd * tasaPos).toLocaleString('es-VE', { minimumFractionDigits: 2 })}`;
+    document.getElementById('txtTotalBsEquiv').innerText = `Equiv: Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`;
     actualizarBalanceCobro();
 }
 
-// Lógica del Teclado Táctil y Cobro con Resta en Tiempo Real
+// Teclado Numérico Táctil
 function presionarTecla(digito) {
     if (digito === '.' && montoIngresadoStr.includes('.')) return;
-    if (montoIngresadoStr.length > 8) return;
+    if (montoIngresadoStr.length > 9) return;
     montoIngresadoStr += digito;
     actualizarBalanceCobro();
 }
@@ -729,28 +770,42 @@ function presionarRetroceso() {
 }
 
 function presionarExacto() {
-    const total = calcularTotalVentaUSD();
-    montoIngresadoStr = total.toFixed(2);
+    const totalUsd = calcularTotalVentaUSD();
+    const totalAbonadoUsd = abonosRegistrados.reduce((acc, a) => acc + a.montoUSD, 0);
+    const restante = Math.max(0, totalUsd - totalAbonadoUsd);
+
+    if (monedaEntrada === 'USD') {
+        montoIngresadoStr = restante.toFixed(2);
+    } else {
+        montoIngresadoStr = (restante * tasaPos).toFixed(2);
+    }
     actualizarBalanceCobro();
 }
 
 function actualizarBalanceCobro() {
     const total = calcularTotalVentaUSD();
-    const ingresado = parseFloat(montoIngresadoStr) || 0.0;
+    const rawVal = parseFloat(montoIngresadoStr) || 0.0;
+    
+    // Convertir ingreso actual a USD si se digitó en Bolívares
+    const ingresoActualUSD = (monedaEntrada === 'BS') ? (rawVal / tasaPos) : rawVal;
+    const totalAbonadoPrevioUSD = abonosRegistrados.reduce((acc, a) => acc + a.montoUSD, 0);
+    const totalCubiertoUSD = totalAbonadoPrevioUSD + ingresoActualUSD;
 
-    document.getElementById('txtMontoEntregado').innerText = `$${ingresado.toFixed(2)}`;
+    document.getElementById('txtMontoEntregado').innerText = `$${totalCubiertoUSD.toFixed(2)} (Bs. ${(totalCubiertoUSD * tasaPos).toLocaleString('es-VE', { minimumFractionDigits: 2 })})`;
 
-    const resta = total - ingresado;
+    const resta = total - totalCubiertoUSD;
     const btnPago = document.getElementById('btnRegistrarPago');
     const btnTicket = document.getElementById('btnEmitirTicket');
     const lblEstado = document.getElementById('lblEstadoBalance');
     const txtResta = document.getElementById('txtRestaBalance');
+    const txtRestaBs = document.getElementById('txtRestaBs');
 
     if (total === 0) {
         lblEstado.innerText = "Resta por Pagar:";
         lblEstado.style.color = "#9E4D48";
         txtResta.innerText = "$0.00";
         txtResta.style.color = "#9E4D48";
+        txtRestaBs.innerText = "(Bs. 0.00)";
         btnPago.disabled = true;
         btnTicket.disabled = true;
         return;
@@ -761,6 +816,7 @@ function actualizarBalanceCobro() {
         lblEstado.style.color = "#9E4D48";
         txtResta.innerText = `$${resta.toFixed(2)}`;
         txtResta.style.color = "#9E4D48";
+        txtRestaBs.innerText = `(Bs. ${(resta * tasaPos).toLocaleString('es-VE', { minimumFractionDigits: 2 })})`;
         btnPago.disabled = true;
         btnTicket.disabled = true;
     } else {
@@ -769,6 +825,7 @@ function actualizarBalanceCobro() {
         lblEstado.style.color = "#4D784E";
         txtResta.innerText = `$${cambio.toFixed(2)}`;
         txtResta.style.color = "#4D784E";
+        txtRestaBs.innerText = `(Bs. ${(cambio * tasaPos).toLocaleString('es-VE', { minimumFractionDigits: 2 })})`;
         btnPago.disabled = false;
         btnTicket.disabled = false;
     }
@@ -781,17 +838,82 @@ function seleccionarMetodo(elemento, metodo) {
 
     const bloqueRef = document.getElementById('bloqueReferencia');
     const inputRef = document.getElementById('inputReferencia');
+    const bloqueAbono = document.getElementById('bloqueAgregarAbono');
 
-    if (['Pago Móvil', 'Punto Venta', 'Binance'].includes(metodo)) {
-        bloqueRef.style.display = 'block';
-        inputRef.placeholder = `N° Referencia (${metodo}) - Requerido`;
-    } else if (metodo === 'Pago Mixto') {
-        bloqueRef.style.display = 'block';
-        inputRef.placeholder = "Detalle Mixto (Ej: $10 efectivo + Bs. 600 móvil)";
+    // Cambiar moneda sugerida según el método
+    if (['Efectivo Bs', 'Pago Móvil', 'Punto Venta'].includes(metodo)) {
+        cambiarMonedaEntrada('BS');
     } else {
-        bloqueRef.style.display = 'none';
-        inputRef.value = '';
+        cambiarMonedaEntrada('USD');
     }
+
+    if (metodo === 'Pago Mixto') {
+        bloqueAbono.style.display = 'block';
+        bloqueRef.style.display = 'block';
+        inputRef.placeholder = "Referencia del abono actual (si aplica)";
+    } else {
+        bloqueAbono.style.display = 'none';
+        if (['Pago Móvil', 'Punto Venta', 'Binance'].includes(metodo)) {
+            bloqueRef.style.display = 'block';
+            inputRef.placeholder = `N° Referencia (${metodo}) - Requerido`;
+        } else {
+            bloqueRef.style.display = 'none';
+            inputRef.value = '';
+        }
+    }
+}
+
+// Registro progresivo de pagos mixtos
+function agregarAbonoMixto() {
+    const rawVal = parseFloat(montoIngresadoStr) || 0.0;
+    if (rawVal <= 0) {
+        alert("Ingrese un monto en el teclado para abonar.");
+        return;
+    }
+
+    const ref = document.getElementById('inputReferencia').value.trim();
+    const montoUSD = (monedaEntrada === 'BS') ? (rawVal / tasaPos) : rawVal;
+    const montoBS = (monedaEntrada === 'BS') ? rawVal : (rawVal * tasaPos);
+
+    abonosRegistrados.push({
+        metodo: metodoSeleccionado === 'Pago Mixto' ? 'Abono Mixto' : metodoSeleccionado,
+        montoUSD: montoUSD,
+        montoBS: montoBS,
+        ref: ref || 'N/A'
+    });
+
+    montoIngresadoStr = '';
+    document.getElementById('inputReferencia').value = '';
+    renderizarAbonos();
+    actualizarBalanceCobro();
+}
+
+function eliminarAbono(idx) {
+    abonosRegistrados.splice(idx, 1);
+    renderizarAbonos();
+    actualizarBalanceCobro();
+}
+
+function renderizarAbonos() {
+    const cont = document.getElementById('contenedorAbonos');
+    const lista = document.getElementById('listaAbonos');
+
+    if (abonosRegistrados.length === 0) {
+        cont.style.display = 'none';
+        lista.innerHTML = '';
+        return;
+    }
+
+    cont.style.display = 'block';
+    lista.innerHTML = '';
+    abonosRegistrados.forEach((a, idx) => {
+        lista.innerHTML += `
+            <div class="d-flex justify-content-between align-items-center bg-white px-2 py-1 rounded border small">
+                <span><strong>${a.metodo}:</strong> $${a.montoUSD.toFixed(2)} (Bs. ${a.montoBS.toFixed(2)}) ${a.ref !== 'N/A' ? '- Ref:' + a.ref : ''}</span>
+                <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2 text-decoration-none" onclick="eliminarAbono(${idx})">×</button>
+            </div>
+        `;
+    });
 }
 
 function ejecutarVenta(emitirTicket = true) {
@@ -800,14 +922,42 @@ function ejecutarVenta(emitirTicket = true) {
         return;
     }
 
+    const total = calcularTotalVentaUSD();
+    const totalAbonado = abonosRegistrados.reduce((acc, a) => acc + a.montoUSD, 0);
+    const rawVal = parseFloat(montoIngresadoStr) || 0.0;
+    const ingresoActualUSD = (monedaEntrada === 'BS') ? (rawVal / tasaPos) : rawVal;
+    const cubierto = totalAbonado + ingresoActualUSD;
+
+    if (cubierto < (total - 0.009)) {
+        alert("La cuenta no está completamente pagada. Ingrese el monto restante.");
+        return;
+    }
+
     const referencia = document.getElementById('inputReferencia').value.trim();
 
-    if (['Pago Móvil', 'Punto Venta', 'Binance', 'Pago Mixto'].includes(metodoSeleccionado)) {
+    // Verificación de referencia obligatoria en cobros únicos
+    if (['Pago Móvil', 'Punto Venta', 'Binance'].includes(metodoSeleccionado) && abonosRegistrados.length === 0) {
         if (!referencia) {
-            alert(`Es obligatorio registrar el comprobante o referencia bancaria para la modalidad: ${metodoSeleccionado}.`);
+            alert(`Es obligatorio registrar la referencia bancaria para ${metodoSeleccionado}.`);
             document.getElementById('inputReferencia').focus();
             return;
         }
+    }
+
+    // Armar el desglose para el ticket
+    let desgloseTxt = '';
+    if (abonosRegistrados.length > 0) {
+        if (ingresoActualUSD > 0.009) {
+            abonosRegistrados.push({
+                metodo: metodoSeleccionado,
+                montoUSD: ingresoActualUSD,
+                montoBS: (monedaEntrada === 'BS' ? rawVal : (rawVal * tasaPos)),
+                ref: referencia || 'N/A'
+            });
+        }
+        desgloseTxt = abonosRegistrados.map(a => `${a.metodo}: $${a.montoUSD.toFixed(2)} / Bs. ${a.montoBS.toFixed(2)} (Ref: ${a.ref})`).join(' | ');
+    } else {
+        desgloseTxt = `${metodoSeleccionado}: $${total.toFixed(2)} / Bs. ${(total * tasaPos).toFixed(2)}`;
     }
 
     fetch('/procesar_venta', {
@@ -815,8 +965,10 @@ function ejecutarVenta(emitirTicket = true) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             items: carrito,
-            metodo_pago: metodoSeleccionado,
-            referencia: referencia || 'N/A'
+            metodo_pago: abonosRegistrados.length > 0 ? 'Pago Mixto' : metodoSeleccionado,
+            referencia: referencia || 'N/A',
+            tasa_cambio: tasaPos,
+            desglose_pago: desgloseTxt
         })
     })
     .then(res => res.json())
@@ -828,6 +980,7 @@ function ejecutarVenta(emitirTicket = true) {
                 alert("¡Pago registrado con éxito en el sistema!");
                 carrito = [];
                 montoIngresadoStr = '';
+                abonosRegistrados = [];
                 renderizarCarrito();
                 document.getElementById('inputReferencia').value = '';
                 window.location.reload();
