@@ -227,7 +227,6 @@
 </header>
 
 <div class="container-fluid px-4 my-4">
-    <!-- Pestañas de Vista -->
     <div class="d-flex nav-tabs-luxury mb-4">
         <button type="button" id="tabBtnCarga" class="nav-tab-item active" onclick="cambiarPestana('carga')">
             Recepción Universal de Facturas y Notas
@@ -282,7 +281,7 @@
                         Items Extraídos para Incorporar a Inventario
                     </h6>
                     <small class="text-muted" style="font-size: 0.78rem;">
-                        Artículos listados: <strong id="contadorItems" style="color: var(--ryd-gold-dark);">0</strong>. Columnas Precio Bs y Precio $ leídas tal como están en tu Excel.
+                        Artículos listados: <strong id="contadorItems" style="color: var(--ryd-gold-dark);">0</strong>. Columnas Precio Bs y Precio $ leídas tal como están en tu Excel sin alterar valores.
                     </small>
                 </div>
                 <div>
@@ -444,24 +443,7 @@ function actualizarContador() {
     document.getElementById('contadorItems').innerText = total;
 }
 
-// Recalcular precios en vivo si se edita el costo manualmente
-function recalcularFila(input) {
-    const fila = input.closest('tr');
-    const costo = parseFloat(fila.querySelector('.col-costo').value) || 0;
-    
-    // Si el usuario cambia el costo, actualiza proporcionalmente Precio Bs y Precio Divisa
-    const pBsActual = parseFloat(fila.querySelector('.col-precio-bs').value) || 0;
-    const pDivActual = parseFloat(fila.querySelector('.col-precio').value) || 0;
-
-    if (pBsActual === 0) {
-        fila.querySelector('.col-precio-bs').value = (costo * 1.5525).toFixed(2);
-    }
-    if (pDivActual === 0) {
-        fila.querySelector('.col-precio').value = (costo * 1.35).toFixed(2);
-    }
-}
-
-// Agrega fila con las dos columnas de precio (Precio Bs y Precio $)
+// Agrega fila con los datos reales tal como vienen del documento o Excel
 function agregarFilaManual(codigo = '', nombre = '', costoUnitario = 0, precioBs = 0, precioDivisa = 0, stock = 1, categoria = 'General') {
     const tbody = document.getElementById('cuerpoFactura');
     if (tbody.children.length === 1 && tbody.children[0].children.length === 1) {
@@ -479,7 +461,7 @@ function agregarFilaManual(codigo = '', nombre = '', costoUnitario = 0, precioBs
     tr.innerHTML = `
         <td><input type="text" class="cell-input col-codigo fw-bold" value="${cod}" style="color: var(--ryd-gold-dark);"></td>
         <td><input type="text" class="cell-input col-nombre" value="${nombre}" placeholder="Nombre del artículo"></td>
-        <td><input type="number" step="0.01" class="cell-input col-costo" value="${costoUnitario.toFixed(2)}" oninput="recalcularFila(this)"></td>
+        <td><input type="number" step="0.01" class="cell-input col-costo text-center" value="${costoUnitario.toFixed(2)}"></td>
         <td><input type="number" step="0.01" class="cell-input col-precio-bs fw-bold text-center" value="${pBsCalculado}" style="color: #9D7B38;" title="Precio para pagos en Bs / Tasa"></td>
         <td><input type="number" step="0.01" class="cell-input col-precio fw-bold text-center" value="${pDivCalculado}" style="color: #2C2620;" title="Precio Divisa en efectivo"></td>
         <td><input type="number" class="cell-input col-stock text-center" value="${stock}" min="1"></td>
