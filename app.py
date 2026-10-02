@@ -38,7 +38,7 @@ def inicializar_db():
     conn = obtener_conexion()
     cursor = conn.cursor()
 
-    # 1. Tabla productos
+    # Tabla productos
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS productos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,7 +59,7 @@ def inicializar_db():
         except sqlite3.OperationalError:
             pass
 
-    # 2. Tabla proveedores (Blindada contra columnas faltantes)
+    # Tabla proveedores
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS proveedores (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,7 +86,7 @@ def inicializar_db():
         except sqlite3.OperationalError:
             pass
 
-    # 3. Tabla ventas
+    # Tabla ventas con desglose detallado
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ventas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,7 +95,10 @@ def inicializar_db():
             metodo_pago TEXT DEFAULT 'Efectivo $',
             referencia TEXT DEFAULT '',
             usuario TEXT DEFAULT 'Cajero',
-            producto_nombre TEXT DEFAULT ''
+            producto_nombre TEXT DEFAULT '',
+            tasa_cambio REAL DEFAULT 50.0,
+            monto_bs REAL DEFAULT 0.0,
+            desglose_pago TEXT DEFAULT ''
         )
     ''')
 
@@ -104,14 +107,16 @@ def inicializar_db():
         'metodo_pago TEXT DEFAULT "Efectivo $"',
         'referencia TEXT DEFAULT ""',
         'usuario TEXT DEFAULT "Cajero"',
-        'producto_nombre TEXT DEFAULT ""'
+        'producto_nombre TEXT DEFAULT ""',
+        'tasa_cambio REAL DEFAULT 50.0',
+        'monto_bs REAL DEFAULT 0.0',
+        'desglose_pago TEXT DEFAULT ""'
     ]:
         try:
             cursor.execute(f'ALTER TABLE ventas ADD COLUMN {col_def}')
         except sqlite3.OperationalError:
             pass
 
-    # 4. Tabla detalle de ventas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS detalle_ventas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -125,7 +130,6 @@ def inicializar_db():
         )
     ''')
 
-    # 5. Tabla usuarios
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -261,6 +265,8 @@ def procesar_venta():
     items = data.get('items', [])
     metodo_pago = data.get('metodo_pago', 'Efectivo $')
     referencia = data.get('referencia', 'N/A')
+    tasa_cambio = float(data.get('tasa_cambio', 50.0))
+    desglose_pago = data.get('desglose_pago', '')
     usuario = session.get('username', 'Cajero')
 
     if not items:
@@ -270,6 +276,7 @@ def procesar_venta():
     cursor = conn.cursor()
     try:
         total_venta = sum(float(item['precio']) * int(item['cantidad']) for item in items)
+        monto_bs = round(total_venta * tasa_cambio, 2)
         fecha_hora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         resumen_nombres = ", ".join([it['nombre'] for it in items[:3]])
@@ -277,8 +284,8 @@ def procesar_venta():
             resumen_nombres += f" (+{len(items)-3} más)"
 
         cols_ventas = [col[1] for col in cursor.execute("PRAGMA table_info(ventas)").fetchall()]
-        campos = ['fecha', 'total', 'metodo_pago', 'referencia', 'usuario']
-        valores = [fecha_hora, round(total_venta, 2), metodo_pago, referencia, usuario]
+        campos = ['fecha', 'total', 'metodo_pago', 'referencia', 'usuario', 'tasa_cambio', 'monto_bs', 'desglose_pago']
+        valores = [fecha_hora, round(total_venta, 2), metodo_pago, referencia, usuario, tasa_cambio, monto_bs, desglose_pago]
 
         if 'producto_nombre' in cols_ventas:
             campos.append('producto_nombre')
@@ -327,7 +334,7 @@ def ticket(venta_id):
     return render_template('ticket.html', venta=venta, detalles=detalles)
 
 
-# --- PANEL ADMINISTRADOR Y EXPORTACIÓN EXCEL ---
+# --- ADMINISTRACIÓN, INVENTARIO Y REPORTES ---
 
 @app.route('/admin')
 @role_required('admin')
@@ -480,7 +487,7 @@ def eliminar(id):
     return redirect(url_for('admin'))
 
 
-# --- MÓDULO DE PROVEEDORES Y PARSER UNIVERSAL MULTI-FORMATO ---
+# --- PROVEEDORES Y PARSER UNIVERSAL ---
 
 @app.route('/proveedores')
 @role_required('admin')
@@ -491,7 +498,6 @@ def proveedores():
     return render_template('proveedores.html', proveedores_guardados=proveedores_lista)
 
 @app.route('/guardar_factura_proveedor', methods=['POST'])
-@role_required('admin')
 def guardar_factura_proveedor():
     data = request.get_json() or {}
     items = data.get('items', [])
@@ -504,7 +510,6 @@ def guardar_factura_proveedor():
     conn = obtener_conexion()
     cursor = conn.cursor()
     try:
-        # 1. Asegurar dinámicamente las columnas en proveedores antes de insertar
         cols_prov = [c[1] for c in cursor.execute("PRAGMA table_info(proveedores)").fetchall()]
         for col_name, col_type in [('ultima_compra', 'TEXT DEFAULT ""'), ('total_compras', 'REAL DEFAULT 0.0'), ('telefono', 'TEXT DEFAULT ""')]:
             if col_name not in cols_prov:
@@ -513,7 +518,6 @@ def guardar_factura_proveedor():
                 except Exception:
                     pass
 
-        # 2. Registro o actualización de proveedor en el Directorio
         if proveedor_nom and proveedor_nom != "Proveedor General":
             monto_compra_actual = sum(float(it.get('costo', 0)) * int(it.get('stock', 0)) for it in items)
             fecha_hoy = date.today().strftime('%Y-%m-%d')
@@ -533,7 +537,6 @@ def guardar_factura_proveedor():
                     VALUES (?, ?, ?, ?)
                 ''', (proveedor_nom, telefono_prov, fecha_hoy, round(monto_compra_actual, 2)))
 
-        # 3. Guardado o actualización de inventario anti-duplicados
         for it in items:
             cod = str(it.get('codigo', '')).strip().upper()
             nom = str(it.get('nombre', '')).strip()
@@ -571,8 +574,26 @@ def guardar_factura_proveedor():
         conn.close()
         return jsonify({'exito': False, 'mensaje': str(e)}), 500
 
+@app.route('/actualizar_proveedor_telefono', methods=['POST'])
+def actualizar_proveedor_telefono():
+    data = request.get_json() or {}
+    prov_id = data.get('id')
+    nuevo_tel = (data.get('telefono') or '').strip()
+
+    if not prov_id:
+        return jsonify({'exito': False, 'mensaje': 'ID de proveedor requerido'}), 400
+
+    conn = obtener_conexion()
+    try:
+        conn.execute('UPDATE proveedores SET telefono = ? WHERE id = ?', (nuevo_tel, prov_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'exito': True})
+    except Exception as e:
+        conn.close()
+        return jsonify({'exito': False, 'mensaje': str(e)}), 500
+
 @app.route('/procesar_factura_ocr', methods=['POST'])
-@role_required('admin')
 def procesar_factura_ocr():
     texto_directo = request.form.get('texto_ocr', '')
     archivo = request.files.get('factura')
@@ -585,6 +606,59 @@ def procesar_factura_ocr():
     try:
         texto_completo = ""
 
+        # A) PROCESAR EXCEL (.XLSX, .XLS, .CSV)
+        if archivo and any(archivo.filename.lower().endswith(ext) for ext in ['.xlsx', '.xls', '.csv']):
+            df_in = pd.read_excel(archivo) if not archivo.filename.lower().endswith('.csv') else pd.read_csv(archivo)
+            
+            col_nom, col_costo, col_stock, col_cat = None, None, None, None
+
+            for c in df_in.columns:
+                c_str = str(c).lower().strip()
+                if any(k in c_str for k in ['producto', 'descripcion', 'descripci', 'nombre']):
+                    col_nom = c
+                elif any(k in c_str for k in ['costo unit', 'costo net', 'costo']):
+                    col_costo = c
+                elif any(k in c_str for k in ['stock', 'cantidad', 'cant']):
+                    col_stock = c
+                elif any(k in c_str for k in ['categoria', 'categor']):
+                    col_cat = c
+
+            if col_nom is None and len(df_in.columns) >= 2:
+                col_nom = df_in.columns[1]
+            if col_costo is None and len(df_in.columns) >= 3:
+                col_costo = df_in.columns[2]
+
+            for _, row in df_in.iterrows():
+                nom = str(row[col_nom]).strip() if col_nom and pd.notna(row[col_nom]) else ""
+                if not nom or nom.lower() in ['nan', 'producto', 'total', 'subtotal']:
+                    continue
+                try:
+                    c_val = float(row[col_costo]) if col_costo and pd.notna(row[col_costo]) else 0.0
+                except:
+                    c_val = 0.0
+                try:
+                    s_val = int(row[col_stock]) if col_stock and pd.notna(row[col_stock]) else 1
+                except:
+                    s_val = 1
+
+                cat_val = str(row[col_cat]).strip() if col_cat and pd.notna(row[col_cat]) else clasificar_categoria_ryd(nom)
+
+                items.append({
+                    'nombre': nom.title(),
+                    'costo': round(c_val, 2),
+                    'stock': s_val,
+                    'categoria': cat_val
+                })
+
+            return jsonify({
+                'exito': True,
+                'comercio': 'Importación Excel',
+                'telefono': '',
+                'total_paginas': 1,
+                'items': items
+            })
+
+        # B) PROCESAR DOCUMENTOS PDF Y TEXTO OCR
         if archivo and (archivo.filename or "").lower().endswith('.pdf'):
             reader = PdfReader(io.BytesIO(archivo.read()))
             total_paginas = len(reader.pages)
@@ -618,7 +692,6 @@ def procesar_factura_ocr():
 
         lines = [l.strip() for l in texto_completo.split('\n') if l.strip()]
 
-        # FORMATO 1: Presupuestos y Notas Tabulares (Todo Bella, Aura, etc.)
         for line in lines:
             l_clean = line.replace('|', ' ').strip()
             m_tb = re.match(r'^(\d+)\s*(?:Und\.?|Pza\.?|Unidad(?:es)?)?\s+(.+?)\s+([0-9]+[\.,][0-9]{2})\s+([0-9]+[\.,][0-9]{2})$', l_clean, re.IGNORECASE)
@@ -628,16 +701,12 @@ def procesar_factura_ocr():
                 costo = float(m_tb.group(3).replace(',', '.'))
                 if not any(k in desc.upper() for k in ['SUBTOTAL', 'TOTAL', 'DESCRIPCION', 'CANTIDAD', 'ITEMS']):
                     items.append({
-                        'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
                         'nombre': desc.title(),
                         'costo': costo,
-                        'unidades_empaque': 1,
-                        'cant_comprada': cant,
                         'stock': cant,
                         'categoria': clasificar_categoria_ryd(desc)
                     })
 
-        # FORMATO 2: Nota POS de Despacho (Good Times / fact roysviner)
         if not items:
             i = 0
             while i < len(lines):
@@ -669,11 +738,8 @@ def procesar_factura_ocr():
 
                     if desc and costo_encontrado > 0:
                         items.append({
-                            'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
                             'nombre': desc.title(),
                             'costo': round(costo_encontrado, 2),
-                            'unidades_empaque': 1,
-                            'cant_comprada': cant,
                             'stock': cant,
                             'categoria': clasificar_categoria_ryd(desc)
                         })
@@ -681,23 +747,18 @@ def procesar_factura_ocr():
                         continue
                 i += 1
 
-        # FORMATO 3: Notas de Entrega con Código inicial (Miceli Corp / NE ROYVINER)
         if not items:
             for linea in lines:
                 m_miceli = re.match(r'^([A-Z0-9\-_]{3,18})\s+(.+?)\s+(\d+)\s+([0-9]+[,\.][0-9]{2})\s+([0-9]+[,\.][0-9]{2})$', linea, re.IGNORECASE)
                 if m_miceli:
                     cod, desc, cant, p_unit, _ = m_miceli.groups()
                     items.append({
-                        'codigo': cod.upper(),
                         'nombre': desc.strip().title(),
                         'costo': float(p_unit.replace(',', '.')),
-                        'unidades_empaque': 1,
-                        'cant_comprada': int(cant),
                         'stock': int(cant),
                         'categoria': clasificar_categoria_ryd(desc)
                     })
 
-        # FORMATO 4: Notas con Cantidad y Signo Dólar (Storefit)
         if not items:
             for linea in lines:
                 m_store = re.match(r'^(\d+)\s+(.+?)\s+\$?([0-9]+[,\.][0-9]{2})\s+\$?([0-9]+[,\.][0-9]{2})$', linea, re.IGNORECASE)
@@ -706,22 +767,17 @@ def procesar_factura_ocr():
                     desc_limpia = desc.strip()
                     if not any(k in desc_limpia.upper() for k in ['TOTAL', 'SUBTOTAL', 'SUB-TOTAL', 'ORDEN', 'DESCRIPCION']):
                         items.append({
-                            'codigo': f"PRV-{str(len(items) + 1).zfill(3)}",
                             'nombre': desc_limpia.title(),
                             'costo': float(p_unit.replace(',', '.')),
-                            'unidades_empaque': 1,
-                            'cant_comprada': int(cant),
                             'stock': int(cant),
                             'categoria': clasificar_categoria_ryd(desc_limpia)
                         })
 
-        # FORMATO 5: Tickets de Caja Térmicos / SENIAT (Hogar Ideal)
         if not items:
             for i, linea in enumerate(lines):
                 if '/' in linea and not any(k in linea.upper() for k in ['FECHA', 'RAZ', 'CEDULA', 'RIF', 'DIR', 'VALENCIA']):
                     partes = linea.split('/', 1)
-                    sku = partes[0].strip().replace(' ', '')
-                    nom = partes[1].strip()
+                    nom = partes[1].strip() if len(partes) > 1 else partes[0].strip()
                     
                     qty = 1
                     cost = 0.0
@@ -741,11 +797,8 @@ def procesar_factura_ocr():
 
                     if not any(k in nom.upper() for k in ['TOTAL', 'SUBTOTAL', 'DESCUENTO', 'EXENTO', 'IVA']):
                         items.append({
-                            'codigo': sku.upper() if len(sku) > 2 else f"PRV-{str(len(items)+1).zfill(3)}",
                             'nombre': nom.title(),
                             'costo': round(cost, 2),
-                            'unidades_empaque': 1,
-                            'cant_comprada': qty,
                             'stock': qty,
                             'categoria': clasificar_categoria_ryd(nom)
                         })
@@ -780,6 +833,7 @@ def historial_ventas():
                 'metodo_pago': v['metodo_pago'] if 'metodo_pago' in v.keys() else 'Efectivo $',
                 'referencia': v['referencia'] if 'referencia' in v.keys() and v['referencia'] else 'N/A',
                 'usuario': v['usuario'] if 'usuario' in v.keys() and v['usuario'] else 'Cajero',
+                'desglose_pago': v['desglose_pago'] if 'desglose_pago' in v.keys() and v['desglose_pago'] else '',
                 'items': detalles
             })
         conn.close()
