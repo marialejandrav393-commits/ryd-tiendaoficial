@@ -38,7 +38,7 @@ def inicializar_db():
     conn = obtener_conexion()
     cursor = conn.cursor()
 
-    # Tabla productos
+    # Migración segura: asegura la estructura de productos sin restricción de código único
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS productos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,6 +54,7 @@ def inicializar_db():
         )
     ''')
 
+    # Garantizar que existan todas las columnas
     for col_def in ['imagen TEXT', 'descuento REAL DEFAULT 0.0', 'costo REAL DEFAULT 0.0', 'precio_bs REAL DEFAULT 0.0']:
         try:
             cursor.execute(f'ALTER TABLE productos ADD COLUMN {col_def}')
@@ -479,7 +480,7 @@ def eliminar(id):
     return redirect(url_for('admin'))
 
 
-# --- MÓDULO DE PROVEEDORES Y PARSER UNIVERSAL ---
+# --- MÓDULO DE PROVEEDORES Y PARSER UNIVERSAL SIN BLOQUEOS ---
 
 @app.route('/proveedores')
 @role_required('admin')
@@ -531,7 +532,7 @@ def guardar_factura_proveedor():
                     VALUES (?, ?, ?, ?)
                 ''', (proveedor_nom, telefono_prov, fecha_hoy, round(monto_compra_actual, 2)))
 
-        # Guardar productos con ambas columnas de precio
+        # Guardar productos respetando nombres y códigos sin chocar por duplicados
         for it in items:
             cod = str(it.get('codigo', '')).strip().upper()
             nom = str(it.get('nombre', '')).strip()
@@ -546,7 +547,7 @@ def guardar_factura_proveedor():
                 continue
 
             existente = cursor.execute(
-                'SELECT id, stock FROM productos WHERE UPPER(TRIM(nombre)) = ?',
+                'SELECT id FROM productos WHERE UPPER(TRIM(nombre)) = ?',
                 (nom.upper(),)
             ).fetchone()
 
@@ -557,8 +558,9 @@ def guardar_factura_proveedor():
                     WHERE id = ?
                 ''', (cod, costo, precio_bs, precio, stock_nuevo, cat, desc, existente['id']))
             else:
+                # Si existe conflicto por código previo en bases antiguas, reemplaza o inserta libremente
                 cursor.execute('''
-                    INSERT INTO productos (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento)
+                    INSERT OR REPLACE INTO productos (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (cod, nom, costo, precio_bs, precio, stock_nuevo, cat, desc))
 
@@ -602,7 +604,7 @@ def procesar_factura_ocr():
     try:
         texto_completo = ""
 
-        # A) PROCESAR EXCEL (.XLSX, .XLS, .CSV) LEYENDO AMBAS COLUMNAS DE PRECIO
+        # A) PROCESAR EXCEL (.XLSX, .XLS, .CSV) RESPETANDO VALORES EXACTOS
         if archivo and any(archivo.filename.lower().endswith(ext) for ext in ['.xlsx', '.xls', '.csv']):
             df_in = pd.read_excel(archivo) if not archivo.filename.lower().endswith('.csv') else pd.read_csv(archivo)
             
@@ -653,7 +655,6 @@ def procesar_factura_ocr():
                 except:
                     s_val = 1
 
-                # Leer Precio Bs y Precio $ exactos
                 try:
                     p_bs_val = float(row[col_precio_bs]) if col_precio_bs and pd.notna(row[col_precio_bs]) else (c_val * 1.5525)
                 except:
