@@ -38,7 +38,7 @@ def inicializar_db():
     conn = obtener_conexion()
     cursor = conn.cursor()
 
-    # Tabla productos: columnas individuales para precio bs y precio $
+    # 1. Tabla productos sin restricción UNIQUE en codigo para aceptar duplicados del catálogo
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS productos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,7 +60,34 @@ def inicializar_db():
         except sqlite3.OperationalError:
             pass
 
-    # Tabla proveedores
+    # Migración de productos si tuviese restricción UNIQUE previa
+    try:
+        sql_def = cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='productos'").fetchone()
+        if sql_def and 'UNIQUE' in sql_def[0].upper() and 'CODIGO' in sql_def[0].upper():
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS productos_nuevo (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    codigo TEXT,
+                    nombre TEXT NOT NULL,
+                    costo REAL DEFAULT 0.0,
+                    precio_bs REAL DEFAULT 0.0,
+                    precio REAL NOT NULL,
+                    stock INTEGER NOT NULL DEFAULT 0,
+                    categoria TEXT DEFAULT 'General',
+                    descuento REAL DEFAULT 0.0,
+                    imagen TEXT
+                )
+            ''')
+            cursor.execute('''
+                INSERT INTO productos_nuevo (id, codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento, imagen)
+                SELECT id, codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento, imagen FROM productos
+            ''')
+            cursor.execute("DROP TABLE productos")
+            cursor.execute("ALTER TABLE productos_nuevo RENAME TO productos")
+    except Exception:
+        pass
+
+    # 2. Tabla proveedores
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS proveedores (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,7 +114,7 @@ def inicializar_db():
         except sqlite3.OperationalError:
             pass
 
-    # Tabla ventas con registro de cliente y teléfono para envío de nota
+    # 3. Tabla ventas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ventas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -122,7 +149,7 @@ def inicializar_db():
         except sqlite3.OperationalError:
             pass
 
-    # Tabla detalle ventas
+    # 4. Tabla detalle ventas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS detalle_ventas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -137,12 +164,13 @@ def inicializar_db():
         )
     ''')
 
-    try:
-        cursor.execute('ALTER TABLE detalle_ventas ADD COLUMN precio_unitario_bs REAL DEFAULT 0.0')
-    except sqlite3.OperationalError:
-        pass
+    for col_def in ['precio_unitario_bs REAL DEFAULT 0.0']:
+        try:
+            cursor.execute(f'ALTER TABLE detalle_ventas ADD COLUMN {col_def}')
+        except sqlite3.OperationalError:
+            pass
 
-    # Tabla usuarios
+    # 5. Tabla usuarios
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -249,7 +277,7 @@ def logout():
     return redirect(url_for('login'))
 
 
-# --- PUNTO DE VENTA (POS) ---
+# --- PUNTO DE VENTA (POS) BLINDADO ---
 
 @app.route('/')
 def index():
@@ -272,7 +300,7 @@ def pos_cajero():
 @app.route('/procesar_venta', methods=['POST'])
 def procesar_venta():
     if not session.get('logged_in'):
-        return jsonify({'exito': False, 'mensaje': 'Sesión vencida'}), 401
+        return jsonify({'exito': False, 'mensaje': 'Sesión vencida. Vuelve a iniciar sesión.'}), 401
 
     data = request.get_json() or {}
     items = data.get('items', [])
@@ -298,33 +326,58 @@ def procesar_venta():
         if len(items) > 3:
             resumen_nombres += f" (+{len(items)-3} más)"
 
-        cols_ventas = [col[1] for col in cursor.execute("PRAGMA table_info(ventas)").fetchall()]
-        campos = ['fecha', 'total', 'metodo_pago', 'referencia', 'usuario', 'tasa_cambio', 'monto_bs', 'desglose_pago', 'cliente_nombre', 'cliente_telefono']
-        valores = [fecha_hora, round(total_venta, 2), metodo_pago, referencia, usuario, tasa_cambio, monto_bs, desglose_pago, cliente_nombre, cliente_telefono]
+        # Inserción blindada: verifica qué columnas existen realmente en la tabla ventas
+        cols_ventas = [c[1] for c in cursor.execute("PRAGMA table_info(ventas)").fetchall()]
+        datos_venta = {
+            'fecha': fecha_hora,
+            'total': round(total_venta, 2),
+            'metodo_pago': metodo_pago,
+            'referencia': referencia,
+            'usuario': usuario,
+            'producto_nombre': resumen_nombres,
+            'tasa_cambio': tasa_cambio,
+            'monto_bs': monto_bs,
+            'desglose_pago': desglose_pago,
+            'cliente_nombre': cliente_nombre,
+            'cliente_telefono': cliente_telefono
+        }
 
-        if 'producto_nombre' in cols_ventas:
-            campos.append('producto_nombre')
-            valores.append(resumen_nombres)
+        cols_insert = [c for c in datos_venta if c in cols_ventas]
+        vals_insert = [datos_venta[c] for c in cols_insert]
+        placeholders = ', '.join(['?'] * len(cols_insert))
+        cols_str = ', '.join(cols_insert)
 
-        placeholders = ', '.join(['?'] * len(campos))
-        columnas_str = ', '.join(campos)
-
-        cursor.execute(f'INSERT INTO ventas ({columnas_str}) VALUES ({placeholders})', valores)
+        cursor.execute(f"INSERT INTO ventas ({cols_str}) VALUES ({placeholders})", vals_insert)
         venta_id = cursor.lastrowid
 
+        # Inserción en detalle_ventas descontando inventario en tiempo real
+        cols_detalle = [c[1] for c in cursor.execute("PRAGMA table_info(detalle_ventas)").fetchall()]
         for it in items:
-            cod = it['codigo']
-            cant = int(it['cantidad'])
-            p_unit = float(it['precio'])
+            cod = it.get('codigo', '')
+            nom = it.get('nombre', '')
+            cant = int(it.get('cantidad', 1))
+            p_unit = float(it.get('precio', 0.0))
             p_unit_bs = round(float(it.get('precio_bs', p_unit * tasa_cambio)), 2)
             subt = round(p_unit * cant, 2)
-            nom = it['nombre']
 
             cursor.execute('UPDATE productos SET stock = stock - ? WHERE codigo = ? OR nombre = ?', (cant, cod, nom))
-            cursor.execute('''
-                INSERT INTO detalle_ventas (venta_id, producto_id, nombre_producto, cantidad, precio_unitario, precio_unitario_bs, subtotal)
-                VALUES (?, (SELECT id FROM productos WHERE codigo = ? OR nombre = ? LIMIT 1), ?, ?, ?, ?, ?)
-            ''', (venta_id, cod, nom, nom, cant, p_unit, p_unit_bs, subt))
+            prod_row = cursor.execute('SELECT id FROM productos WHERE codigo = ? OR nombre = ? LIMIT 1', (cod, nom)).fetchone()
+            prod_id = prod_row['id'] if prod_row else None
+
+            datos_det = {
+                'venta_id': venta_id,
+                'producto_id': prod_id,
+                'nombre_producto': nom,
+                'cantidad': cant,
+                'precio_unitario': p_unit,
+                'precio_unitario_bs': p_unit_bs,
+                'subtotal': subt
+            }
+            cols_det_insert = [c for c in datos_det if c in cols_detalle]
+            vals_det_insert = [datos_det[c] for c in cols_det_insert]
+            pl_det = ', '.join(['?'] * len(cols_det_insert))
+            cols_det_str = ', '.join(cols_det_insert)
+            cursor.execute(f"INSERT INTO detalle_ventas ({cols_det_str}) VALUES ({pl_det})", vals_det_insert)
 
         conn.commit()
         conn.close()
@@ -350,7 +403,7 @@ def ticket(venta_id):
     return render_template('ticket.html', venta=venta, detalles=detalles)
 
 
-# --- ADMINISTRACIÓN, INVENTARIO Y RESPALDO TOTAL ---
+# --- ADMINISTRACIÓN, INVENTARIO Y RESPALDO COMPLETO ---
 
 @app.route('/admin')
 @role_required('admin')
@@ -395,7 +448,7 @@ def admin():
 def exportar_inventario_excel():
     conn = obtener_conexion()
     
-    # 1. Hoja de Productos
+    # 1. Catálogo Maestro de Productos
     productos = conn.execute('SELECT * FROM productos ORDER BY categoria ASC, nombre ASC').fetchall()
     filas_productos = []
     for p in productos:
@@ -415,7 +468,7 @@ def exportar_inventario_excel():
             'descuento': float(p['descuento'] or 0.0)
         })
 
-    # 2. Hoja de Historial de Ventas y Comprobantes
+    # 2. Historial de Ventas y Comprobantes
     ventas = conn.execute('SELECT * FROM ventas ORDER BY id DESC').fetchall()
     filas_ventas = []
     for v in ventas:
@@ -437,7 +490,7 @@ def exportar_inventario_excel():
     salida = io.BytesIO()
     with pd.ExcelWriter(salida, engine='openpyxl') as writer:
         pd.DataFrame(filas_productos).to_excel(writer, index=False, sheet_name='Inventario Maestro')
-        pd.DataFrame(filas_ventas).to_excel(writer, index=False, sheet_name='Historial Compras-Ventas')
+        pd.DataFrame(filas_ventas).to_excel(writer, index=False, sheet_name='Historial Ventas')
 
     salida.seek(0)
     nombre_archivo = f"Respaldo_Completo_RyD_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
@@ -593,7 +646,7 @@ def guardar_factura_proveedor():
                 ''', (cod, costo, precio_bs, precio, stock_nuevo, cat, desc, existente['id']))
             else:
                 cursor.execute('''
-                    INSERT OR REPLACE INTO productos (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento)
+                    INSERT INTO productos (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (cod, nom, costo, precio_bs, precio, stock_nuevo, cat, desc))
 
@@ -637,7 +690,7 @@ def procesar_factura_ocr():
     try:
         texto_completo = ""
 
-        # A) PROCESAR EXCEL (.XLSX, .XLS, .CSV) LEYENDO AMBAS COLUMNAS DE PRECIO
+        # A) PROCESAR EXCEL (.XLSX, .XLS, .CSV)
         if archivo and any(archivo.filename.lower().endswith(ext) for ext in ['.xlsx', '.xls', '.csv']):
             df_in = pd.read_excel(archivo) if not archivo.filename.lower().endswith('.csv') else pd.read_csv(archivo)
             
@@ -688,7 +741,6 @@ def procesar_factura_ocr():
                 except:
                     s_val = 1
 
-                # Leer Precio Bs y Precio $ exactos
                 try:
                     p_bs_val = float(row[col_precio_bs]) if col_precio_bs and pd.notna(row[col_precio_bs]) else (c_val * 1.5525)
                 except:
