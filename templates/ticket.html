@@ -64,7 +64,7 @@
         @media print {
             body { background: #FFFFFF; padding: 0; }
             .ticket { border: none; box-shadow: none; width: 100%; }
-            .no-print { display: none; }
+            .btn-whatsapp, .btn-imprimir, .no-print { display: none; }
         }
     </style>
 </head>
@@ -139,7 +139,6 @@
         Conserve este comprobante para cambios de mercancía.
     </div>
 
-    <!-- Acciones de Emisión y WhatsApp -->
     <div class="no-print mt-3">
         <div class="mb-2">
             <input type="text" id="telDestinoWA" class="form-control form-control-sm text-center" 
@@ -174,7 +173,6 @@ function enviarNotaWhatsApp() {
         telLimpio = '58' + telLimpio.substring(1);
     }
 
-    // Armado estructurado del mensaje de WhatsApp
     let mensaje = `✨ *NOTA DE ENTREGA RyD* ✨\n`;
     mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
     mensaje += `*Nota N°:* #{{ "%06d"|format(venta.id) }}\n`;
@@ -190,7 +188,7 @@ function enviarNotaWhatsApp() {
     {% endfor %}
 
     mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    mensaje += `*TOTAL A PAGAR:*\n`;
+    mensaje += ` *TOTAL:*\n`;
     mensaje += `*USD:* ${{ "%.2f"|format(venta.total) }}\n`;
     mensaje += `*Bs:* Bs. {{ "%.2f"|format(venta.monto_bs|default(venta.total * 50.0)) }}\n`;
     mensaje += `*Pago:* {{ venta.metodo_pago }}\n`;
