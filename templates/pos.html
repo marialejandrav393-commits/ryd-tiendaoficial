@@ -155,7 +155,6 @@
             box-shadow: var(--emboss-btn);
         }
 
-        /* Pantalla visible donde se refleja lo tecleado */
         .display-monto-box {
             background: #FFFFFF;
             border: 1.5px solid var(--ryd-gold);
@@ -401,7 +400,7 @@
             </div>
         </div>
 
-        <!-- Panel Derecho: Liquidación, Pago Mixto y Teclado Táctil -->
+        <!-- Panel Derecho: Liquidación, Pago Mixto y Cobro Inmediato -->
         <div class="col-lg-5">
             <div class="panel-luxury d-flex flex-column justify-content-between" style="min-height: 86vh;">
                 <div>
@@ -462,8 +461,8 @@
                                 <strong id="txtMontoEntregado" style="font-size: 0.95rem; color: var(--ryd-text);">$0.00</strong>
                             </div>
                             <div class="text-end">
-                                <span class="d-block fw-bold" id="lblEstadoBalance" style="font-size: 0.68rem; text-transform: uppercase; color: #9E4D48;">Resta por Pagar:</span>
-                                <strong id="txtRestaBalance" style="font-size: 1.05rem; color: #9E4D48;">$0.00</strong>
+                                <span class="d-block fw-bold" id="lblEstadoBalance" style="font-size: 0.68rem; text-transform: uppercase; color: #4D784E;">Saldo:</span>
+                                <strong id="txtRestaBalance" style="font-size: 1.05rem; color: #4D784E;">$0.00</strong>
                                 <small class="d-block text-muted" id="txtRestaBs" style="font-size: 0.72rem;">(Bs. 0.00)</small>
                             </div>
                         </div>
@@ -515,7 +514,7 @@
                     <div class="display-monto-box mb-2">
                         <span class="fw-bold small text-muted" id="txtSimboloMoneda">$</span>
                         <input type="text" id="inputMontoIngreso" class="input-monto-teclado" placeholder="0.00" 
-                               oninput="alEscribirEnInput(this.value)" autofocus>
+                               oninput="alEscribirEnInput(this.value)">
                     </div>
 
                     <div class="keypad-grid mb-2">
@@ -549,7 +548,7 @@
                         <input type="text" id="inputReferencia" class="form-control search-input form-control-sm" placeholder="N° Referencia Bancaria (Obligatorio)">
                     </div>
 
-                    <!-- Botones de Acción -->
+                    <!-- Botones de Acción: Siempre listos al agregar artículos -->
                     <div class="row g-2">
                         <div class="col-6">
                             <button type="button" id="btnRegistrarPago" class="btn-pay-action" disabled onclick="ejecutarVenta(false)">
@@ -773,6 +772,9 @@ function renderizarCarrito() {
         badge.innerHTML = usarBs ? 'Tarifa: <strong class="text-primary">Precio Bs (Tasa)</strong>' : 'Tarifa: <strong class="text-success">Divisa ($)</strong>';
     }
 
+    const btnPago = document.getElementById('btnRegistrarPago');
+    const btnTicket = document.getElementById('btnEmitirTicket');
+
     if (carrito.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted small">Terminal en espera de artículos.</td></tr>';
         document.getElementById('txtTotalUSD').innerText = '$0.00';
@@ -780,9 +782,15 @@ function renderizarCarrito() {
         montoIngresadoStr = '';
         document.getElementById('inputMontoIngreso').value = '';
         abonosRegistrados = [];
+        if (btnPago) btnPago.disabled = true;
+        if (btnTicket) btnTicket.disabled = true;
         actualizarBalanceCobro();
         return;
     }
+
+    // Activa inmediatamente los botones para cobrar en un clic
+    if (btnPago) btnPago.disabled = false;
+    if (btnTicket) btnTicket.disabled = false;
 
     tbody.innerHTML = '';
     carrito.forEach(p => {
@@ -818,7 +826,6 @@ function renderizarCarrito() {
     actualizarBalanceCobro();
 }
 
-// Vinculación estricta de teclas: cuando se presiona '1', se añade '1'
 function presionarTecla(digito) {
     if (digito === '.' && montoIngresadoStr.includes('.')) return;
     if (montoIngresadoStr.length > 9) return;
@@ -839,7 +846,6 @@ function presionarRetroceso() {
     actualizarBalanceCobro();
 }
 
-// Al escribir directamente desde teclado físico en la pantalla
 function alEscribirEnInput(val) {
     montoIngresadoStr = val.replace(/[^0-9\.]/g, '');
     document.getElementById('inputMontoIngreso').value = montoIngresadoStr;
@@ -871,20 +877,26 @@ function actualizarBalanceCobro() {
     document.getElementById('txtMontoEntregado').innerText = `$${totalCubiertoUSD.toFixed(2)}`;
 
     const resta = total - totalCubiertoUSD;
-    const btnPago = document.getElementById('btnRegistrarPago');
-    const btnTicket = document.getElementById('btnEmitirTicket');
     const lblEstado = document.getElementById('lblEstadoBalance');
     const txtResta = document.getElementById('txtRestaBalance');
     const txtRestaBs = document.getElementById('txtRestaBs');
 
     if (total === 0) {
-        lblEstado.innerText = "Resta por Pagar:";
-        lblEstado.style.color = "#9E4D48";
+        lblEstado.innerText = "Saldo:";
+        lblEstado.style.color = "#4D784E";
         txtResta.innerText = "$0.00";
-        txtResta.style.color = "#9E4D48";
+        txtResta.style.color = "#4D784E";
         txtRestaBs.innerText = "(Bs. 0.00)";
-        btnPago.disabled = true;
-        btnTicket.disabled = true;
+        return;
+    }
+
+    // Si no ha escrito nada y no hay abonos, asume pago exacto completo
+    if (rawVal === 0 && abonosRegistrados.length === 0) {
+        lblEstado.innerText = "A Cobrar:";
+        lblEstado.style.color = "#4D784E";
+        txtResta.innerText = `$${total.toFixed(2)}`;
+        txtResta.style.color = "#4D784E";
+        txtRestaBs.innerText = `(Bs. ${(total * tasaPos).toLocaleString('es-VE', { minimumFractionDigits: 2 })})`;
         return;
     }
 
@@ -894,8 +906,6 @@ function actualizarBalanceCobro() {
         txtResta.innerText = `$${resta.toFixed(2)}`;
         txtResta.style.color = "#9E4D48";
         txtRestaBs.innerText = `(Bs. ${(resta * tasaPos).toLocaleString('es-VE', { minimumFractionDigits: 2 })})`;
-        btnPago.disabled = true;
-        btnTicket.disabled = true;
     } else {
         const cambio = Math.abs(resta);
         lblEstado.innerText = cambio > 0.009 ? "Cambio / Vuelto:" : "Cuenta Completa:";
@@ -903,8 +913,6 @@ function actualizarBalanceCobro() {
         txtResta.innerText = `$${cambio.toFixed(2)}`;
         txtResta.style.color = "#4D784E";
         txtRestaBs.innerText = `(Bs. ${(cambio * tasaPos).toLocaleString('es-VE', { minimumFractionDigits: 2 })})`;
-        btnPago.disabled = false;
-        btnTicket.disabled = false;
     }
 }
 
@@ -1001,6 +1009,7 @@ function renderizarAbonos() {
     });
 }
 
+// Emisión y registro inmediato de venta y pago
 function ejecutarVenta(emitirTicket = true) {
     if (carrito.length === 0) {
         alert("Debe agregar al menos un artículo para procesar la transacción.");
@@ -1009,11 +1018,18 @@ function ejecutarVenta(emitirTicket = true) {
 
     const total = calcularTotalVentaUSD();
     const totalAbonado = abonosRegistrados.reduce((acc, a) => acc + a.montoUSD, 0);
-    const rawVal = parseFloat(montoIngresadoStr) || 0.0;
+    let rawVal = parseFloat(montoIngresadoStr) || 0.0;
+
+    // Si no digitó nada en el teclado numérico, se asume el pago exacto completo
+    if (rawVal === 0 && abonosRegistrados.length === 0) {
+        rawVal = (monedaEntrada === 'BS') ? (total * tasaPos) : total;
+    }
+
     const ingresoActualUSD = (monedaEntrada === 'BS') ? (rawVal / tasaPos) : rawVal;
     const cubierto = totalAbonado + ingresoActualUSD;
 
-    if (cubierto < (total - 0.009)) {
+    // Solo restringe si explícitamente se hizo un abono parcial menor al total
+    if (abonosRegistrados.length > 0 && cubierto < (total - 0.05)) {
         alert("La cuenta no está completamente cubierta. Ingrese el monto restante.");
         return;
     }
@@ -1076,10 +1092,9 @@ function ejecutarVenta(emitirTicket = true) {
             if (emitirTicket) {
                 window.location.href = `/ticket/${data.venta_id}`;
             } else {
-                alert("¡Pago registrado con éxito en el sistema!");
+                alert("¡Pago registrado y stock actualizado con éxito!");
                 carrito = [];
                 montoIngresadoStr = '';
-                document.getElementById('inputMontoIngreso').value = '';
                 abonosRegistrados = [];
                 renderizarCarrito();
                 window.location.reload();
@@ -1091,7 +1106,7 @@ function ejecutarVenta(emitirTicket = true) {
     .catch(() => alert("Error en comunicación con el servidor."));
 }
 
-// Soporte global para teclado físico: pulsa números del teclado de la laptop o teclado numérico
+// Soporte para teclado físico de laptop
 document.addEventListener('keydown', function(e) {
     const activeEl = document.activeElement;
     if (activeEl && (activeEl.id === 'inputCodigoBarras' || activeEl.id === 'inputReferencia' || activeEl.id === 'inputClienteNombre' || activeEl.id === 'inputClienteTelefono' || activeEl.id === 'claveAdminCierre')) {
