@@ -359,7 +359,7 @@
                 <div class="row g-2" id="gridProductos">
                     {% for p in productos %}
                     <div class="col-md-4 col-sm-6 item-producto" data-nombre="{{ p.nombre|lower }}" data-codigo="{{ p.codigo|lower }}">
-                        <div class="product-tile d-flex flex-column justify-content-between" onclick="agregarPorObjeto('{{ p.codigo }}', '{{ p.nombre }}', {{ p.precio }}, {{ p.precio_bs|default(p.precio * 1.15) }}, {{ p.stock }})">
+                        <div class="product-tile d-flex flex-column justify-content-between" onclick="agregarPorObjeto('{{ p.codigo }}', '{{ p.nombre }}', {{ p.precio }}, {{ p.precio_bs if p.precio_bs and p.precio_bs > 0 else (p.precio * 1.15) }}, {{ p.stock }})">
                             <div>
                                 <small class="fw-bold d-block" style="color: var(--ryd-gold-dark); font-size: 0.7rem; letter-spacing: 0.5px;">{{ p.codigo }}</small>
                                 <span class="d-block text-truncate fw-bold" style="font-size: 0.82rem;">{{ p.nombre }}</span>
@@ -368,7 +368,7 @@
                                 <span class="small text-muted" style="font-size: 0.72rem;">Stock: {{ p.stock }}</span>
                                 <div class="text-end">
                                     <strong style="color: var(--ryd-text); font-size: 0.92rem;">${{ "%.2f"|format(p.precio) }}</strong>
-                                    <div class="small text-muted" style="font-size: 0.7rem;">Bs: ${{ "%.2f"|format(p.precio_bs) }}</div>
+                                    <div class="small text-muted" style="font-size: 0.7rem;">Bs: ${{ "%.2f"|format(p.precio_bs if p.precio_bs and p.precio_bs > 0 else (p.precio * 1.15)) }}</div>
                                 </div>
                             </div>
                         </div>
@@ -399,7 +399,7 @@
                             Detalle de Transacción
                         </h6>
                         <span id="badgeTarifaAplicada" class="badge bg-light text-dark border small" style="font-size: 0.68rem; letter-spacing: 0.5px;">
-                            Tarifa: <strong>Divisa ($)</strong>
+                            Tarifa: <strong class="text-success">Divisa ($)</strong>
                         </span>
                     </div>
 
@@ -454,27 +454,27 @@
                     <!-- Métodos de Pago -->
                     <label class="small text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">Seleccionar Modalidad de Pago</label>
                     <div class="payment-grid mb-2">
-                        <div class="payment-card active" onclick="seleccionarMetodo(this, 'Efectivo $')">
+                        <div class="payment-card active" id="cardEfectivoUSD" onclick="seleccionarMetodo(this, 'Efectivo $')">
                             <span class="payment-card-title">Efectivo $</span>
                             <span class="payment-card-sub">Divisas</span>
                         </div>
-                        <div class="payment-card" onclick="seleccionarMetodo(this, 'Efectivo Bs')">
+                        <div class="payment-card" id="cardEfectivoBS" onclick="seleccionarMetodo(this, 'Efectivo Bs')">
                             <span class="payment-card-title">Efectivo Bs</span>
                             <span class="payment-card-sub">Precio Bs</span>
                         </div>
-                        <div class="payment-card" onclick="seleccionarMetodo(this, 'Pago Móvil')">
+                        <div class="payment-card" id="cardPagoMovil" onclick="seleccionarMetodo(this, 'Pago Móvil')">
                             <span class="payment-card-title">Pago Móvil</span>
                             <span class="payment-card-sub">Precio Bs</span>
                         </div>
-                        <div class="payment-card" onclick="seleccionarMetodo(this, 'Punto Venta')">
+                        <div class="payment-card" id="cardPuntoVenta" onclick="seleccionarMetodo(this, 'Punto Venta')">
                             <span class="payment-card-title">Punto Venta</span>
                             <span class="payment-card-sub">Precio Bs</span>
                         </div>
-                        <div class="payment-card" onclick="seleccionarMetodo(this, 'Binance')">
+                        <div class="payment-card" id="cardBinance" onclick="seleccionarMetodo(this, 'Binance')">
                             <span class="payment-card-title">Binance</span>
                             <span class="payment-card-sub">USDT</span>
                         </div>
-                        <div class="payment-card" onclick="seleccionarMetodo(this, 'Pago Mixto')">
+                        <div class="payment-card" id="cardMixto" onclick="seleccionarMetodo(this, 'Pago Mixto')">
                             <span class="payment-card-title">Combinado</span>
                             <span class="payment-card-sub">Dual / Mixto</span>
                         </div>
@@ -573,7 +573,7 @@ const productosDisponibles = [
         codigo: "{{ p.codigo }}", 
         nombre: "{{ p.nombre }}", 
         precio: {{ p.precio }}, 
-        precio_bs: {{ p.precio_bs|default(p.precio * 1.15) }}, 
+        precio_bs: {{ p.precio_bs if p.precio_bs and p.precio_bs > 0 else (p.precio * 1.15) }}, 
         stock: {{ p.stock }} 
     },
     {% endfor %}
@@ -583,15 +583,26 @@ function iniciarPos() {
     document.getElementById('inputTasaPos').value = tasaPos.toFixed(2);
 }
 
-// Verifica si la modalidad actual debe cobrar Precio Bs
+// Devuelve verdadero si el método o el selector manual está fijado en Bolívares
 function esModoPrecioBs() {
-    return ['Efectivo Bs', 'Pago Móvil', 'Punto Venta'].includes(metodoSeleccionado);
+    return ['Efectivo Bs', 'Pago Móvil', 'Punto Venta'].includes(metodoSeleccionado) || monedaEntrada === 'BS';
 }
 
+// Al presionar 'En Bs' o 'En $', también conmuta el cálculo de precios del carrito
 function cambiarMonedaEntrada(moneda) {
     monedaEntrada = moneda;
     document.getElementById('btnMonedaUSD').classList.toggle('active', moneda === 'USD');
     document.getElementById('btnMonedaBS').classList.toggle('active', moneda === 'BS');
+
+    if (moneda === 'BS' && metodoSeleccionado === 'Efectivo $') {
+        const cardBS = document.getElementById('cardEfectivoBS');
+        if (cardBS) seleccionarMetodo(cardBS, 'Efectivo Bs');
+    } else if (moneda === 'USD' && ['Efectivo Bs', 'Pago Móvil', 'Punto Venta'].includes(metodoSeleccionado)) {
+        const cardUSD = document.getElementById('cardEfectivoUSD');
+        if (cardUSD) seleccionarMetodo(cardUSD, 'Efectivo $');
+    }
+
+    renderizarCarrito();
     actualizarBalanceCobro();
 }
 
@@ -677,6 +688,8 @@ function filtrarGrillaCatalogo(valor) {
 
 function agregarPorObjeto(codigo, nombre, precio, precio_bs, stock) {
     const item = carrito.find(p => p.codigo === codigo || p.nombre === nombre);
+    const pBsVal = (precio_bs && precio_bs > 0) ? precio_bs : (precio * 1.15);
+
     if (item) {
         if (item.cantidad < stock) {
             item.cantidad++;
@@ -685,7 +698,7 @@ function agregarPorObjeto(codigo, nombre, precio, precio_bs, stock) {
         }
     } else {
         if (stock > 0) {
-            carrito.push({ codigo, nombre, precio, precio_bs, cantidad: 1, stock });
+            carrito.push({ codigo, nombre, precio, precio_bs: pBsVal, cantidad: 1, stock });
         } else {
             alert("Existencia agotada en almacén.");
         }
@@ -712,20 +725,22 @@ function cambiarCantidad(codigo, delta) {
     }
 }
 
-// Calcula el total usando precio normal o precio_bs según la modalidad seleccionada
+// Devuelve el precio individual correcto según el modo activo
+function obtenerPrecioUnitarioItem(p) {
+    if (esModoPrecioBs()) {
+        return (p.precio_bs && p.precio_bs > 0) ? p.precio_bs : (p.precio * 1.15);
+    }
+    return p.precio;
+}
+
 function calcularTotalVentaUSD() {
-    const usarBs = esModoPrecioBs();
-    return carrito.reduce((acc, p) => {
-        const precioAplicado = usarBs ? (p.precio_bs || p.precio) : p.precio;
-        return acc + (precioAplicado * p.cantidad);
-    }, 0);
+    return carrito.reduce((acc, p) => acc + (obtenerPrecioUnitarioItem(p) * p.cantidad), 0);
 }
 
 function renderizarCarrito() {
     const tbody = document.getElementById('cuerpoCarrito');
     const usarBs = esModoPrecioBs();
 
-    // Actualiza indicador de tarifa
     const badge = document.getElementById('badgeTarifaAplicada');
     if (badge) {
         badge.innerHTML = usarBs ? 'Tarifa: <strong class="text-primary">Precio Bs (Tasa)</strong>' : 'Tarifa: <strong class="text-success">Divisa ($)</strong>';
@@ -743,7 +758,7 @@ function renderizarCarrito() {
 
     tbody.innerHTML = '';
     carrito.forEach(p => {
-        const pUnit = usarBs ? (p.precio_bs || p.precio) : p.precio;
+        const pUnit = obtenerPrecioUnitarioItem(p);
         const subtotal = pUnit * p.cantidad;
 
         tbody.innerHTML += `
@@ -751,7 +766,7 @@ function renderizarCarrito() {
                 <td>
                     <span class="d-block text-truncate fw-bold" style="max-width: 140px;">${p.nombre}</span>
                     <small class="text-muted">${p.codigo}</small>
-                    ${usarBs ? '<span class="badge bg-light text-dark border p-0 px-1" style="font-size: 0.6rem;">P.Bs</span>' : ''}
+                    ${usarBs ? '<span class="badge bg-light text-primary border p-0 px-1 ms-1" style="font-size: 0.6rem;">P.Bs ($' + pUnit.toFixed(2) + ')</span>' : ''}
                 </td>
                 <td class="text-center">
                     <div class="d-flex align-items-center justify-content-center">
@@ -853,7 +868,6 @@ function actualizarBalanceCobro() {
     }
 }
 
-// Al cambiar el método de pago, conmuta el cálculo de precios y la moneda del teclado
 function seleccionarMetodo(elemento, metodo) {
     document.querySelectorAll('.payment-card').forEach(c => c.classList.remove('active'));
     elemento.classList.add('active');
@@ -864,9 +878,13 @@ function seleccionarMetodo(elemento, metodo) {
     const bloqueAbono = document.getElementById('bloqueAgregarAbono');
 
     if (['Efectivo Bs', 'Pago Móvil', 'Punto Venta'].includes(metodo)) {
-        cambiarMonedaEntrada('BS');
+        monedaEntrada = 'BS';
+        document.getElementById('btnMonedaUSD').classList.remove('active');
+        document.getElementById('btnMonedaBS').classList.add('active');
     } else {
-        cambiarMonedaEntrada('USD');
+        monedaEntrada = 'USD';
+        document.getElementById('btnMonedaUSD').classList.add('active');
+        document.getElementById('btnMonedaBS').classList.remove('active');
     }
 
     if (metodo === 'Pago Mixto') {
@@ -884,7 +902,6 @@ function seleccionarMetodo(elemento, metodo) {
         }
     }
 
-    // Recalcula y redibuja la tabla con el precio correspondiente ($ o Bs)
     renderizarCarrito();
 }
 
@@ -970,13 +987,16 @@ function ejecutarVenta(emitirTicket = true) {
     }
 
     const usarBs = esModoPrecioBs();
-    const itemsParaGuardar = carrito.map(p => ({
-        codigo: p.codigo,
-        nombre: p.nombre,
-        cantidad: p.cantidad,
-        precio: usarBs ? (p.precio_bs || p.precio) : p.precio,
-        precio_bs: p.precio_bs || (p.precio * tasaPos)
-    }));
+    const itemsParaGuardar = carrito.map(p => {
+        const pUnit = obtenerPrecioUnitarioItem(p);
+        return {
+            codigo: p.codigo,
+            nombre: p.nombre,
+            cantidad: p.cantidad,
+            precio: pUnit,
+            precio_bs: p.precio_bs || (pUnit * 1.15)
+        };
+    });
 
     let desgloseTxt = '';
     if (abonosRegistrados.length > 0) {
