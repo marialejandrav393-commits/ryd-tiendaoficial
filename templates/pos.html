@@ -1071,8 +1071,8 @@ function ejecutarVenta() {
             referencia: referencia || 'N/A',
             tasa_cambio: tasaPos,
             desglose_pago: desgloseTxt,
-            cliente_nombre: clienteNombre,
-            cliente_telefono: clienteTelefono
+            cliente_nombre: Nombre,
+            cliente_telefono: Telefono
         })
     })
     .then(res => res.json())
@@ -1085,7 +1085,7 @@ function ejecutarVenta() {
                     telLimpio = '58' + telLimpio.substring(1);
                 }
                 
-                let mensajeWA = `✨ *COMPROBANTE / NOTA DE ENTREGA RyD* ✨\n`;
+                let mensajeWA = ` *COMPROBANTE / NOTA DE ENTREGA RyD* \n`;
                 mensajeWA += `━━━━━━━━━━━━━━━━━━━━━\n`;
                 mensajeWA += `*Nota N°:* #${String(data.venta_id).padStart(6, '0')}\n`;
                 mensajeWA += `*Cliente:* ${clienteNombre}\n`;
@@ -1096,12 +1096,12 @@ function ejecutarVenta() {
                     mensajeWA += `▪ ${it.cantidad}x *${it.nombre}* ($${it.precio.toFixed(2)})\n`;
                 });
                 mensajeWA += `━━━━━━━━━━━━━━━━━━━━━\n`;
-                mensajeWA += `💰 *TOTAL PAGADO:*\n`;
+                mensajeWA += `*TOTAL PAGADO:*\n`;
                 mensajeWA += `*USD:* $${total.toFixed(2)}\n`;
                 mensajeWA += `*Bs:* Bs. ${(total * tasaPos).toFixed(2)}\n`;
                 mensajeWA += `*Modalidad:* ${metodoSeleccionado}\n`;
                 if (referencia) mensajeWA += `*Referencia:* ${referencia}\n`;
-                mensajeWA += `¡Muchas gracias por su compra! 💖`;
+                mensajeWA += `¡Muchas gracias por su compra! `;
 
                 window.open(`https://wa.me/${telLimpio}?text=${encodeURIComponent(mensajeWA)}`, '_blank');
             }
