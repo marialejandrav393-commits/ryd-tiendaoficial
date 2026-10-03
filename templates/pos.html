@@ -66,8 +66,8 @@
             border: 1px solid var(--ryd-border);
             border-radius: 9px;
             color: var(--ryd-text);
-            padding: 11px 16px;
-            font-size: 0.95rem;
+            padding: 10px 14px;
+            font-size: 0.92rem;
             box-shadow: inset 1px 1px 4px rgba(180, 165, 140, 0.15);
             width: 100%;
         }
@@ -104,7 +104,6 @@
             background: var(--ryd-beige-card);
         }
 
-        /* Botones de Modalidad de Pago en Cuadrícula */
         .payment-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -147,7 +146,6 @@
             display: block;
         }
 
-        /* Monitor Financiero y Balance */
         .balance-box {
             background: linear-gradient(135deg, #FAF7F2, #F2ECE1);
             border: 1.5px solid var(--ryd-border);
@@ -157,7 +155,6 @@
             box-shadow: var(--emboss-btn);
         }
 
-        /* Teclado Táctil Numérico 3D */
         .keypad-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -271,7 +268,7 @@
             padding: 8px 10px;
         }
         .table-pos tbody td {
-            padding: 10px;
+            padding: 8px 10px;
             border-bottom: 1px solid var(--ryd-border-light);
             font-size: 0.85rem;
         }
@@ -362,7 +359,7 @@
                 <div class="row g-2" id="gridProductos">
                     {% for p in productos %}
                     <div class="col-md-4 col-sm-6 item-producto" data-nombre="{{ p.nombre|lower }}" data-codigo="{{ p.codigo|lower }}">
-                        <div class="product-tile d-flex flex-column justify-content-between" onclick="agregarPorObjeto('{{ p.codigo }}', '{{ p.nombre }}', {{ p.precio }}, {{ p.stock }})">
+                        <div class="product-tile d-flex flex-column justify-content-between" onclick="agregarPorObjeto('{{ p.codigo }}', '{{ p.nombre }}', {{ p.precio }}, {{ p.precio_bs|default(p.precio * 1.15) }}, {{ p.stock }})">
                             <div>
                                 <small class="fw-bold d-block" style="color: var(--ryd-gold-dark); font-size: 0.7rem; letter-spacing: 0.5px;">{{ p.codigo }}</small>
                                 <span class="d-block text-truncate fw-bold" style="font-size: 0.82rem;">{{ p.nombre }}</span>
@@ -371,7 +368,7 @@
                                 <span class="small text-muted" style="font-size: 0.72rem;">Stock: {{ p.stock }}</span>
                                 <div class="text-end">
                                     <strong style="color: var(--ryd-text); font-size: 0.92rem;">${{ "%.2f"|format(p.precio) }}</strong>
-                                    <div class="small text-muted col-tile-bs" style="font-size: 0.7rem;"></div>
+                                    <div class="small text-muted" style="font-size: 0.7rem;">Bs: ${{ "%.2f"|format(p.precio_bs) }}</div>
                                 </div>
                             </div>
                         </div>
@@ -381,15 +378,27 @@
             </div>
         </div>
 
-        <!-- Panel Derecho: Liquidación, Pago Mixto y Teclado Táctil -->
+        <!-- Panel Derecho: Liquidación, Cliente WhatsApp y Cobro -->
         <div class="col-lg-5">
             <div class="panel-luxury d-flex flex-column justify-content-between" style="min-height: 86vh;">
                 <div>
+                    <!-- Datos de Cliente para Envío por WhatsApp -->
+                    <div class="row g-2 mb-2 pb-2 border-bottom">
+                        <div class="col-6">
+                            <label class="small text-muted fw-bold d-block" style="font-size: 0.65rem; text-transform: uppercase;">Cliente (Comprador):</label>
+                            <input type="text" id="inputClienteNombre" class="form-control search-input py-1 px-2" placeholder="Ej: Maria Gonzalez" style="font-size: 0.8rem;">
+                        </div>
+                        <div class="col-6">
+                            <label class="small text-muted fw-bold d-block" style="font-size: 0.65rem; text-transform: uppercase;">WhatsApp Comprador:</label>
+                            <input type="text" id="inputClienteTelefono" class="form-control search-input py-1 px-2" placeholder="Ej: 04121234567" style="font-size: 0.8rem;">
+                        </div>
+                    </div>
+
                     <h6 class="fw-bold mb-2" style="letter-spacing: 1.2px; text-transform: uppercase; font-size: 0.78rem; border-bottom: 1px solid var(--ryd-border); padding-bottom: 6px;">
                         Detalle de Transacción
                     </h6>
 
-                    <div class="table-responsive" style="max-height: 22vh; overflow-y: auto;">
+                    <div class="table-responsive" style="max-height: 20vh; overflow-y: auto;">
                         <table class="table table-pos mb-0 align-middle">
                             <thead>
                                 <tr>
@@ -431,7 +440,6 @@
                             </div>
                         </div>
 
-                        <!-- Lista de Abonos en Pagos Combinados -->
                         <div id="contenedorAbonos" class="mt-2 pt-1 border-top" style="display: none;">
                             <span class="d-block small fw-bold text-muted mb-1" style="font-size: 0.65rem; text-transform: uppercase;">Desglose de Pagos Registrados:</span>
                             <div id="listaAbonos" class="d-flex flex-column gap-1" style="max-height: 80px; overflow-y: auto;"></div>
@@ -497,7 +505,6 @@
                         <button type="button" class="keypad-btn" style="grid-column: span 2; font-size: 0.72rem; text-transform: uppercase;" onclick="presionarRetroceso()">⌫ Borrar</button>
                     </div>
 
-                    <!-- Botón para Agregar Abono en Pagos Combinados -->
                     <div id="bloqueAgregarAbono" class="mb-2" style="display: none;">
                         <button type="button" class="btn-3d w-100 py-1" onclick="agregarAbonoMixto()">
                             + Registrar Abono de este Método
@@ -508,7 +515,7 @@
                         <input type="text" id="inputReferencia" class="form-control search-input form-control-sm" placeholder="N° Referencia Bancaria (Obligatorio)">
                     </div>
 
-                    <!-- Botones de Ejecución y Emisión -->
+                    <!-- Botones de Acción -->
                     <div class="row g-2">
                         <div class="col-6">
                             <button type="button" id="btnRegistrarPago" class="btn-pay-action" disabled onclick="ejecutarVenta(false)">
@@ -552,18 +559,23 @@ let carrito = [];
 let metodoSeleccionado = 'Efectivo $';
 let tasaPos = parseFloat(localStorage.getItem('ryd_tasa_bcv')) || 50.00;
 let montoIngresadoStr = '';
-let monedaEntrada = 'USD'; // 'USD' o 'BS'
-let abonosRegistrados = []; // Para pago mixto: [{metodo, montoUSD, montoBS, ref}]
+let monedaEntrada = 'USD';
+let abonosRegistrados = [];
 
 const productosDisponibles = [
     {% for p in productos %}
-    { codigo: "{{ p.codigo }}", nombre: "{{ p.nombre }}", precio: {{ p.precio }}, stock: {{ p.stock }} },
+    { 
+        codigo: "{{ p.codigo }}", 
+        nombre: "{{ p.nombre }}", 
+        precio: {{ p.precio }}, 
+        precio_bs: {{ p.precio_bs|default(p.precio * 1.15) }}, 
+        stock: {{ p.stock }} 
+    },
     {% endfor %}
 ];
 
 function iniciarPos() {
     document.getElementById('inputTasaPos').value = tasaPos.toFixed(2);
-    actualizarTilesPreciosBs();
 }
 
 function cambiarMonedaEntrada(moneda) {
@@ -571,19 +583,6 @@ function cambiarMonedaEntrada(moneda) {
     document.getElementById('btnMonedaUSD').classList.toggle('active', moneda === 'USD');
     document.getElementById('btnMonedaBS').classList.toggle('active', moneda === 'BS');
     actualizarBalanceCobro();
-}
-
-function actualizarTilesPreciosBs() {
-    document.querySelectorAll('.item-producto').forEach(item => {
-        const cod = item.getAttribute('data-codigo');
-        const prod = productosDisponibles.find(p => p.codigo.toLowerCase() === cod);
-        if (prod) {
-            const cont = item.querySelector('.col-tile-bs');
-            if (cont) {
-                cont.innerText = `Bs. ${(prod.precio * tasaPos).toFixed(2)}`;
-            }
-        }
-    });
 }
 
 function ejecutarBusquedaPredictiva(termino) {
@@ -611,7 +610,6 @@ function ejecutarBusquedaPredictiva(termino) {
 
     let html = '';
     coincidencias.slice(0, 15).forEach(prod => {
-        const bsCalc = (prod.precio * tasaPos).toFixed(2);
         html += `
             <div class="search-result-item" onclick="seleccionarDesdePredictivo('${prod.codigo}')">
                 <div>
@@ -621,7 +619,7 @@ function ejecutarBusquedaPredictiva(termino) {
                 </div>
                 <div class="text-end">
                     <strong style="color: var(--ryd-text); font-size: 0.95rem;">$${prod.precio.toFixed(2)}</strong>
-                    <div class="small text-muted" style="font-size: 0.72rem;">Bs. ${bsCalc}</div>
+                    <div class="small text-muted" style="font-size: 0.72rem;">Bs: $${prod.precio_bs.toFixed(2)}</div>
                 </div>
             </div>
         `;
@@ -634,7 +632,7 @@ function ejecutarBusquedaPredictiva(termino) {
 function seleccionarDesdePredictivo(codigo) {
     const prod = productosDisponibles.find(p => p.codigo === codigo);
     if (prod) {
-        agregarPorObjeto(prod.codigo, prod.nombre, prod.precio, prod.stock);
+        agregarPorObjeto(prod.codigo, prod.nombre, prod.precio, prod.precio_bs, prod.stock);
     }
     const input = document.getElementById('inputCodigoBarras');
     input.value = '';
@@ -667,8 +665,8 @@ function filtrarGrillaCatalogo(valor) {
     document.getElementById('contadorProductos').innerText = `${visibles} disponibles`;
 }
 
-function agregarPorObjeto(codigo, nombre, precio, stock) {
-    const item = carrito.find(p => p.codigo === codigo);
+function agregarPorObjeto(codigo, nombre, precio, precio_bs, stock) {
+    const item = carrito.find(p => p.codigo === codigo || p.nombre === nombre);
     if (item) {
         if (item.cantidad < stock) {
             item.cantidad++;
@@ -677,7 +675,7 @@ function agregarPorObjeto(codigo, nombre, precio, stock) {
         }
     } else {
         if (stock > 0) {
-            carrito.push({ codigo, nombre, precio, cantidad: 1, stock });
+            carrito.push({ codigo, nombre, precio, precio_bs, cantidad: 1, stock });
         } else {
             alert("Existencia agotada en almacén.");
         }
@@ -726,7 +724,7 @@ function renderizarCarrito() {
         tbody.innerHTML += `
             <tr>
                 <td>
-                    <span class="d-block text-truncate fw-bold" style="max-width: 150px;">${p.nombre}</span>
+                    <span class="d-block text-truncate fw-bold" style="max-width: 140px;">${p.nombre}</span>
                     <small class="text-muted">${p.codigo}</small>
                 </td>
                 <td class="text-center">
@@ -751,7 +749,6 @@ function renderizarCarrito() {
     actualizarBalanceCobro();
 }
 
-// Teclado Numérico Táctil
 function presionarTecla(digito) {
     if (digito === '.' && montoIngresadoStr.includes('.')) return;
     if (montoIngresadoStr.length > 9) return;
@@ -786,12 +783,11 @@ function actualizarBalanceCobro() {
     const total = calcularTotalVentaUSD();
     const rawVal = parseFloat(montoIngresadoStr) || 0.0;
     
-    // Convertir ingreso actual a USD si se digitó en Bolívares
     const ingresoActualUSD = (monedaEntrada === 'BS') ? (rawVal / tasaPos) : rawVal;
     const totalAbonadoPrevioUSD = abonosRegistrados.reduce((acc, a) => acc + a.montoUSD, 0);
     const totalCubiertoUSD = totalAbonadoPrevioUSD + ingresoActualUSD;
 
-    document.getElementById('txtMontoEntregado').innerText = `$${totalCubiertoUSD.toFixed(2)} (Bs. ${(totalCubiertoUSD * tasaPos).toLocaleString('es-VE', { minimumFractionDigits: 2 })})`;
+    document.getElementById('txtMontoEntregado').innerText = `$${totalCubiertoUSD.toFixed(2)}`;
 
     const resta = total - totalCubiertoUSD;
     const btnPago = document.getElementById('btnRegistrarPago');
@@ -840,7 +836,6 @@ function seleccionarMetodo(elemento, metodo) {
     const inputRef = document.getElementById('inputReferencia');
     const bloqueAbono = document.getElementById('bloqueAgregarAbono');
 
-    // Cambiar moneda sugerida según el método
     if (['Efectivo Bs', 'Pago Móvil', 'Punto Venta'].includes(metodo)) {
         cambiarMonedaEntrada('BS');
     } else {
@@ -850,7 +845,7 @@ function seleccionarMetodo(elemento, metodo) {
     if (metodo === 'Pago Mixto') {
         bloqueAbono.style.display = 'block';
         bloqueRef.style.display = 'block';
-        inputRef.placeholder = "Referencia del abono actual (si aplica)";
+        inputRef.placeholder = "Referencia del abono (opcional)";
     } else {
         bloqueAbono.style.display = 'none';
         if (['Pago Móvil', 'Punto Venta', 'Binance'].includes(metodo)) {
@@ -863,7 +858,6 @@ function seleccionarMetodo(elemento, metodo) {
     }
 }
 
-// Registro progresivo de pagos mixtos
 function agregarAbonoMixto() {
     const rawVal = parseFloat(montoIngresadoStr) || 0.0;
     if (rawVal <= 0) {
@@ -909,7 +903,7 @@ function renderizarAbonos() {
     abonosRegistrados.forEach((a, idx) => {
         lista.innerHTML += `
             <div class="d-flex justify-content-between align-items-center bg-white px-2 py-1 rounded border small">
-                <span><strong>${a.metodo}:</strong> $${a.montoUSD.toFixed(2)} (Bs. ${a.montoBS.toFixed(2)}) ${a.ref !== 'N/A' ? '- Ref:' + a.ref : ''}</span>
+                <span><strong>${a.metodo}:</strong> $${a.montoUSD.toFixed(2)} (Bs. ${a.montoBS.toFixed(2)})</span>
                 <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2 text-decoration-none" onclick="eliminarAbono(${idx})">×</button>
             </div>
         `;
@@ -929,13 +923,14 @@ function ejecutarVenta(emitirTicket = true) {
     const cubierto = totalAbonado + ingresoActualUSD;
 
     if (cubierto < (total - 0.009)) {
-        alert("La cuenta no está completamente pagada. Ingrese el monto restante.");
+        alert("La cuenta no está completamente cubierta. Ingrese el monto restante.");
         return;
     }
 
     const referencia = document.getElementById('inputReferencia').value.trim();
+    const clienteNombre = document.getElementById('inputClienteNombre').value.trim() || 'Cliente Mostrador';
+    const clienteTelefono = document.getElementById('inputClienteTelefono').value.trim();
 
-    // Verificación de referencia obligatoria en cobros únicos
     if (['Pago Móvil', 'Punto Venta', 'Binance'].includes(metodoSeleccionado) && abonosRegistrados.length === 0) {
         if (!referencia) {
             alert(`Es obligatorio registrar la referencia bancaria para ${metodoSeleccionado}.`);
@@ -944,7 +939,6 @@ function ejecutarVenta(emitirTicket = true) {
         }
     }
 
-    // Armar el desglose para el ticket
     let desgloseTxt = '';
     if (abonosRegistrados.length > 0) {
         if (ingresoActualUSD > 0.009) {
@@ -955,7 +949,7 @@ function ejecutarVenta(emitirTicket = true) {
                 ref: referencia || 'N/A'
             });
         }
-        desgloseTxt = abonosRegistrados.map(a => `${a.metodo}: $${a.montoUSD.toFixed(2)} / Bs. ${a.montoBS.toFixed(2)} (Ref: ${a.ref})`).join(' | ');
+        desgloseTxt = abonosRegistrados.map(a => `${a.metodo}: $${a.montoUSD.toFixed(2)} / Bs. ${a.montoBS.toFixed(2)}`).join(' | ');
     } else {
         desgloseTxt = `${metodoSeleccionado}: $${total.toFixed(2)} / Bs. ${(total * tasaPos).toFixed(2)}`;
     }
@@ -968,7 +962,9 @@ function ejecutarVenta(emitirTicket = true) {
             metodo_pago: abonosRegistrados.length > 0 ? 'Pago Mixto' : metodoSeleccionado,
             referencia: referencia || 'N/A',
             tasa_cambio: tasaPos,
-            desglose_pago: desgloseTxt
+            desglose_pago: desgloseTxt,
+            cliente_nombre: clienteNombre,
+            cliente_telefono: clienteTelefono
         })
     })
     .then(res => res.json())
@@ -982,7 +978,6 @@ function ejecutarVenta(emitirTicket = true) {
                 montoIngresadoStr = '';
                 abonosRegistrados = [];
                 renderizarCarrito();
-                document.getElementById('inputReferencia').value = '';
                 window.location.reload();
             }
         } else {
