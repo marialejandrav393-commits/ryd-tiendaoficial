@@ -38,7 +38,7 @@ def inicializar_db():
     conn = obtener_conexion()
     cursor = conn.cursor()
 
-    # 1. Tabla productos sin restricción UNIQUE en codigo para aceptar duplicados del catálogo
+    # 1. Tabla productos
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS productos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -114,40 +114,42 @@ def inicializar_db():
         except sqlite3.OperationalError:
             pass
 
-    # 3. Tabla ventas
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS ventas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            fecha TEXT NOT NULL,
-            total REAL DEFAULT 0.0,
-            metodo_pago TEXT DEFAULT 'Efectivo $',
-            referencia TEXT DEFAULT '',
-            usuario TEXT DEFAULT 'Cajero',
-            producto_nombre TEXT DEFAULT '',
-            tasa_cambio REAL DEFAULT 50.0,
-            monto_bs REAL DEFAULT 0.0,
-            desglose_pago TEXT DEFAULT '',
-            cliente_nombre TEXT DEFAULT 'Cliente Mostrador',
-            cliente_telefono TEXT DEFAULT ''
-        )
-    ''')
-
-    for col_def in [
-        'total REAL DEFAULT 0.0',
-        'metodo_pago TEXT DEFAULT "Efectivo $"',
-        'referencia TEXT DEFAULT ""',
-        'usuario TEXT DEFAULT "Cajero"',
-        'producto_nombre TEXT DEFAULT ""',
-        'tasa_cambio REAL DEFAULT 50.0',
-        'monto_bs REAL DEFAULT 0.0',
-        'desglose_pago TEXT DEFAULT ""',
-        'cliente_nombre TEXT DEFAULT "Cliente Mostrador"',
-        'cliente_telefono TEXT DEFAULT ""'
-    ]:
-        try:
-            cursor.execute(f'ALTER TABLE ventas ADD COLUMN {col_def}')
-        except sqlite3.OperationalError:
-            pass
+    # 3. Migración y Reconstrucción definitiva de la tabla ventas para eliminar el bloqueo NOT NULL
+    try:
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ventas_nueva (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                fecha TEXT NOT NULL,
+                total REAL DEFAULT 0.0,
+                metodo_pago TEXT DEFAULT 'Efectivo $',
+                referencia TEXT DEFAULT '',
+                usuario TEXT DEFAULT 'Cajero',
+                producto_nombre TEXT DEFAULT '',
+                tasa_cambio REAL DEFAULT 50.0,
+                monto_bs REAL DEFAULT 0.0,
+                desglose_pago TEXT DEFAULT '',
+                cliente_nombre TEXT DEFAULT 'Cliente',
+                cliente_telefono TEXT DEFAULT '04244042825',
+                cantidad INTEGER DEFAULT 1,
+                precio REAL DEFAULT 0.0
+            )
+        ''')
+        
+        # Verificar si la tabla ventas ya existe
+        check_ventas = cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ventas'").fetchone()
+        if check_ventas:
+            cols_old = [c[1] for c in cursor.execute("PRAGMA table_info(ventas)").fetchall()]
+            cols_new = [c[1] for c in cursor.execute("PRAGMA table_info(ventas_nueva)").fetchall()]
+            common_cols = [c for c in cols_old if c in cols_new]
+            if common_cols:
+                common_str = ', '.join(common_cols)
+                cursor.execute(f"INSERT INTO ventas_nueva ({common_str}) SELECT {common_str} FROM ventas")
+            cursor.execute("DROP TABLE ventas")
+            cursor.execute("ALTER TABLE ventas_nueva RENAME TO ventas")
+        else:
+            cursor.execute("ALTER TABLE ventas_nueva RENAME TO ventas")
+    except Exception:
+        pass
 
     # 4. Tabla detalle ventas
     cursor.execute('''
@@ -195,17 +197,17 @@ inicializar_db()
 
 def clasificar_categoria_ryd(descripcion):
     desc = descripcion.lower()
-    if any(k in desc for k in ['olla', 'sm-200', 'ventilador', 'lampara', 'extractor', 'pulidor', 'drill', 'esterilizador', 'maquina']):
+    if any(k in desc for k in ['olla', 'sm-200', 'ventilador', 'lampara', 'extractor', 'pulidor', 'drill', 'esterilizador', 'maquina', 'aparatologia']):
         return "Aparatología"
     if any(k in desc for k in ['pestañ', 'ceja', 'henna', 'lash', 'brow', 'volumen', 'pigmento']):
         return "Cejas y Pestañas"
-    if any(k in desc for k in ['esmalte', 'lipstick', 'brush on', 'gel', 'finish', 'rubber', 'cuticula', 'protein', 'polygel', 'acrygel', 'serum', 'nail', 'primer', 'ultrabond', 'blossom', 'base coat', 'builder', 'tijera', 'cortauna', 'lima', 'punta', 'jelly', 'pincel', 'bledo', 'dappen', 'guillotina', 'empujador']):
+    if any(k in desc for k in ['esmalte', 'lipstick', 'brush on', 'gel', 'finish', 'rubber', 'cuticula', 'protein', 'polygel', 'acrygel', 'serum', 'nail', 'primer', 'ultrabond', 'blossom', 'base coat', 'builder', 'tijera', 'cortauna', 'lima', 'punta', 'jelly', 'pincel', 'bledo', 'dappen', 'guillotina', 'empujador', 'uñas', 'uña']):
         return "Uñas"
     if any(k in desc for k in ['gorro', 'guante', 'desechable', 'tapa boca', 'mascarilla', 'toalla', 'separador', 'palitos', 'hisopo']):
         return "Desechables"
     if any(k in desc for k in ['shampoo', 'alisado', 'laminado', 'termoprotector', 'blower', 'tratamiento', 'peine', 'difusor', 'ondas', 'cepillo', 'keratina', 'tinte', 'plancha', 'cabello', 'acondicionador', 'cuidado capilar']):
         return "Cuidado Capilar"
-    if any(k in desc for k in ['intimo', 'jabon', 'arandano', 'manzanilla', 'cera depilatoria', 'roll on', 'banda depilacion']):
+    if any(k in desc for k in ['intimo', 'jabon', 'arandano', 'manzanilla', 'cera depilatoria', 'roll on', 'banda depilacion', 'corporal']):
         return "Íntimo"
     if any(k in desc for k in ['alcohol', 'acetona', 'algodon', 'cleanser', 'sanitizante', 'exfoliante', 'espuma', 'sponge', 'mantequilla', 'gota', 'atomizador', 'organizador', 'envase', 'boligrafo', 'espejo', 'cesta']):
         return "Insumos"
@@ -308,8 +310,8 @@ def procesar_venta():
     referencia = data.get('referencia', 'N/A')
     tasa_cambio = float(data.get('tasa_cambio', 50.0))
     desglose_pago = data.get('desglose_pago', '')
-    cliente_nombre = data.get('cliente_nombre', 'Cliente Mostrador')
-    cliente_telefono = data.get('cliente_telefono', '')
+    cliente_nombre = data.get('cliente_nombre', 'Cliente')
+    cliente_telefono = data.get('cliente_telefono', '04244042825')
     usuario = session.get('username', 'Cajero')
 
     if not items:
@@ -319,6 +321,7 @@ def procesar_venta():
     cursor = conn.cursor()
     try:
         total_venta = sum(float(item['precio']) * int(item['cantidad']) for item in items)
+        total_unidades = sum(int(item.get('cantidad', 1)) for item in items)
         monto_bs = round(total_venta * tasa_cambio, 2)
         fecha_hora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
@@ -326,7 +329,7 @@ def procesar_venta():
         if len(items) > 3:
             resumen_nombres += f" (+{len(items)-3} más)"
 
-        # Inserción blindada: verifica qué columnas existen realmente en la tabla ventas
+        # Diccionario con todos los campos posibles para evitar fallos de columnas
         cols_ventas = [c[1] for c in cursor.execute("PRAGMA table_info(ventas)").fetchall()]
         datos_venta = {
             'fecha': fecha_hora,
@@ -339,7 +342,9 @@ def procesar_venta():
             'monto_bs': monto_bs,
             'desglose_pago': desglose_pago,
             'cliente_nombre': cliente_nombre,
-            'cliente_telefono': cliente_telefono
+            'cliente_telefono': cliente_telefono,
+            'cantidad': total_unidades,
+            'precio': round(total_venta, 2)
         }
 
         cols_insert = [c for c in datos_venta if c in cols_ventas]
@@ -350,7 +355,7 @@ def procesar_venta():
         cursor.execute(f"INSERT INTO ventas ({cols_str}) VALUES ({placeholders})", vals_insert)
         venta_id = cursor.lastrowid
 
-        # Inserción en detalle_ventas descontando inventario en tiempo real
+        # Inserción en detalle_ventas con descuento de inventario
         cols_detalle = [c[1] for c in cursor.execute("PRAGMA table_info(detalle_ventas)").fetchall()]
         for it in items:
             cod = it.get('codigo', '')
@@ -403,7 +408,7 @@ def ticket(venta_id):
     return render_template('ticket.html', venta=venta, detalles=detalles)
 
 
-# --- ADMINISTRACIÓN, INVENTARIO Y RESPALDO COMPLETO ---
+# --- ADMINISTRACIÓN, INVENTARIO Y RESPALDO ---
 
 @app.route('/admin')
 @role_required('admin')
@@ -448,7 +453,6 @@ def admin():
 def exportar_inventario_excel():
     conn = obtener_conexion()
     
-    # 1. Catálogo Maestro de Productos
     productos = conn.execute('SELECT * FROM productos ORDER BY categoria ASC, nombre ASC').fetchall()
     filas_productos = []
     for p in productos:
@@ -468,15 +472,14 @@ def exportar_inventario_excel():
             'descuento': float(p['descuento'] or 0.0)
         })
 
-    # 2. Historial de Ventas y Comprobantes
     ventas = conn.execute('SELECT * FROM ventas ORDER BY id DESC').fetchall()
     filas_ventas = []
     for v in ventas:
         filas_ventas.append({
             'Nro Comprobante': f"#{v['id']:06d}",
             'Fecha y Hora': v['fecha'],
-            'Cliente': v['cliente_nombre'] if 'cliente_nombre' in v.keys() else 'Cliente Mostrador',
-            'Teléfono WhatsApp': v['cliente_telefono'] if 'cliente_telefono' in v.keys() else '',
+            'Cliente': v['cliente_nombre'] if 'cliente_nombre' in v.keys() else 'Cliente',
+            'Teléfono WhatsApp': v['cliente_telefono'] if 'cliente_telefono' in v.keys() else '04244042825',
             'Total USD ($)': v['total'],
             'Total Bs': v['monto_bs'] if 'monto_bs' in v.keys() else 0.0,
             'Modalidad Pago': v['metodo_pago'],
@@ -567,7 +570,7 @@ def eliminar(id):
     return redirect(url_for('admin'))
 
 
-# --- MÓDULO DE PROVEEDORES Y PARSER UNIVERSAL EXACTO ---
+# --- MÓDULO DE PROVEEDORES Y PARSER UNIVERSAL ---
 
 @app.route('/proveedores')
 @role_required('admin')
@@ -590,7 +593,6 @@ def guardar_factura_proveedor():
     conn = obtener_conexion()
     cursor = conn.cursor()
     try:
-        # Asegurar columnas en proveedores
         cols_prov = [c[1] for c in cursor.execute("PRAGMA table_info(proveedores)").fetchall()]
         for col_name, col_type in [('ultima_compra', 'TEXT DEFAULT ""'), ('total_compras', 'REAL DEFAULT 0.0'), ('telefono', 'TEXT DEFAULT ""')]:
             if col_name not in cols_prov:
@@ -599,7 +601,6 @@ def guardar_factura_proveedor():
                 except Exception:
                     pass
 
-        # Registrar proveedor
         if proveedor_nom and proveedor_nom != "Proveedor General":
             monto_compra_actual = sum(float(it.get('costo', 0)) * int(it.get('stock', 0)) for it in items)
             fecha_hoy = date.today().strftime('%Y-%m-%d')
@@ -619,7 +620,6 @@ def guardar_factura_proveedor():
                     VALUES (?, ?, ?, ?)
                 ''', (proveedor_nom, telefono_prov, fecha_hoy, round(monto_compra_actual, 2)))
 
-        # Guardar productos respetando nombres y códigos sin chocar por duplicados
         for it in items:
             cod = str(it.get('codigo', '')).strip().upper()
             nom = str(it.get('nombre', '')).strip()
@@ -646,7 +646,7 @@ def guardar_factura_proveedor():
                 ''', (cod, costo, precio_bs, precio, stock_nuevo, cat, desc, existente['id']))
             else:
                 cursor.execute('''
-                    INSERT INTO productos (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento)
+                    INSERT OR REPLACE INTO productos (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (cod, nom, costo, precio_bs, precio, stock_nuevo, cat, desc))
 
@@ -961,11 +961,11 @@ def historial_ventas():
                 'fecha': v['fecha'],
                 'total': v['total'] if 'total' in v.keys() else 0.0,
                 'metodo_pago': v['metodo_pago'] if 'metodo_pago' in v.keys() else 'Efectivo $',
-                'referencia': v['referencia'] if 'referencia' in v.keys() and v['referencia'] else 'N/A',
-                'usuario': v['usuario'] if 'usuario' in v.keys() and v['usuario'] else 'Cajero',
-                'desglose_pago': v['desglose_pago'] if 'desglose_pago' in v.keys() and v['desglose_pago'] else '',
-                'cliente_nombre': v['cliente_nombre'] if 'cliente_nombre' in v.keys() else 'Cliente Mostrador',
-                'cliente_telefono': v['cliente_telefono'] if 'cliente_telefono' in v.keys() else '',
+                'referencia': v['referencia'] if 'referencia' in v.keys() else 'N/A',
+                'usuario': v['usuario'] if 'usuario' in v.keys() else 'Cajero',
+                'desglose_pago': v['desglose_pago'] if 'desglose_pago' in v.keys() else '',
+                'cliente_nombre': v['cliente_nombre'] if 'cliente_nombre' in v.keys() else 'Cliente',
+                'cliente_telefono': v['cliente_telefono'] if 'cliente_telefono' in v.keys() else '04244042825',
                 'items': detalles
             })
         conn.close()
