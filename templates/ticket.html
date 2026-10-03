@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comprobante de Venta #{{ "%06d"|format(venta.id) }} - RyD</title>
+    <title>Nota de Entrega #{{ "%06d"|format(venta.id) }} - RyD</title>
     <style>
         body {
             font-family: 'Courier New', Courier, monospace;
@@ -36,7 +36,7 @@
             background: #25D366;
             color: #FFFFFF;
             border: none;
-            padding: 10px;
+            padding: 11px;
             font-weight: bold;
             margin-top: 12px;
             cursor: pointer;
@@ -82,7 +82,7 @@
     <div>
         <strong>Nota de Entrega N°:</strong> #{{ "%06d"|format(venta.id) }}<br>
         <strong>Fecha:</strong> {{ venta.fecha }}<br>
-        <strong>Cliente:</strong> {{ venta.cliente_nombre|default('Cliente Mostrador') }}<br>
+        <strong>Cliente:</strong> {{ venta.cliente_nombre|default('Cliente') }}<br>
         <strong>Cajero:</strong> {{ venta.usuario }}<br>
         <strong>Tasa Oficial:</strong> Bs. {{ "%.2f"|format(venta.tasa_cambio|default(50.0)) }}
     </div>
@@ -141,17 +141,18 @@
 
     <div class="no-print mt-3">
         <div class="mb-2">
+            <label style="font-size: 10px; text-transform: uppercase; font-weight: bold; color: #827668; display: block; text-align: center; margin-bottom: 2px;">Número WhatsApp de Emisión:</label>
             <input type="text" id="telDestinoWA" class="form-control form-control-sm text-center" 
-                   value="{{ venta.cliente_telefono }}" placeholder="Número WhatsApp (ej. 04121234567)" 
-                   style="width: 100%; padding: 6px; box-sizing: border-box; font-size: 12px; border: 1px solid #C5A059; border-radius: 4px;">
+                   value="{{ venta.cliente_telefono|default('04244042825') }}" placeholder="04244042825" 
+                   style="width: 100%; padding: 6px; box-sizing: border-box; font-size: 13px; font-weight: bold; color: #1e7e34; border: 1.5px solid #25D366; border-radius: 4px;">
         </div>
 
         <button type="button" class="btn-whatsapp" onclick="enviarNotaWhatsApp()">
-            Enviar Comprobante por WhatsApp
+            Enviar Nota por WhatsApp
         </button>
 
         <button type="button" class="btn-imprimir" onclick="window.print()">
-            Imprimir Comprobante Físico
+            Imprimir Comprobante
         </button>
 
         <a href="/cajero/pos" style="display: block; text-align: center; margin-top: 10px; font-size: 11px; color: #827668; text-decoration: none;">
@@ -162,22 +163,17 @@
 
 <script>
 function enviarNotaWhatsApp() {
-    let inputTel = document.getElementById('telDestinoWA').value.trim();
-    if (!inputTel) {
-        inputTel = prompt("Por favor ingresa el número telefónico WhatsApp del cliente:");
-        if (!inputTel) return;
-    }
-
+    let inputTel = document.getElementById('telDestinoWA').value.trim() || '04244042825';
     let telLimpio = inputTel.replace(/[^0-9]/g, '');
     if (telLimpio.startsWith('0')) {
         telLimpio = '58' + telLimpio.substring(1);
     }
 
-    let mensaje = `✨ *NOTA DE ENTREGA RyD* ✨\n`;
+    let mensaje = `✨ *COMPROBANTE / NOTA DE ENTREGA RyD* ✨\n`;
     mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
     mensaje += `*Nota N°:* #{{ "%06d"|format(venta.id) }}\n`;
     mensaje += `*Fecha:* {{ venta.fecha }}\n`;
-    mensaje += `*Cliente:* {{ venta.cliente_nombre|default('Cliente Mostrador') }}\n`;
+    mensaje += `*Cliente:* {{ venta.cliente_nombre|default('Cliente') }}\n`;
     mensaje += `*Tasa Oficial:* Bs. {{ "%.2f"|format(venta.tasa_cambio|default(50.0)) }}\n`;
     mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
     mensaje += `*DETALLE DE ARTÍCULOS:*\n`;
@@ -188,12 +184,12 @@ function enviarNotaWhatsApp() {
     {% endfor %}
 
     mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    mensaje += ` *TOTAL:*\n`;
+    mensaje += `*TOTAL PAGADO:*\n`;
     mensaje += `*USD:* ${{ "%.2f"|format(venta.total) }}\n`;
     mensaje += `*Bs:* Bs. {{ "%.2f"|format(venta.monto_bs|default(venta.total * 50.0)) }}\n`;
-    mensaje += `*Pago:* {{ venta.metodo_pago }}\n`;
+    mensaje += `*Modalidad:* {{ venta.metodo_pago }}\n`;
     {% if venta.referencia and venta.referencia != 'N/A' %}
-    mensaje += `*Ref:* {{ venta.referencia }}\n`;
+    mensaje += `*Referencia:* {{ venta.referencia }}\n`;
     {% endif %}
     {% if venta.desglose_pago %}
     mensaje += `*Desglose:* {{ venta.desglose_pago }}\n`;
