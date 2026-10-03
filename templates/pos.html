@@ -400,19 +400,19 @@
             </div>
         </div>
 
-        <!-- Panel Derecho: Liquidación y WhatsApp -->
+        <!-- Panel Derecho: Datos de Cliente para WhatsApp y Cobro -->
         <div class="col-lg-5">
             <div class="panel-luxury d-flex flex-column justify-content-between" style="min-height: 86vh;">
                 <div>
-                    <!-- Datos de Cliente y Destino WhatsApp Oficial -->
+                    <!-- Casillas limpias para pedir Nombre y WhatsApp al comprador -->
                     <div class="row g-2 mb-2 pb-2 border-bottom">
                         <div class="col-6">
-                            <label class="small text-muted fw-bold d-block" style="font-size: 0.65rem; text-transform: uppercase;">Cliente (Comprador):</label>
-                            <input type="text" id="inputClienteNombre" class="form-control search-input py-1 px-2" value="Cliente" placeholder="Nombre cliente" style="font-size: 0.8rem;">
+                            <label class="small text-muted fw-bold d-block" style="font-size: 0.65rem; text-transform: uppercase;">Nombre del Cliente:</label>
+                            <input type="text" id="inputClienteNombre" class="form-control search-input py-1 px-2" placeholder="Ej: Maria Gonzalez" style="font-size: 0.8rem;">
                         </div>
                         <div class="col-6">
-                            <label class="small text-muted fw-bold d-block" style="font-size: 0.65rem; text-transform: uppercase;">WhatsApp Emisión:</label>
-                            <input type="text" id="inputClienteTelefono" class="form-control search-input py-1 px-2 fw-bold text-success" value="04244042825" placeholder="04244042825" style="font-size: 0.8rem;">
+                            <label class="small text-muted fw-bold d-block" style="font-size: 0.65rem; text-transform: uppercase;">WhatsApp del Cliente:</label>
+                            <input type="text" id="inputClienteTelefono" class="form-control search-input py-1 px-2 fw-bold text-success" placeholder="Ej: 04121234567" style="font-size: 0.8rem;">
                         </div>
                     </div>
 
@@ -1007,6 +1007,7 @@ function renderizarAbonos() {
     });
 }
 
+// Al dar clic en Emitir Nota Entrega, registra y abre WhatsApp con el número del cliente
 function ejecutarVenta(emitirTicket = true) {
     if (carrito.length === 0) {
         alert("Debe agregar al menos un artículo para procesar la transacción.");
@@ -1031,7 +1032,7 @@ function ejecutarVenta(emitirTicket = true) {
 
     const referencia = document.getElementById('inputReferencia').value.trim();
     const clienteNombre = document.getElementById('inputClienteNombre').value.trim() || 'Cliente';
-    const clienteTelefono = document.getElementById('inputClienteTelefono').value.trim() || '04244042825';
+    const clienteTelefono = document.getElementById('inputClienteTelefono').value.trim();
 
     if (['Pago Móvil', 'Punto Venta', 'Binance'].includes(metodoSeleccionado) && abonosRegistrados.length === 0) {
         if (!referencia) {
@@ -1085,6 +1086,34 @@ function ejecutarVenta(emitirTicket = true) {
     .then(data => {
         if (data.exito) {
             if (emitirTicket) {
+                // Si colocaste el número del cliente, abre de una vez el chat de WhatsApp con el recibo
+                if (clienteTelefono) {
+                    let telLimpio = clienteTelefono.replace(/[^0-9]/g, '');
+                    if (telLimpio.startsWith('0')) {
+                        telLimpio = '58' + telLimpio.substring(1);
+                    }
+                    
+                    let mensajeWA = `✨ *COMPROBANTE / NOTA DE ENTREGA RyD* ✨\n`;
+                    mensajeWA += `━━━━━━━━━━━━━━━━━━━━━\n`;
+                    mensajeWA += `*Nota N°:* #${String(data.venta_id).padStart(6, '0')}\n`;
+                    mensajeWA += `*Cliente:* ${clienteNombre}\n`;
+                    mensajeWA += `*Tasa:* Bs. ${tasaPos.toFixed(2)}\n`;
+                    mensajeWA += `━━━━━━━━━━━━━━━━━━━━━\n`;
+                    mensajeWA += `*DETALLE DE COMPRA:*\n`;
+                    itemsParaGuardar.forEach(it => {
+                        mensajeWA += `▪ ${it.cantidad}x *${it.nombre}* ($${it.precio.toFixed(2)})\n`;
+                    });
+                    mensajeWA += `━━━━━━━━━━━━━━━━━━━━━\n`;
+                    mensajeWA += `💰 *TOTAL PAGADO:*\n`;
+                    mensajeWA += `*USD:* $${total.toFixed(2)}\n`;
+                    mensajeWA += `*Bs:* Bs. ${(total * tasaPos).toFixed(2)}\n`;
+                    mensajeWA += `*Modalidad:* ${metodoSeleccionado}\n`;
+                    mensajeWA += `¡Muchas gracias por su compra! 💖`;
+
+                    window.open(`https://wa.me/${telLimpio}?text=${encodeURIComponent(mensajeWA)}`, '_blank');
+                }
+                
+                // Abre el ticket para impresión
                 window.location.href = `/ticket/${data.venta_id}`;
             } else {
                 alert("¡Pago registrado y stock actualizado con éxito!");
