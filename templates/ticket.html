@@ -11,13 +11,14 @@
             margin: 0;
             padding: 20px;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
         }
         .ticket {
-            width: 300px;
+            width: 330px;
             background: #FFFFFF;
-            padding: 16px;
-            border: 1px dashed #C5A059;
+            padding: 18px;
+            border: 1.5px dashed #C5A059;
             box-shadow: 0 4px 15px rgba(0,0,0,0.06);
             font-size: 12px;
             color: #2C2620;
@@ -28,22 +29,42 @@
         .divider { border-top: 1px dashed #827668; margin: 10px 0; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
         td, th { padding: 4px 0; }
+        
+        .btn-whatsapp {
+            display: block;
+            width: 100%;
+            background: #25D366;
+            color: #FFFFFF;
+            border: none;
+            padding: 10px;
+            font-weight: bold;
+            margin-top: 12px;
+            cursor: pointer;
+            text-transform: uppercase;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 12px;
+            box-shadow: 0 2px 6px rgba(37, 211, 102, 0.35);
+        }
         .btn-imprimir {
             display: block;
             width: 100%;
             background: #C5A059;
             color: #FFFFFF;
             border: none;
-            padding: 8px;
+            padding: 9px;
             font-weight: bold;
-            margin-top: 14px;
+            margin-top: 8px;
             cursor: pointer;
             text-transform: uppercase;
+            border-radius: 6px;
+            font-size: 12px;
         }
         @media print {
             body { background: #FFFFFF; padding: 0; }
             .ticket { border: none; box-shadow: none; width: 100%; }
-            .btn-imprimir, .no-print { display: none; }
+            .no-print { display: none; }
         }
     </style>
 </head>
@@ -59,8 +80,9 @@
     <div class="divider"></div>
 
     <div>
-        <strong>Ticket:</strong> #{{ "%06d"|format(venta.id) }}<br>
+        <strong>Nota de Entrega N°:</strong> #{{ "%06d"|format(venta.id) }}<br>
         <strong>Fecha:</strong> {{ venta.fecha }}<br>
+        <strong>Cliente:</strong> {{ venta.cliente_nombre|default('Cliente Mostrador') }}<br>
         <strong>Cajero:</strong> {{ venta.usuario }}<br>
         <strong>Tasa Oficial:</strong> Bs. {{ "%.2f"|format(venta.tasa_cambio|default(50.0)) }}
     </div>
@@ -70,18 +92,18 @@
     <table>
         <thead>
             <tr>
-                <th style="text-align: left;">Cant/Item</th>
-                <th class="text-end">P.Unit</th>
-                <th class="text-end">Total</th>
+                <th style="text-align: left;">Cant / Descripción</th>
+                <th class="text-end">P.Unit ($)</th>
+                <th class="text-end">Total ($)</th>
             </tr>
         </thead>
         <tbody>
             {% for d in detalles %}
             <tr>
-                <td colspan="3" style="padding-top: 4px;">{{ d.nombre_producto }}</td>
+                <td colspan="3" style="padding-top: 5px; font-weight: bold;">{{ d.nombre_producto }}</td>
             </tr>
             <tr>
-                <td style="color: #827668;">x{{ d.cantidad }}</td>
+                <td style="color: #827668;">Cant: {{ d.cantidad }}</td>
                 <td class="text-end">${{ "%.2f"|format(d.precio_unitario) }}</td>
                 <td class="text-end fw-bold">${{ "%.2f"|format(d.subtotal) }}</td>
             </tr>
@@ -117,9 +139,73 @@
         Conserve este comprobante para cambios de mercancía.
     </div>
 
-    <button class="btn-imprimir no-print" onclick="window.print()">Imprimir Ticket</button>
-    <a href="/cajero/pos" class="no-print" style="display: block; text-align: center; margin-top: 8px; font-size: 11px; color: #827668; text-decoration: none;">Volver al Terminal de Cobro</a>
+    <!-- Acciones de Emisión y WhatsApp -->
+    <div class="no-print mt-3">
+        <div class="mb-2">
+            <input type="text" id="telDestinoWA" class="form-control form-control-sm text-center" 
+                   value="{{ venta.cliente_telefono }}" placeholder="Número WhatsApp (ej. 04121234567)" 
+                   style="width: 100%; padding: 6px; box-sizing: border-box; font-size: 12px; border: 1px solid #C5A059; border-radius: 4px;">
+        </div>
+
+        <button type="button" class="btn-whatsapp" onclick="enviarNotaWhatsApp()">
+            Enviar Comprobante por WhatsApp
+        </button>
+
+        <button type="button" class="btn-imprimir" onclick="window.print()">
+            Imprimir Comprobante Físico
+        </button>
+
+        <a href="/cajero/pos" style="display: block; text-align: center; margin-top: 10px; font-size: 11px; color: #827668; text-decoration: none;">
+            ← Volver al Terminal de Cobro
+        </a>
+    </div>
 </div>
 
+<script>
+function enviarNotaWhatsApp() {
+    let inputTel = document.getElementById('telDestinoWA').value.trim();
+    if (!inputTel) {
+        inputTel = prompt("Por favor ingresa el número telefónico WhatsApp del cliente:");
+        if (!inputTel) return;
+    }
+
+    let telLimpio = inputTel.replace(/[^0-9]/g, '');
+    if (telLimpio.startsWith('0')) {
+        telLimpio = '58' + telLimpio.substring(1);
+    }
+
+    // Armado estructurado del mensaje de WhatsApp
+    let mensaje = `✨ *NOTA DE ENTREGA RyD* ✨\n`;
+    mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    mensaje += `*Nota N°:* #{{ "%06d"|format(venta.id) }}\n`;
+    mensaje += `*Fecha:* {{ venta.fecha }}\n`;
+    mensaje += `*Cliente:* {{ venta.cliente_nombre|default('Cliente Mostrador') }}\n`;
+    mensaje += `*Tasa Oficial:* Bs. {{ "%.2f"|format(venta.tasa_cambio|default(50.0)) }}\n`;
+    mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    mensaje += `*DETALLE DE ARTÍCULOS:*\n`;
+
+    {% for d in detalles %}
+    mensaje += `▪ {{ d.cantidad }}x *{{ d.nombre_producto }}*\n`;
+    mensaje += `   P.Unit: ${{ "%.2f"|format(d.precio_unitario) }} | Subt: ${{ "%.2f"|format(d.subtotal) }}\n`;
+    {% endfor %}
+
+    mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    mensaje += `*TOTAL A PAGAR:*\n`;
+    mensaje += `*USD:* ${{ "%.2f"|format(venta.total) }}\n`;
+    mensaje += `*Bs:* Bs. {{ "%.2f"|format(venta.monto_bs|default(venta.total * 50.0)) }}\n`;
+    mensaje += `*Pago:* {{ venta.metodo_pago }}\n`;
+    {% if venta.referencia and venta.referencia != 'N/A' %}
+    mensaje += `*Ref:* {{ venta.referencia }}\n`;
+    {% endif %}
+    {% if venta.desglose_pago %}
+    mensaje += `*Desglose:* {{ venta.desglose_pago }}\n`;
+    {% endif %}
+    mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    mensaje += `¡Muchas gracias por su preferencia! 💖`;
+
+    const url = `https://wa.me/${telLimpio}?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
+}
+</script>
 </body>
 </html>
