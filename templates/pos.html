@@ -211,34 +211,27 @@
         }
 
         .btn-pay-action {
-            border: 1px solid var(--ryd-border);
-            background: var(--ryd-surface);
-            color: var(--ryd-text);
+            border: 1px solid #C5A059;
+            background: linear-gradient(135deg, #DFCA98, #B89248);
+            color: #FFFFFF;
             font-weight: 700;
-            letter-spacing: 0.8px;
+            letter-spacing: 1.2px;
             text-transform: uppercase;
-            padding: 12px 6px;
-            border-radius: 9px;
-            box-shadow: var(--emboss-btn);
-            font-size: 0.75rem;
+            padding: 14px 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(184, 146, 72, 0.35), var(--emboss-btn);
+            font-size: 0.88rem;
             transition: all 0.18s ease;
             width: 100%;
         }
         .btn-pay-action:hover:not(:disabled) {
-            border-color: var(--ryd-gold);
-            color: var(--ryd-gold-dark);
+            background: linear-gradient(135deg, #D4B26F, #A6823C);
             transform: translateY(-1px);
         }
         .btn-pay-action:disabled {
             opacity: 0.45;
             cursor: not-allowed;
             box-shadow: none;
-        }
-        .btn-pay-gold {
-            background: linear-gradient(135deg, #DFCA98, #B89248);
-            border: 1px solid #C5A059;
-            color: #FFFFFF;
-            box-shadow: 0 4px 12px rgba(184, 146, 72, 0.28), var(--emboss-btn);
         }
 
         .rate-badge-box {
@@ -400,19 +393,19 @@
             </div>
         </div>
 
-        <!-- Panel Derecho: Datos de Cliente para WhatsApp y Cobro -->
+        <!-- Panel Derecho: Cliente, Facturación y Botón Único -->
         <div class="col-lg-5">
             <div class="panel-luxury d-flex flex-column justify-content-between" style="min-height: 86vh;">
                 <div>
-                    <!-- Casillas limpias para pedir Nombre y WhatsApp al comprador -->
+                    <!-- Campos Simplificados: Cliente y Número TLF -->
                     <div class="row g-2 mb-2 pb-2 border-bottom">
                         <div class="col-6">
-                            <label class="small text-muted fw-bold d-block" style="font-size: 0.65rem; text-transform: uppercase;">Nombre del Cliente:</label>
-                            <input type="text" id="inputClienteNombre" class="form-control search-input py-1 px-2" placeholder="Ej: Maria Gonzalez" style="font-size: 0.8rem;">
+                            <label class="small text-muted fw-bold d-block" style="font-size: 0.68rem; text-transform: uppercase;">Cliente:</label>
+                            <input type="text" id="inputClienteNombre" class="form-control search-input py-1 px-2" placeholder="Nombre del cliente" style="font-size: 0.82rem;">
                         </div>
                         <div class="col-6">
-                            <label class="small text-muted fw-bold d-block" style="font-size: 0.65rem; text-transform: uppercase;">WhatsApp del Cliente:</label>
-                            <input type="text" id="inputClienteTelefono" class="form-control search-input py-1 px-2 fw-bold text-success" placeholder="Ej: 04121234567" style="font-size: 0.8rem;">
+                            <label class="small text-muted fw-bold d-block" style="font-size: 0.68rem; text-transform: uppercase;">Número TLF:</label>
+                            <input type="text" id="inputClienteTelefono" class="form-control search-input py-1 px-2 fw-bold text-success" placeholder="Ej: 0412... / 0424..." style="font-size: 0.82rem;">
                         </div>
                     </div>
 
@@ -474,7 +467,7 @@
                     </div>
 
                     <!-- Métodos de Pago -->
-                    <label class="small text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">Seleccionar Modalidad de Pago</label>
+                    <label class="small text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">Modalidad de Pago</label>
                     <div class="payment-grid mb-2">
                         <div class="payment-card active" id="cardEfectivoUSD" onclick="seleccionarMetodo(this, 'Efectivo $')">
                             <span class="payment-card-title">Efectivo $</span>
@@ -504,7 +497,7 @@
 
                     <!-- Pantalla de Ingreso Manual y Teclado Táctil -->
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="small text-muted fw-bold" style="font-size: 0.68rem; text-transform: uppercase;">Ingreso de Dinero (Escribe aquí o usa botones):</span>
+                        <span class="small text-muted fw-bold" style="font-size: 0.68rem; text-transform: uppercase;">Ingreso de Dinero:</span>
                         <div class="btn-group btn-group-sm" role="group">
                             <button type="button" class="btn btn-outline-secondary py-0 px-2 active" id="btnMonedaUSD" onclick="cambiarMonedaEntrada('USD')">En $</button>
                             <button type="button" class="btn btn-outline-secondary py-0 px-2" id="btnMonedaBS" onclick="cambiarMonedaEntrada('BS')">En Bs</button>
@@ -548,18 +541,11 @@
                         <input type="text" id="inputReferencia" class="form-control search-input form-control-sm" placeholder="N° Referencia Bancaria (Obligatorio)">
                     </div>
 
-                    <!-- Botones de Acción -->
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <button type="button" id="btnRegistrarPago" class="btn-pay-action" disabled onclick="ejecutarVenta(false)">
-                                Registrar Pago
-                            </button>
-                        </div>
-                        <div class="col-6">
-                            <button type="button" id="btnEmitirTicket" class="btn-pay-action btn-pay-gold" disabled onclick="ejecutarVenta(true)">
-                                Emitir Nota Entrega
-                            </button>
-                        </div>
+                    <!-- Botón Único de Operación -->
+                    <div class="mt-2">
+                        <button type="button" id="btnEmitirTicket" class="btn-pay-action" disabled onclick="ejecutarVenta()">
+                            Emitir Nota de Entrega
+                        </button>
                     </div>
                 </div>
             </div>
@@ -763,6 +749,19 @@ function calcularTotalVentaUSD() {
     return carrito.reduce((acc, p) => acc + (obtenerPrecioUnitarioItem(p) * p.cantidad), 0);
 }
 
+function limpiarPantallaCompleta() {
+    carrito = [];
+    montoIngresadoStr = '';
+    abonosRegistrados = [];
+    document.getElementById('inputMontoIngreso').value = '';
+    document.getElementById('inputClienteNombre').value = '';
+    document.getElementById('inputClienteTelefono').value = '';
+    document.getElementById('inputReferencia').value = '';
+    const cardDef = document.getElementById('cardEfectivoUSD');
+    if (cardDef) seleccionarMetodo(cardDef, 'Efectivo $');
+    renderizarCarrito();
+}
+
 function renderizarCarrito() {
     const tbody = document.getElementById('cuerpoCarrito');
     const usarBs = esModoPrecioBs();
@@ -772,23 +771,17 @@ function renderizarCarrito() {
         badge.innerHTML = usarBs ? 'Tarifa: <strong class="text-primary">Precio Bs (Tasa)</strong>' : 'Tarifa: <strong class="text-success">Divisa ($)</strong>';
     }
 
-    const btnPago = document.getElementById('btnRegistrarPago');
     const btnTicket = document.getElementById('btnEmitirTicket');
 
     if (carrito.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted small">Terminal en espera de artículos.</td></tr>';
         document.getElementById('txtTotalUSD').innerText = '$0.00';
         document.getElementById('txtTotalBsEquiv').innerText = 'Bs. 0.00';
-        montoIngresadoStr = '';
-        document.getElementById('inputMontoIngreso').value = '';
-        abonosRegistrados = [];
-        if (btnPago) btnPago.disabled = true;
         if (btnTicket) btnTicket.disabled = true;
         actualizarBalanceCobro();
         return;
     }
 
-    if (btnPago) btnPago.disabled = false;
     if (btnTicket) btnTicket.disabled = false;
 
     tbody.innerHTML = '';
@@ -1007,10 +1000,10 @@ function renderizarAbonos() {
     });
 }
 
-// Al dar clic en Emitir Nota Entrega, registra y abre WhatsApp con el número del cliente
-function ejecutarVenta(emitirTicket = true) {
+// Botón Único: Registra automáticamente, envía por WhatsApp si hay número y deja la pantalla limpia
+function ejecutarVenta() {
     if (carrito.length === 0) {
-        alert("Debe agregar al menos un artículo para procesar la transacción.");
+        alert("Agregue al menos un producto a la cuenta.");
         return;
     }
 
@@ -1031,12 +1024,12 @@ function ejecutarVenta(emitirTicket = true) {
     }
 
     const referencia = document.getElementById('inputReferencia').value.trim();
-    const clienteNombre = document.getElementById('inputClienteNombre').value.trim() || 'Cliente';
+    const clienteNombre = document.getElementById('inputClienteNombre').value.trim() || 'Cliente Mostrador';
     const clienteTelefono = document.getElementById('inputClienteTelefono').value.trim();
 
     if (['Pago Móvil', 'Punto Venta', 'Binance'].includes(metodoSeleccionado) && abonosRegistrados.length === 0) {
         if (!referencia) {
-            alert(`Es obligatorio registrar la referencia bancaria para ${metodoSeleccionado}.`);
+            alert(`Es obligatorio ingresar el número de referencia para ${metodoSeleccionado}.`);
             document.getElementById('inputReferencia').focus();
             return;
         }
@@ -1085,45 +1078,39 @@ function ejecutarVenta(emitirTicket = true) {
     .then(res => res.json())
     .then(data => {
         if (data.exito) {
-            if (emitirTicket) {
-                // Si colocaste el número del cliente, abre de una vez el chat de WhatsApp con el recibo
-                if (clienteTelefono) {
-                    let telLimpio = clienteTelefono.replace(/[^0-9]/g, '');
-                    if (telLimpio.startsWith('0')) {
-                        telLimpio = '58' + telLimpio.substring(1);
-                    }
-                    
-                    let mensajeWA = `✨ *COMPROBANTE / NOTA DE ENTREGA RyD* ✨\n`;
-                    mensajeWA += `━━━━━━━━━━━━━━━━━━━━━\n`;
-                    mensajeWA += `*Nota N°:* #${String(data.venta_id).padStart(6, '0')}\n`;
-                    mensajeWA += `*Cliente:* ${clienteNombre}\n`;
-                    mensajeWA += `*Tasa:* Bs. ${tasaPos.toFixed(2)}\n`;
-                    mensajeWA += `━━━━━━━━━━━━━━━━━━━━━\n`;
-                    mensajeWA += `*DETALLE DE COMPRA:*\n`;
-                    itemsParaGuardar.forEach(it => {
-                        mensajeWA += `▪ ${it.cantidad}x *${it.nombre}* ($${it.precio.toFixed(2)})\n`;
-                    });
-                    mensajeWA += `━━━━━━━━━━━━━━━━━━━━━\n`;
-                    mensajeWA += `💰 *TOTAL PAGADO:*\n`;
-                    mensajeWA += `*USD:* $${total.toFixed(2)}\n`;
-                    mensajeWA += `*Bs:* Bs. ${(total * tasaPos).toFixed(2)}\n`;
-                    mensajeWA += `*Modalidad:* ${metodoSeleccionado}\n`;
-                    mensajeWA += `¡Muchas gracias por su compra! 💖`;
-
-                    window.open(`https://wa.me/${telLimpio}?text=${encodeURIComponent(mensajeWA)}`, '_blank');
+            // 1. Si se ingresó teléfono, envía automáticamente el recibo por WhatsApp
+            if (clienteTelefono) {
+                let telLimpio = clienteTelefono.replace(/[^0-9]/g, '');
+                if (telLimpio.startsWith('0')) {
+                    telLimpio = '58' + telLimpio.substring(1);
                 }
                 
-                // Abre el ticket para impresión
-                window.location.href = `/ticket/${data.venta_id}`;
-            } else {
-                alert("¡Pago registrado y stock actualizado con éxito!");
-                carrito = [];
-                montoIngresadoStr = '';
-                document.getElementById('inputMontoIngreso').value = '';
-                abonosRegistrados = [];
-                renderizarCarrito();
-                window.location.reload();
+                let mensajeWA = `✨ *COMPROBANTE / NOTA DE ENTREGA RyD* ✨\n`;
+                mensajeWA += `━━━━━━━━━━━━━━━━━━━━━\n`;
+                mensajeWA += `*Nota N°:* #${String(data.venta_id).padStart(6, '0')}\n`;
+                mensajeWA += `*Cliente:* ${clienteNombre}\n`;
+                mensajeWA += `*Tasa Oficial:* Bs. ${tasaPos.toFixed(2)}\n`;
+                mensajeWA += `━━━━━━━━━━━━━━━━━━━━━\n`;
+                mensajeWA += `*DETALLE DE COMPRA:*\n`;
+                itemsParaGuardar.forEach(it => {
+                    mensajeWA += `▪ ${it.cantidad}x *${it.nombre}* ($${it.precio.toFixed(2)})\n`;
+                });
+                mensajeWA += `━━━━━━━━━━━━━━━━━━━━━\n`;
+                mensajeWA += `💰 *TOTAL PAGADO:*\n`;
+                mensajeWA += `*USD:* $${total.toFixed(2)}\n`;
+                mensajeWA += `*Bs:* Bs. ${(total * tasaPos).toFixed(2)}\n`;
+                mensajeWA += `*Modalidad:* ${metodoSeleccionado}\n`;
+                if (referencia) mensajeWA += `*Referencia:* ${referencia}\n`;
+                mensajeWA += `¡Muchas gracias por su compra! 💖`;
+
+                window.open(`https://wa.me/${telLimpio}?text=${encodeURIComponent(mensajeWA)}`, '_blank');
             }
+
+            // 2. Abre el comprobante térmico en una pestaña para imprimir por calor
+            window.open(`/ticket/${data.venta_id}`, '_blank');
+
+            // 3. Cierra la venta y deja la pantalla limpia para la siguiente compra
+            limpiarPantallaCompleta();
         } else {
             alert(`Fallo de registro: ${data.mensaje}`);
         }
@@ -1144,9 +1131,9 @@ document.addEventListener('keydown', function(e) {
     } else if (e.key === 'Escape') {
         presionarBorrar();
     } else if (e.key === 'Enter') {
-        const btnPago = document.getElementById('btnRegistrarPago');
-        if (btnPago && !btnPago.disabled) {
-            ejecutarVenta(true);
+        const btnTicket = document.getElementById('btnEmitirTicket');
+        if (btnTicket && !btnTicket.disabled) {
+            ejecutarVenta();
         }
     }
 });
