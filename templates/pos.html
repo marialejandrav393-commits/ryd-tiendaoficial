@@ -155,6 +155,28 @@
             box-shadow: var(--emboss-btn);
         }
 
+        /* Pantalla visible donde se refleja lo tecleado */
+        .display-monto-box {
+            background: #FFFFFF;
+            border: 1.5px solid var(--ryd-gold);
+            border-radius: 8px;
+            padding: 6px 12px;
+            box-shadow: inset 1px 1px 4px rgba(180, 165, 140, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .input-monto-teclado {
+            border: none;
+            background: transparent;
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--ryd-text);
+            width: 100%;
+            outline: none;
+            text-align: right;
+        }
+
         .keypad-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -166,15 +188,16 @@
             border: 1px solid var(--ryd-border);
             border-radius: 8px;
             font-weight: 700;
-            font-size: 1.05rem;
+            font-size: 1.1rem;
             color: var(--ryd-text);
-            padding: 10px 0;
+            padding: 11px 0;
             box-shadow: var(--emboss-btn);
-            transition: all 0.12s ease;
+            transition: all 0.1s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             user-select: none;
+            cursor: pointer;
         }
         .keypad-btn:active {
             transform: translateY(1px);
@@ -378,7 +401,7 @@
             </div>
         </div>
 
-        <!-- Panel Derecho: Liquidación y Modalidades -->
+        <!-- Panel Derecho: Liquidación, Pago Mixto y Teclado Táctil -->
         <div class="col-lg-5">
             <div class="panel-luxury d-flex flex-column justify-content-between" style="min-height: 86vh;">
                 <div>
@@ -480,13 +503,19 @@
                         </div>
                     </div>
 
-                    <!-- Teclado Numérico Táctil con Selección de Divisa -->
+                    <!-- Pantalla de Ingreso Manual y Teclado Táctil -->
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="small text-muted fw-bold" style="font-size: 0.68rem; text-transform: uppercase;">Ingreso de Dinero:</span>
+                        <span class="small text-muted fw-bold" style="font-size: 0.68rem; text-transform: uppercase;">Ingreso de Dinero (Escribe aquí o usa botones):</span>
                         <div class="btn-group btn-group-sm" role="group">
                             <button type="button" class="btn btn-outline-secondary py-0 px-2 active" id="btnMonedaUSD" onclick="cambiarMonedaEntrada('USD')">En $</button>
                             <button type="button" class="btn btn-outline-secondary py-0 px-2" id="btnMonedaBS" onclick="cambiarMonedaEntrada('BS')">En Bs</button>
                         </div>
+                    </div>
+
+                    <div class="display-monto-box mb-2">
+                        <span class="fw-bold small text-muted" id="txtSimboloMoneda">$</span>
+                        <input type="text" id="inputMontoIngreso" class="input-monto-teclado" placeholder="0.00" 
+                               oninput="alEscribirEnInput(this.value)" autofocus>
                     </div>
 
                     <div class="keypad-grid mb-2">
@@ -583,16 +612,15 @@ function iniciarPos() {
     document.getElementById('inputTasaPos').value = tasaPos.toFixed(2);
 }
 
-// Devuelve verdadero si el método o el selector manual está fijado en Bolívares
 function esModoPrecioBs() {
     return ['Efectivo Bs', 'Pago Móvil', 'Punto Venta'].includes(metodoSeleccionado) || monedaEntrada === 'BS';
 }
 
-// Al presionar 'En Bs' o 'En $', también conmuta el cálculo de precios del carrito
 function cambiarMonedaEntrada(moneda) {
     monedaEntrada = moneda;
     document.getElementById('btnMonedaUSD').classList.toggle('active', moneda === 'USD');
     document.getElementById('btnMonedaBS').classList.toggle('active', moneda === 'BS');
+    document.getElementById('txtSimboloMoneda').innerText = moneda === 'BS' ? 'Bs' : '$';
 
     if (moneda === 'BS' && metodoSeleccionado === 'Efectivo $') {
         const cardBS = document.getElementById('cardEfectivoBS');
@@ -725,7 +753,6 @@ function cambiarCantidad(codigo, delta) {
     }
 }
 
-// Devuelve el precio individual correcto según el modo activo
 function obtenerPrecioUnitarioItem(p) {
     if (esModoPrecioBs()) {
         return (p.precio_bs && p.precio_bs > 0) ? p.precio_bs : (p.precio * 1.15);
@@ -751,6 +778,7 @@ function renderizarCarrito() {
         document.getElementById('txtTotalUSD').innerText = '$0.00';
         document.getElementById('txtTotalBsEquiv').innerText = 'Bs. 0.00';
         montoIngresadoStr = '';
+        document.getElementById('inputMontoIngreso').value = '';
         abonosRegistrados = [];
         actualizarBalanceCobro();
         return;
@@ -790,20 +818,31 @@ function renderizarCarrito() {
     actualizarBalanceCobro();
 }
 
+// Vinculación estricta de teclas: cuando se presiona '1', se añade '1'
 function presionarTecla(digito) {
     if (digito === '.' && montoIngresadoStr.includes('.')) return;
     if (montoIngresadoStr.length > 9) return;
-    montoIngresadoStr += digito;
+    montoIngresadoStr += String(digito);
+    document.getElementById('inputMontoIngreso').value = montoIngresadoStr;
     actualizarBalanceCobro();
 }
 
 function presionarBorrar() {
     montoIngresadoStr = '';
+    document.getElementById('inputMontoIngreso').value = '';
     actualizarBalanceCobro();
 }
 
 function presionarRetroceso() {
     montoIngresadoStr = montoIngresadoStr.slice(0, -1);
+    document.getElementById('inputMontoIngreso').value = montoIngresadoStr;
+    actualizarBalanceCobro();
+}
+
+// Al escribir directamente desde teclado físico en la pantalla
+function alEscribirEnInput(val) {
+    montoIngresadoStr = val.replace(/[^0-9\.]/g, '');
+    document.getElementById('inputMontoIngreso').value = montoIngresadoStr;
     actualizarBalanceCobro();
 }
 
@@ -817,6 +856,7 @@ function presionarExacto() {
     } else {
         montoIngresadoStr = (restante * tasaPos).toFixed(2);
     }
+    document.getElementById('inputMontoIngreso').value = montoIngresadoStr;
     actualizarBalanceCobro();
 }
 
@@ -881,10 +921,12 @@ function seleccionarMetodo(elemento, metodo) {
         monedaEntrada = 'BS';
         document.getElementById('btnMonedaUSD').classList.remove('active');
         document.getElementById('btnMonedaBS').classList.add('active');
+        document.getElementById('txtSimboloMoneda').innerText = 'Bs';
     } else {
         monedaEntrada = 'USD';
         document.getElementById('btnMonedaUSD').classList.add('active');
         document.getElementById('btnMonedaBS').classList.remove('active');
+        document.getElementById('txtSimboloMoneda').innerText = '$';
     }
 
     if (metodo === 'Pago Mixto') {
@@ -908,7 +950,8 @@ function seleccionarMetodo(elemento, metodo) {
 function agregarAbonoMixto() {
     const rawVal = parseFloat(montoIngresadoStr) || 0.0;
     if (rawVal <= 0) {
-        alert("Ingrese un monto en el teclado para abonar.");
+        alert("Ingrese un monto para abonar.");
+        document.getElementById('inputMontoIngreso').focus();
         return;
     }
 
@@ -924,6 +967,7 @@ function agregarAbonoMixto() {
     });
 
     montoIngresadoStr = '';
+    document.getElementById('inputMontoIngreso').value = '';
     document.getElementById('inputReferencia').value = '';
     renderizarAbonos();
     actualizarBalanceCobro();
@@ -994,7 +1038,7 @@ function ejecutarVenta(emitirTicket = true) {
             nombre: p.nombre,
             cantidad: p.cantidad,
             precio: pUnit,
-            precio_bs: p.precio_bs || (pUnit * 1.15)
+            precio_bs: p.precio_bs || (pUnit * tasaPos)
         };
     });
 
@@ -1035,6 +1079,7 @@ function ejecutarVenta(emitirTicket = true) {
                 alert("¡Pago registrado con éxito en el sistema!");
                 carrito = [];
                 montoIngresadoStr = '';
+                document.getElementById('inputMontoIngreso').value = '';
                 abonosRegistrados = [];
                 renderizarCarrito();
                 window.location.reload();
@@ -1045,6 +1090,27 @@ function ejecutarVenta(emitirTicket = true) {
     })
     .catch(() => alert("Error en comunicación con el servidor."));
 }
+
+// Soporte global para teclado físico: pulsa números del teclado de la laptop o teclado numérico
+document.addEventListener('keydown', function(e) {
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.id === 'inputCodigoBarras' || activeEl.id === 'inputReferencia' || activeEl.id === 'inputClienteNombre' || activeEl.id === 'inputClienteTelefono' || activeEl.id === 'claveAdminCierre')) {
+        return;
+    }
+
+    if ((e.key >= '0' && e.key <= '9') || e.key === '.') {
+        presionarTecla(e.key);
+    } else if (e.key === 'Backspace') {
+        presionarRetroceso();
+    } else if (e.key === 'Escape') {
+        presionarBorrar();
+    } else if (e.key === 'Enter') {
+        const btnPago = document.getElementById('btnRegistrarPago');
+        if (btnPago && !btnPago.disabled) {
+            ejecutarVenta(true);
+        }
+    }
+});
 
 let modalCierreInstance = null;
 function abrirModalCierre() {
