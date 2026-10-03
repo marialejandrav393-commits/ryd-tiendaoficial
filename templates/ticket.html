@@ -3,32 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nota de Entrega #{{ "%06d"|format(venta.id) }} - RyD</title>
+    <title>Comprobante #{{ "%06d"|format(venta.id) }} - RyD</title>
     <style>
+        /* Ajuste exacto para rollo térmico de 58mm / 80mm */
+        @page {
+            size: 58mm auto;
+            margin: 0;
+        }
         body {
             font-family: 'Courier New', Courier, monospace;
             background-color: #F8F5F0;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
-        .ticket {
-            width: 330px;
+        .ticket-termico {
+            width: 220px;
             background: #FFFFFF;
-            padding: 18px;
-            border: 1.5px dashed #C5A059;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
-            font-size: 12px;
-            color: #2C2620;
+            padding: 10px 8px;
+            border: 1px dashed #C5A059;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+            font-size: 11px;
+            line-height: 1.25;
+            color: #000000;
         }
         .text-center { text-align: center; }
         .text-end { text-align: right; }
         .fw-bold { font-weight: bold; }
-        .divider { border-top: 1px dashed #827668; margin: 10px 0; }
-        table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        td, th { padding: 4px 0; }
+        .divider { border-top: 1px dashed #000000; margin: 6px 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 10px; }
+        td, th { padding: 3px 0; vertical-align: top; }
         
         .btn-whatsapp {
             display: block;
@@ -36,16 +42,16 @@
             background: #25D366;
             color: #FFFFFF;
             border: none;
-            padding: 11px;
+            padding: 9px;
             font-weight: bold;
-            margin-top: 12px;
+            margin-top: 10px;
             cursor: pointer;
             text-transform: uppercase;
             text-align: center;
             text-decoration: none;
-            border-radius: 6px;
-            font-size: 12px;
-            box-shadow: 0 2px 6px rgba(37, 211, 102, 0.35);
+            border-radius: 5px;
+            font-size: 11px;
+            box-shadow: 0 2px 5px rgba(37, 211, 102, 0.35);
         }
         .btn-imprimir {
             display: block;
@@ -53,38 +59,39 @@
             background: #C5A059;
             color: #FFFFFF;
             border: none;
-            padding: 9px;
+            padding: 8px;
             font-weight: bold;
-            margin-top: 8px;
+            margin-top: 6px;
             cursor: pointer;
             text-transform: uppercase;
-            border-radius: 6px;
-            font-size: 12px;
+            border-radius: 5px;
+            font-size: 11px;
         }
         @media print {
-            body { background: #FFFFFF; padding: 0; }
-            .ticket { border: none; box-shadow: none; width: 100%; }
-            .btn-whatsapp, .btn-imprimir, .no-print { display: none; }
+            body { background: #FFFFFF; padding: 0; margin: 0; }
+            .ticket-termico { border: none; box-shadow: none; width: 100%; padding: 4px; }
+            .no-print { display: none !important; }
         }
     </style>
 </head>
 <body>
 
-<div class="ticket">
+<div class="ticket-termico">
     <div class="text-center">
-        <h2 style="margin: 0; color: #9D7B38; letter-spacing: 2px;">RyD TIENDA</h2>
-        <small>Cosmética, Belleza y Cuidado Integral</small><br>
-        <small>Valencia, Carabobo - Venezuela</small>
+        <strong style="font-size: 14px; letter-spacing: 1px;">RyD TIENDA</strong><br>
+        <span style="font-size: 9px;">Cosmética y Belleza Integral</span><br>
+        <span style="font-size: 9px;">Valencia, Carabobo - VE</span>
     </div>
 
     <div class="divider"></div>
 
-    <div>
-        <strong>Nota de Entrega N°:</strong> #{{ "%06d"|format(venta.id) }}<br>
-        <strong>Fecha:</strong> {{ venta.fecha }}<br>
-        <strong>Cliente:</strong> {{ venta.cliente_nombre|default('Cliente') }}<br>
-        <strong>Cajero:</strong> {{ venta.usuario }}<br>
-        <strong>Tasa Oficial:</strong> Bs. {{ "%.2f"|format(venta.tasa_cambio|default(50.0)) }}
+    <div style="font-size: 10px;">
+        <strong>NOTA N°:</strong> #{{ "%06d"|format(venta.id) }}<br>
+        <strong>FECHA:</strong> {{ venta.fecha }}<br>
+        <strong>CLIENTE:</strong> {{ venta.cliente_nombre|default('Cliente Mostrador') }}<br>
+        <strong>TLF:</strong> {{ venta.cliente_telefono if venta.cliente_telefono else 'N/A' }}<br>
+        <strong>CAJERO:</strong> {{ venta.usuario }}<br>
+        <strong>TASA:</strong> Bs. {{ "%.2f"|format(venta.tasa_cambio|default(50.0)) }}
     </div>
 
     <div class="divider"></div>
@@ -92,19 +99,17 @@
     <table>
         <thead>
             <tr>
-                <th style="text-align: left;">Cant / Descripción</th>
-                <th class="text-end">P.Unit ($)</th>
-                <th class="text-end">Total ($)</th>
+                <th style="text-align: left;">Cant/Desc</th>
+                <th class="text-end">Total</th>
             </tr>
         </thead>
         <tbody>
             {% for d in detalles %}
             <tr>
-                <td colspan="3" style="padding-top: 5px; font-weight: bold;">{{ d.nombre_producto }}</td>
+                <td colspan="2" style="font-weight: bold; padding-top: 3px;">{{ d.nombre_producto }}</td>
             </tr>
             <tr>
-                <td style="color: #827668;">Cant: {{ d.cantidad }}</td>
-                <td class="text-end">${{ "%.2f"|format(d.precio_unitario) }}</td>
+                <td style="color: #444;">{{ d.cantidad }} x ${{ "%.2f"|format(d.precio_unitario) }}</td>
                 <td class="text-end fw-bold">${{ "%.2f"|format(d.subtotal) }}</td>
             </tr>
             {% endfor %}
@@ -113,68 +118,71 @@
 
     <div class="divider"></div>
 
-    <div class="text-end">
-        <div style="font-size: 14px;"><strong>TOTAL USD:</strong> ${{ "%.2f"|format(venta.total) }}</div>
-        <div style="font-size: 13px; color: #827668;"><strong>TOTAL BS:</strong> Bs. {{ "%.2f"|format(venta.monto_bs|default(venta.total * 50.0)) }}</div>
+    <div class="text-end" style="font-size: 12px;">
+        <strong>TOTAL USD:</strong> ${{ "%.2f"|format(venta.total) }}<br>
+        <strong style="font-size: 11px;">TOTAL BS:</strong> Bs. {{ "%.2f"|format(venta.monto_bs|default(venta.total * 50.0)) }}
     </div>
 
     <div class="divider"></div>
 
-    <div>
-        <strong>Modalidad de Pago:</strong> {{ venta.metodo_pago }}<br>
+    <div style="font-size: 9px;">
+        <strong>PAGO:</strong> {{ venta.metodo_pago }}<br>
         {% if venta.referencia and venta.referencia != 'N/A' %}
-        <strong>Referencia:</strong> {{ venta.referencia }}<br>
+        <strong>REF:</strong> {{ venta.referencia }}<br>
         {% endif %}
         {% if venta.desglose_pago %}
-        <div style="margin-top: 4px; font-size: 10px; color: #555;">
-            <strong>Desglose:</strong> {{ venta.desglose_pago }}
-        </div>
+        <span>{{ venta.desglose_pago }}</span>
         {% endif %}
     </div>
 
     <div class="divider"></div>
 
-    <div class="text-center" style="font-size: 10px;">
+    <div class="text-center" style="font-size: 9px;">
         ¡Gracias por su compra!<br>
-        Conserve este comprobante para cambios de mercancía.
+        Conserve su comprobante.
     </div>
 
-    <div class="no-print mt-3">
-        <div class="mb-2">
-            <label style="font-size: 10px; text-transform: uppercase; font-weight: bold; color: #827668; display: block; text-align: center; margin-bottom: 2px;">Número WhatsApp de Emisión:</label>
-            <input type="text" id="telDestinoWA" class="form-control form-control-sm text-center" 
-                   value="{{ venta.cliente_telefono|default('04244042825') }}" placeholder="04244042825" 
-                   style="width: 100%; padding: 6px; box-sizing: border-box; font-size: 13px; font-weight: bold; color: #1e7e34; border: 1.5px solid #25D366; border-radius: 4px;">
+    <!-- Botones de Acción -->
+    <div class="no-print mt-2">
+        <div class="mb-1">
+            <input type="text" id="telDestinoWA" class="text-center" 
+                   value="{{ venta.cliente_telefono }}" placeholder="Número WhatsApp" 
+                   style="width: 100%; padding: 4px; box-sizing: border-box; font-size: 11px; font-weight: bold; border: 1px solid #25D366; border-radius: 4px;">
         </div>
 
         <button type="button" class="btn-whatsapp" onclick="enviarNotaWhatsApp()">
-            Enviar Nota por WhatsApp
+            Enviar por WhatsApp
         </button>
 
         <button type="button" class="btn-imprimir" onclick="window.print()">
-            Imprimir Comprobante
+            Imprimir en Físico
         </button>
 
-        <a href="/cajero/pos" style="display: block; text-align: center; margin-top: 10px; font-size: 11px; color: #827668; text-decoration: none;">
-            ← Volver al Terminal de Cobro
-        </a>
+        <button type="button" onclick="window.close()" style="background: none; border: none; font-size: 10px; color: #827668; text-decoration: underline; width: 100%; margin-top: 6px; cursor: pointer;">
+            Cerrar Ventana
+        </button>
     </div>
 </div>
 
 <script>
 function enviarNotaWhatsApp() {
-    let inputTel = document.getElementById('telDestinoWA').value.trim() || '04244042825';
+    let inputTel = document.getElementById('telDestinoWA').value.trim();
+    if (!inputTel) {
+        inputTel = prompt("Ingresa el número de WhatsApp del cliente:");
+        if (!inputTel) return;
+    }
+
     let telLimpio = inputTel.replace(/[^0-9]/g, '');
     if (telLimpio.startsWith('0')) {
         telLimpio = '58' + telLimpio.substring(1);
     }
 
-    let mensaje = `✨ *COMPROBANTE / NOTA DE ENTREGA RyD* ✨\n`;
+    let mensaje = ` *COMPROBANTE / NOTA DE ENTREGA RyD* \n`;
     mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
     mensaje += `*Nota N°:* #{{ "%06d"|format(venta.id) }}\n`;
     mensaje += `*Fecha:* {{ venta.fecha }}\n`;
-    mensaje += `*Cliente:* {{ venta.cliente_nombre|default('Cliente') }}\n`;
-    mensaje += `*Tasa Oficial:* Bs. {{ "%.2f"|format(venta.tasa_cambio|default(50.0)) }}\n`;
+    mensaje += `*Cliente:* {{ venta.cliente_nombre|default('Cliente Mostrador') }}\n`;
+    mensaje += `*Tasa:* Bs. {{ "%.2f"|format(venta.tasa_cambio|default(50.0)) }}\n`;
     mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
     mensaje += `*DETALLE DE ARTÍCULOS:*\n`;
 
@@ -191,14 +199,10 @@ function enviarNotaWhatsApp() {
     {% if venta.referencia and venta.referencia != 'N/A' %}
     mensaje += `*Referencia:* {{ venta.referencia }}\n`;
     {% endif %}
-    {% if venta.desglose_pago %}
-    mensaje += `*Desglose:* {{ venta.desglose_pago }}\n`;
-    {% endif %}
     mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    mensaje += `¡Muchas gracias por su preferencia! 💖`;
+    mensaje += `¡Muchas gracias por su compra!`;
 
-    const url = `https://wa.me/${telLimpio}?text=${encodeURIComponent(mensaje)}`;
-    window.open(url, '_blank');
+    window.open(`https://wa.me/${telLimpio}?text=${encodeURIComponent(mensaje)}`, '_blank');
 }
 </script>
 </body>
