@@ -699,22 +699,22 @@ def procesar_factura_ocr():
                 
                 try:
                     c_val = float(row[col_costo]) if col_costo and pd.notna(row[col_costo]) else 0.0
-                except:
+                except Exception:
                     c_val = 0.0
 
                 try:
                     s_val = int(row[col_stock]) if col_stock and pd.notna(row[col_stock]) else 1
-                except:
+                except Exception:
                     s_val = 1
 
                 try:
                     p_bs_val = float(row[col_precio_bs]) if col_precio_bs and pd.notna(row[col_precio_bs]) else (c_val * 1.5525)
-                except:
+                except Exception:
                     p_bs_val = c_val * 1.5525
 
                 try:
                     p_val = float(row[col_precio]) if col_precio and pd.notna(row[col_precio]) else (c_val * 1.35)
-                except:
+                except Exception:
                     p_val = c_val * 1.35
 
                 cat_val = str(row[col_cat]).strip() if col_cat and pd.notna(row[col_cat]) else clasificar_categoria_ryd(nom)
@@ -810,7 +810,7 @@ def procesar_factura_ocr():
                                 costo_encontrado = f2; break
                             if abs(cant * f1 - f2) < 0.05:
                                 costo_encontrado = f1; break
-                        except:
+                        except Exception:
                             continue
 
                     if costo_encontrado is None:
@@ -884,7 +884,7 @@ def procesar_factura_ocr():
                                 try:
                                     cost = float(p_clean)
                                     break
-                                except:
+                                except Exception:
                                     pass
 
                     if not any(k in nom.upper() for k in ['TOTAL', 'SUBTOTAL', 'DESCUENTO', 'EXENTO', 'IVA']):
@@ -922,4 +922,46 @@ def historial_ventas():
             'id': v['id'],
             'fecha': v['fecha'],
             'total': float(v['total'] or 0.0),
-            '
+            'metodo_pago': v['metodo_pago'] if 'metodo_pago' in v else 'Efectivo $',
+            'referencia': v['referencia'] if 'referencia' in v else 'N/A',
+            'usuario': v['usuario'] if 'usuario' in v else 'Cajero',
+            'desglose_pago': v['desglose_pago'] if 'desglose_pago' in v else '',
+            'cliente_nombre': v['cliente_nombre'] if 'cliente_nombre' in v else 'Cliente',
+            'cliente_telefono': v['cliente_telefono'] if 'cliente_telefono' in v else '',
+            'items': detalles
+        })
+    return render_template('ventas.html', ventas=ventas_lista)
+
+@app.route('/cierre-caja')
+@role_required('admin')
+def cierre_caja():
+    hoy = date.today().strftime('%Y-%m-%d')
+    try:
+        ventas_hoy = ejecutar_consulta("SELECT * FROM ventas WHERE fecha LIKE ? ORDER BY id DESC", (f"{hoy}%",), fetchall=True) or []
+        total_usd = sum(float(v['total'] or 0.0) for v in ventas_hoy)
+        metodos_totales = {}
+        for v in ventas_hoy:
+            m = v['metodo_pago'] if 'metodo_pago' in v else 'Efectivo $'
+            tot = float(v['total'] or 0.0)
+            metodos_totales[m] = metodos_totales.get(m, 0.0) + tot
+    except Exception:
+        ventas_hoy = []
+        total_usd = 0.0
+        metodos_totales = {}
+
+    return render_template('cierre_caja.html', ventas=ventas_hoy, total_usd=round(total_usd, 2), metodos=metodos_totales, fecha=hoy)
+
+# --- RUTAS DE INSTALACIÓN PWA ---
+
+@app.route('/manifest.json')
+def manifest():
+    return send_file(os.path.join(app.root_path, 'static', 'manifest.json'), mimetype='application/manifest+json')
+
+@app.route('/sw.js')
+def service_worker():
+    response = send_file(os.path.join(app.root_path, 'static', 'sw.js'), mimetype='application/javascript')
+    response.headers['Service-Worker-Allowed'] = '/'
+    return response
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
