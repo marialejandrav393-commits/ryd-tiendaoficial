@@ -1,6 +1,7 @@
+Flask
+gunicorn
 psycopg2-binary
 pandas
 openpyxl
 pypdf
-Flask
 Werkzeug
