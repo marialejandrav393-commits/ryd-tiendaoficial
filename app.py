@@ -271,14 +271,7 @@ def clasificar_categoria_ryd(descripcion):
         return "Uñas"
     if any(k in desc for k in ['gorro', 'guante', 'desechable', 'tapa boca', 'mascarilla', 'toalla', 'separador', 'palitos', 'hisopo']):
         return "Desechables"
-    if any(k in desc for k in ['shampoo', 'alisado', 'laminado', 'termoprotector', 'blower', 'tratamiento', 'peine', 'difusor', 'ondas', 'cepillo', 'keratina', 'Cuando una plantilla como `importar.html` deja de cargar o no aparece en Flask, casi siempre se debe a un error **404 (Not Found)** o un **TemplateNotFound** en la consola. 
-
-Las causas más frecuentes y cómo solucionarlas:
-
-* **El archivo no está dentro de la carpeta `templates/`:** Flask busca estrictamente las plantillas en una carpeta llamada exactamente `templates` (en minúsculas) al mismo nivel que tu archivo `app.py`. Si por error se movió a la raíz o a `static/`, Flask no lo encontrará.
-* **Error tipográfico en el nombre:** Revisa mayúsculas, minúsculas o dobles extensiones (por ejemplo, que no haya quedado guardado como `importar.html.html` o `Importar.html`).
-* **La ruta en `app.py` cambió o no coincide:** Verifica que la función que atiende la URL tenga el llamado exacto:
-  ```python
+if any(k in desc for k in ['shampoo', 'alisado', 'laminado', 'termoprotector', 'blower', 'tratamiento', 'peine', 'difusor', 'ondas', 'cepillo', 'keratina']):
   @app.route('/importar')
   def importar():
       return render_template('importar.html')
