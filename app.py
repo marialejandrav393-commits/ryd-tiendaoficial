@@ -9,6 +9,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.utils import secure_filename
 from pypdf import PdfReader
 import pandas as pd
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_super_segura_ryd_2026'
@@ -19,105 +21,182 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+# Detección de la base de datos permanente en Neon
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
-def normalizar_texto(texto):
-    if not isinstance(texto, str):
-        return str(texto)
-    texto = unicodedata.normalize('NFD', texto)
-    texto = ''.join(c for c in texto if unicodedata.category(c) != 'Mn')
-    return texto.strip().lower()
+def es_postgres():
+    return bool(DATABASE_URL and DATABASE_URL.startswith(('postgres://', 'postgresql://')))
 
 def obtener_conexion():
-    conn = sqlite3.connect('inventario.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+    if es_postgres():
+        url = DATABASE_URL
+        if url.startswith('postgres://'):
+            url = url.replace('postgres://', 'postgresql://', 1)
+        return psycopg2.connect(url, sslmode='require')
+    else:
+        conn = sqlite3.connect('inventario.db')
+        conn.row_factory = sqlite3.Row
+        return conn
+
+def ejecutar_consulta(query, params=(), fetchone=False, fetchall=False, commit=False, lastrowid=False):
+    conn = obtener_conexion()
+    if es_postgres():
+        query_pg = query.replace('?', '%s')
+        if lastrowid and 'INSERT' in query_pg.upper() and 'RETURNING id' not in query_pg.upper():
+            query_pg += ' RETURNING id'
+
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute(query_pg, params)
+        res = None
+        if lastrowid:
+            fila = cursor.fetchone()
+            res = fila['id'] if fila else None
+        elif fetchone:
+            res = cursor.fetchone()
+        elif fetchall:
+            res = cursor.fetchall()
+
+        if commit:
+            conn.commit()
+        cursor.close()
+        conn.close()
+        return res
+    else:
+        cursor = conn.cursor()
+        cursor.execute(query, params)
+        res = None
+        if lastrowid:
+            res = cursor.lastrowid
+        elif fetchone:
+            res = cursor.fetchone()
+        elif fetchall:
+            res = cursor.fetchall()
+
+        if commit:
+            conn.commit()
+        cursor.close()
+        conn.close()
+        return res
 
 def inicializar_db():
     conn = obtener_conexion()
-    cursor = conn.cursor()
-
-    # 1. Tabla productos
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS productos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            codigo TEXT,
-            nombre TEXT NOT NULL,
-            costo REAL DEFAULT 0.0,
-            precio_bs REAL DEFAULT 0.0,
-            precio REAL NOT NULL,
-            stock INTEGER NOT NULL DEFAULT 0,
-            categoria TEXT DEFAULT 'General',
-            descuento REAL DEFAULT 0.0,
-            imagen TEXT
-        )
-    ''')
-
-    for col_def in ['imagen TEXT', 'descuento REAL DEFAULT 0.0', 'costo REAL DEFAULT 0.0', 'precio_bs REAL DEFAULT 0.0']:
-        try:
-            cursor.execute(f'ALTER TABLE productos ADD COLUMN {col_def}')
-        except sqlite3.OperationalError:
-            pass
-
-    # Migración de productos si tuviese restricción UNIQUE previa
-    try:
-        sql_def = cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='productos'").fetchone()
-        if sql_def and 'UNIQUE' in sql_def[0].upper() and 'CODIGO' in sql_def[0].upper():
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS productos_nuevo (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    codigo TEXT,
-                    nombre TEXT NOT NULL,
-                    costo REAL DEFAULT 0.0,
-                    precio_bs REAL DEFAULT 0.0,
-                    precio REAL NOT NULL,
-                    stock INTEGER NOT NULL DEFAULT 0,
-                    categoria TEXT DEFAULT 'General',
-                    descuento REAL DEFAULT 0.0,
-                    imagen TEXT
-                )
-            ''')
-            cursor.execute('''
-                INSERT INTO productos_nuevo (id, codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento, imagen)
-                SELECT id, codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento, imagen FROM productos
-            ''')
-            cursor.execute("DROP TABLE productos")
-            cursor.execute("ALTER TABLE productos_nuevo RENAME TO productos")
-    except Exception:
-        pass
-
-    # 2. Tabla proveedores
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS proveedores (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT UNIQUE NOT NULL,
-            telefono TEXT DEFAULT '',
-            contacto TEXT DEFAULT '',
-            direccion TEXT DEFAULT '',
-            rif TEXT DEFAULT '',
-            ultima_compra TEXT DEFAULT '',
-            total_compras REAL DEFAULT 0.0
-        )
-    ''')
-
-    for col_prov in [
-        'telefono TEXT DEFAULT ""',
-        'contacto TEXT DEFAULT ""',
-        'direccion TEXT DEFAULT ""',
-        'rif TEXT DEFAULT ""',
-        'ultima_compra TEXT DEFAULT ""',
-        'total_compras REAL DEFAULT 0.0'
-    ]:
-        try:
-            cursor.execute(f'ALTER TABLE proveedores ADD COLUMN {col_prov}')
-        except sqlite3.OperationalError:
-            pass
-
-    # 3. Migración y Reconstrucción definitiva de la tabla ventas para eliminar el bloqueo NOT NULL
-    try:
+    if es_postgres():
+        cursor = conn.cursor()
+        # 1. Productos en Postgres
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS ventas_nueva (
+            CREATE TABLE IF NOT EXISTS productos (
+                id SERIAL PRIMARY KEY,
+                codigo TEXT,
+                nombre TEXT NOT NULL,
+                costo NUMERIC DEFAULT 0.0,
+                precio_bs NUMERIC DEFAULT 0.0,
+                precio NUMERIC NOT NULL,
+                stock INTEGER NOT NULL DEFAULT 0,
+                categoria TEXT DEFAULT 'General',
+                descuento NUMERIC DEFAULT 0.0,
+                imagen TEXT
+            )
+        ''')
+
+        # 2. Proveedores en Postgres
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS proveedores (
+                id SERIAL PRIMARY KEY,
+                nombre TEXT UNIQUE NOT NULL,
+                telefono TEXT DEFAULT '',
+                contacto TEXT DEFAULT '',
+                direccion TEXT DEFAULT '',
+                rif TEXT DEFAULT '',
+                ultima_compra TEXT DEFAULT '',
+                total_compras NUMERIC DEFAULT 0.0
+            )
+        ''')
+
+        # 3. Ventas en Postgres
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ventas (
+                id SERIAL PRIMARY KEY,
+                fecha TEXT NOT NULL,
+                total NUMERIC DEFAULT 0.0,
+                metodo_pago TEXT DEFAULT 'Efectivo $',
+                referencia TEXT DEFAULT '',
+                usuario TEXT DEFAULT 'Cajero',
+                producto_nombre TEXT DEFAULT '',
+                tasa_cambio NUMERIC DEFAULT 50.0,
+                monto_bs NUMERIC DEFAULT 0.0,
+                desglose_pago TEXT DEFAULT '',
+                cliente_nombre TEXT DEFAULT 'Cliente',
+                cliente_telefono TEXT DEFAULT '',
+                cantidad INTEGER DEFAULT 1,
+                precio NUMERIC DEFAULT 0.0
+            )
+        ''')
+
+        # 4. Detalle Ventas en Postgres
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS detalle_ventas (
+                id SERIAL PRIMARY KEY,
+                venta_id INTEGER REFERENCES ventas(id) ON DELETE CASCADE,
+                producto_id INTEGER,
+                nombre_producto TEXT,
+                cantidad INTEGER,
+                precio_unitario NUMERIC,
+                precio_unitario_bs NUMERIC DEFAULT 0.0,
+                subtotal NUMERIC
+            )
+        ''')
+
+        # 5. Usuarios en Postgres
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id SERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                rol TEXT NOT NULL DEFAULT 'cajero'
+            )
+        ''')
+
+        cursor.execute("SELECT id FROM usuarios WHERE username = 'admin'")
+        if not cursor.fetchone():
+            cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('admin', 'admin123', 'admin')")
+
+        cursor.execute("SELECT id FROM usuarios WHERE username = 'cajero'")
+        if not cursor.fetchone():
+            cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('cajero', 'cajero2026', 'cajero')")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+    else:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS productos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                codigo TEXT,
+                nombre TEXT NOT NULL,
+                costo REAL DEFAULT 0.0,
+                precio_bs REAL DEFAULT 0.0,
+                precio REAL NOT NULL,
+                stock INTEGER NOT NULL DEFAULT 0,
+                categoria TEXT DEFAULT 'General',
+                descuento REAL DEFAULT 0.0,
+                imagen TEXT
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS proveedores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT UNIQUE NOT NULL,
+                telefono TEXT DEFAULT '',
+                contacto TEXT DEFAULT '',
+                direccion TEXT DEFAULT '',
+                rif TEXT DEFAULT '',
+                ultima_compra TEXT DEFAULT '',
+                total_compras REAL DEFAULT 0.0
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ventas (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 fecha TEXT NOT NULL,
                 total REAL DEFAULT 0.0,
@@ -129,69 +208,41 @@ def inicializar_db():
                 monto_bs REAL DEFAULT 0.0,
                 desglose_pago TEXT DEFAULT '',
                 cliente_nombre TEXT DEFAULT 'Cliente',
-                cliente_telefono TEXT DEFAULT '04244042825',
+                cliente_telefono TEXT DEFAULT '',
                 cantidad INTEGER DEFAULT 1,
                 precio REAL DEFAULT 0.0
             )
         ''')
-        
-        # Verificar si la tabla ventas ya existe
-        check_ventas = cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ventas'").fetchone()
-        if check_ventas:
-            cols_old = [c[1] for c in cursor.execute("PRAGMA table_info(ventas)").fetchall()]
-            cols_new = [c[1] for c in cursor.execute("PRAGMA table_info(ventas_nueva)").fetchall()]
-            common_cols = [c for c in cols_old if c in cols_new]
-            if common_cols:
-                common_str = ', '.join(common_cols)
-                cursor.execute(f"INSERT INTO ventas_nueva ({common_str}) SELECT {common_str} FROM ventas")
-            cursor.execute("DROP TABLE ventas")
-            cursor.execute("ALTER TABLE ventas_nueva RENAME TO ventas")
-        else:
-            cursor.execute("ALTER TABLE ventas_nueva RENAME TO ventas")
-    except Exception:
-        pass
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS detalle_ventas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                venta_id INTEGER,
+                producto_id INTEGER,
+                nombre_producto TEXT,
+                cantidad INTEGER,
+                precio_unitario REAL,
+                precio_unitario_bs REAL DEFAULT 0.0,
+                subtotal REAL
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                rol TEXT NOT NULL DEFAULT 'cajero'
+            )
+        ''')
+        cursor.execute("SELECT id FROM usuarios WHERE username = 'admin'")
+        if not cursor.fetchone():
+            cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('admin', 'admin123', 'admin')")
+        cursor.execute("SELECT id FROM usuarios WHERE username = 'cajero'")
+        if not cursor.fetchone():
+            cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('cajero', 'cajero2026', 'cajero')")
 
-    # 4. Tabla detalle ventas
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS detalle_ventas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            venta_id INTEGER,
-            producto_id INTEGER,
-            nombre_producto TEXT,
-            cantidad INTEGER,
-            precio_unitario REAL,
-            precio_unitario_bs REAL DEFAULT 0.0,
-            subtotal REAL,
-            FOREIGN KEY (venta_id) REFERENCES ventas(id)
-        )
-    ''')
-
-    for col_def in ['precio_unitario_bs REAL DEFAULT 0.0']:
-        try:
-            cursor.execute(f'ALTER TABLE detalle_ventas ADD COLUMN {col_def}')
-        except sqlite3.OperationalError:
-            pass
-
-    # 5. Tabla usuarios
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            rol TEXT NOT NULL DEFAULT 'cajero'
-        )
-    ''')
-
-    cursor.execute("SELECT id FROM usuarios WHERE username = 'admin'")
-    if not cursor.fetchone():
-        cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('admin', 'admin123', 'admin')")
-
-    cursor.execute("SELECT id FROM usuarios WHERE username = 'cajero'")
-    if not cursor.fetchone():
-        cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('cajero', 'cajero2026', 'cajero')")
-
-    conn.commit()
-    conn.close()
+        conn.commit()
+        cursor.close()
+        conn.close()
 
 inicializar_db()
 
@@ -250,18 +301,17 @@ def login():
             session['user_role'] = 'cajero'
             return redirect(url_for('pos_cajero'))
 
-        conn = obtener_conexion()
-        user_info = conn.execute(
+        user_info = ejecutar_consulta(
             'SELECT * FROM usuarios WHERE LOWER(username) = ? AND password = ?',
-            (usuario, password)
-        ).fetchone()
-        conn.close()
+            (usuario, password),
+            fetchone=True
+        )
 
         if user_info:
             session['logged_in'] = True
             session['user_id'] = user_info['id']
             session['username'] = user_info['username']
-            rol_obtenido = user_info['rol'] if 'rol' in user_info.keys() else 'cajero'
+            rol_obtenido = user_info['rol'] if 'rol' in user_info else 'cajero'
             session['user_role'] = rol_obtenido
 
             if rol_obtenido == 'admin':
@@ -279,7 +329,7 @@ def logout():
     return redirect(url_for('login'))
 
 
-# --- PUNTO DE VENTA (POS) BLINDADO ---
+# --- PUNTO DE VENTA (POS) PERMANENTE ---
 
 @app.route('/')
 def index():
@@ -292,11 +342,9 @@ def index():
 @app.route('/cajero/pos')
 @role_required('admin', 'cajero')
 def pos_cajero():
-    conn = obtener_conexion()
-    productos = conn.execute('SELECT * FROM productos WHERE stock > 0 ORDER BY nombre ASC').fetchall()
-    categorias_rows = conn.execute('SELECT DISTINCT categoria FROM productos WHERE stock > 0').fetchall()
+    productos = ejecutar_consulta('SELECT * FROM productos WHERE stock > 0 ORDER BY nombre ASC', fetchall=True) or []
+    categorias_rows = ejecutar_consulta('SELECT DISTINCT categoria FROM productos WHERE stock > 0', fetchall=True) or []
     categorias = [row['categoria'] for row in categorias_rows if row['categoria']]
-    conn.close()
     return render_template('pos.html', productos=productos, categorias=categorias)
 
 @app.route('/procesar_venta', methods=['POST'])
@@ -310,15 +358,13 @@ def procesar_venta():
     referencia = data.get('referencia', 'N/A')
     tasa_cambio = float(data.get('tasa_cambio', 50.0))
     desglose_pago = data.get('desglose_pago', '')
-    cliente_nombre = data.get('cliente_nombre', 'Cliente')
-    cliente_telefono = data.get('cliente_telefono', '04244042825')
+    cliente_nombre = data.get('cliente_nombre', 'Cliente Mostrador')
+    cliente_telefono = data.get('cliente_telefono', '')
     usuario = session.get('username', 'Cajero')
 
     if not items:
         return jsonify({'exito': False, 'mensaje': 'El carrito está vacío'}), 400
 
-    conn = obtener_conexion()
-    cursor = conn.cursor()
     try:
         total_venta = sum(float(item['precio']) * int(item['cantidad']) for item in items)
         total_unidades = sum(int(item.get('cantidad', 1)) for item in items)
@@ -329,34 +375,16 @@ def procesar_venta():
         if len(items) > 3:
             resumen_nombres += f" (+{len(items)-3} más)"
 
-        # Diccionario con todos los campos posibles para evitar fallos de columnas
-        cols_ventas = [c[1] for c in cursor.execute("PRAGMA table_info(ventas)").fetchall()]
-        datos_venta = {
-            'fecha': fecha_hora,
-            'total': round(total_venta, 2),
-            'metodo_pago': metodo_pago,
-            'referencia': referencia,
-            'usuario': usuario,
-            'producto_nombre': resumen_nombres,
-            'tasa_cambio': tasa_cambio,
-            'monto_bs': monto_bs,
-            'desglose_pago': desglose_pago,
-            'cliente_nombre': cliente_nombre,
-            'cliente_telefono': cliente_telefono,
-            'cantidad': total_unidades,
-            'precio': round(total_venta, 2)
-        }
+        # Inserción segura en Neon
+        venta_id = ejecutar_consulta('''
+            INSERT INTO ventas (fecha, total, metodo_pago, referencia, usuario, producto_nombre, tasa_cambio, monto_bs, desglose_pago, cliente_nombre, cliente_telefono, cantidad, precio)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            fecha_hora, round(total_venta, 2), metodo_pago, referencia, usuario,
+            resumen_nombres, tasa_cambio, monto_bs, desglose_pago, cliente_nombre,
+            cliente_telefono, total_unidades, round(total_venta, 2)
+        ), commit=True, lastrowid=True)
 
-        cols_insert = [c for c in datos_venta if c in cols_ventas]
-        vals_insert = [datos_venta[c] for c in cols_insert]
-        placeholders = ', '.join(['?'] * len(cols_insert))
-        cols_str = ', '.join(cols_insert)
-
-        cursor.execute(f"INSERT INTO ventas ({cols_str}) VALUES ({placeholders})", vals_insert)
-        venta_id = cursor.lastrowid
-
-        # Inserción en detalle_ventas con descuento de inventario
-        cols_detalle = [c[1] for c in cursor.execute("PRAGMA table_info(detalle_ventas)").fetchall()]
         for it in items:
             cod = it.get('codigo', '')
             nom = it.get('nombre', '')
@@ -365,31 +393,17 @@ def procesar_venta():
             p_unit_bs = round(float(it.get('precio_bs', p_unit * tasa_cambio)), 2)
             subt = round(p_unit * cant, 2)
 
-            cursor.execute('UPDATE productos SET stock = stock - ? WHERE codigo = ? OR nombre = ?', (cant, cod, nom))
-            prod_row = cursor.execute('SELECT id FROM productos WHERE codigo = ? OR nombre = ? LIMIT 1', (cod, nom)).fetchone()
+            ejecutar_consulta('UPDATE productos SET stock = stock - ? WHERE codigo = ? OR nombre = ?', (cant, cod, nom), commit=True)
+            prod_row = ejecutar_consulta('SELECT id FROM productos WHERE codigo = ? OR nombre = ? LIMIT 1', (cod, nom), fetchone=True)
             prod_id = prod_row['id'] if prod_row else None
 
-            datos_det = {
-                'venta_id': venta_id,
-                'producto_id': prod_id,
-                'nombre_producto': nom,
-                'cantidad': cant,
-                'precio_unitario': p_unit,
-                'precio_unitario_bs': p_unit_bs,
-                'subtotal': subt
-            }
-            cols_det_insert = [c for c in datos_det if c in cols_detalle]
-            vals_det_insert = [datos_det[c] for c in cols_det_insert]
-            pl_det = ', '.join(['?'] * len(cols_det_insert))
-            cols_det_str = ', '.join(cols_det_insert)
-            cursor.execute(f"INSERT INTO detalle_ventas ({cols_det_str}) VALUES ({pl_det})", vals_det_insert)
+            ejecutar_consulta('''
+                INSERT INTO detalle_ventas (venta_id, producto_id, nombre_producto, cantidad, precio_unitario, precio_unitario_bs, subtotal)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (venta_id, prod_id, nom, cant, p_unit, p_unit_bs, subt), commit=True)
 
-        conn.commit()
-        conn.close()
         return jsonify({'exito': True, 'venta_id': venta_id})
     except Exception as e:
-        conn.rollback()
-        conn.close()
         return jsonify({'exito': False, 'mensaje': f"Error al procesar: {str(e)}"}), 500
 
 @app.route('/ticket/<int:venta_id>')
@@ -397,24 +411,20 @@ def ticket(venta_id):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
 
-    conn = obtener_conexion()
-    venta = conn.execute('SELECT * FROM ventas WHERE id = ?', (venta_id,)).fetchone()
+    venta = ejecutar_consulta('SELECT * FROM ventas WHERE id = ?', (venta_id,), fetchone=True)
     if not venta:
-        conn.close()
         return "Comprobante no encontrado", 404
 
-    detalles = conn.execute('SELECT * FROM detalle_ventas WHERE venta_id = ?', (venta_id,)).fetchall()
-    conn.close()
+    detalles = ejecutar_consulta('SELECT * FROM detalle_ventas WHERE venta_id = ?', (venta_id,), fetchall=True) or []
     return render_template('ticket.html', venta=venta, detalles=detalles)
 
 
-# --- ADMINISTRACIÓN, INVENTARIO Y RESPALDO ---
+# --- ADMINISTRACIÓN, INVENTARIO Y EXCEL ---
 
 @app.route('/admin')
 @role_required('admin')
 def admin():
-    conn = obtener_conexion()
-    productos_raw = conn.execute('SELECT * FROM productos ORDER BY id DESC').fetchall()
+    productos_raw = ejecutar_consulta('SELECT * FROM productos ORDER BY id DESC', fetchall=True) or []
 
     total_costo_inversion = 0.0
     total_valor_venta = 0.0
@@ -431,13 +441,11 @@ def admin():
 
     total_ventas_usd = 0.0
     try:
-        ventas_total_row = conn.execute('SELECT SUM(total) as total_ventas FROM ventas').fetchone()
+        ventas_total_row = ejecutar_consulta('SELECT SUM(total) as total_ventas FROM ventas', fetchone=True)
         if ventas_total_row and ventas_total_row['total_ventas']:
             total_ventas_usd = float(ventas_total_row['total_ventas'])
     except Exception:
         total_ventas_usd = 0.0
-
-    conn.close()
 
     return render_template(
         'admin.html',
@@ -451,9 +459,7 @@ def admin():
 @app.route('/exportar_inventario_excel')
 @role_required('admin')
 def exportar_inventario_excel():
-    conn = obtener_conexion()
-    
-    productos = conn.execute('SELECT * FROM productos ORDER BY categoria ASC, nombre ASC').fetchall()
+    productos = ejecutar_consulta('SELECT * FROM productos ORDER BY categoria ASC, nombre ASC', fetchall=True) or []
     filas_productos = []
     for p in productos:
         costo = float(p['costo'] or 0.0)
@@ -472,23 +478,21 @@ def exportar_inventario_excel():
             'descuento': float(p['descuento'] or 0.0)
         })
 
-    ventas = conn.execute('SELECT * FROM ventas ORDER BY id DESC').fetchall()
+    ventas = ejecutar_consulta('SELECT * FROM ventas ORDER BY id DESC', fetchall=True) or []
     filas_ventas = []
     for v in ventas:
         filas_ventas.append({
             'Nro Comprobante': f"#{v['id']:06d}",
             'Fecha y Hora': v['fecha'],
-            'Cliente': v['cliente_nombre'] if 'cliente_nombre' in v.keys() else 'Cliente',
-            'Teléfono WhatsApp': v['cliente_telefono'] if 'cliente_telefono' in v.keys() else '04244042825',
-            'Total USD ($)': v['total'],
-            'Total Bs': v['monto_bs'] if 'monto_bs' in v.keys() else 0.0,
+            'Cliente': v['cliente_nombre'] if 'cliente_nombre' in v else 'Cliente',
+            'Teléfono WhatsApp': v['cliente_telefono'] if 'cliente_telefono' in v else '',
+            'Total USD ($)': float(v['total']),
+            'Total Bs': float(v['monto_bs'] or 0.0),
             'Modalidad Pago': v['metodo_pago'],
             'Referencia': v['referencia'],
             'Cajero': v['usuario'],
-            'Desglose': v['desglose_pago'] if 'desglose_pago' in v.keys() else ''
+            'Desglose': v['desglose_pago'] if 'desglose_pago' in v else ''
         })
-
-    conn.close()
 
     salida = io.BytesIO()
     with pd.ExcelWriter(salida, engine='openpyxl') as writer:
@@ -521,13 +525,10 @@ def agregar():
             flash("Código y Nombre son obligatorios")
             return redirect(url_for('agregar'))
 
-        conn = obtener_conexion()
-        conn.execute('''
+        ejecutar_consulta('''
             INSERT INTO productos (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento))
-        conn.commit()
-        conn.close()
+        ''', (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento), commit=True)
         return redirect(url_for('admin'))
 
     return render_template('agregar.html')
@@ -535,7 +536,6 @@ def agregar():
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
 @role_required('admin')
 def editar(id):
-    conn = obtener_conexion()
     if request.method == 'POST':
         codigo = request.form.get('codigo', '').strip()
         nombre = request.form.get('nombre', '').strip()
@@ -545,17 +545,14 @@ def editar(id):
         stock = int(request.form.get('stock', 0) or 0)
         categoria = request.form.get('categoria', 'General').strip()
 
-        conn.execute('''
+        ejecutar_consulta('''
             UPDATE productos 
             SET codigo = ?, nombre = ?, costo = ?, precio_bs = ?, precio = ?, stock = ?, categoria = ? 
             WHERE id = ?
-        ''', (codigo, nombre, costo, precio_bs, precio, stock, categoria, id))
-        conn.commit()
-        conn.close()
+        ''', (codigo, nombre, costo, precio_bs, precio, stock, categoria, id), commit=True)
         return redirect(url_for('admin'))
 
-    producto = conn.execute('SELECT * FROM productos WHERE id = ?', (id,)).fetchone()
-    conn.close()
+    producto = ejecutar_consulta('SELECT * FROM productos WHERE id = ?', (id,), fetchone=True)
     if not producto:
         return "Producto no encontrado", 404
     return render_template('editar.html', producto=producto)
@@ -563,21 +560,16 @@ def editar(id):
 @app.route('/eliminar/<int:id>')
 @role_required('admin')
 def eliminar(id):
-    conn = obtener_conexion()
-    conn.execute('DELETE FROM productos WHERE id = ?', (id,))
-    conn.commit()
-    conn.close()
+    ejecutar_consulta('DELETE FROM productos WHERE id = ?', (id,), commit=True)
     return redirect(url_for('admin'))
 
 
-# --- MÓDULO DE PROVEEDORES Y PARSER UNIVERSAL ---
+# --- MÓDULO DE PROVEEDORES Y PARSER UNIVERSAL EXACTO ---
 
 @app.route('/proveedores')
 @role_required('admin')
 def proveedores():
-    conn = obtener_conexion()
-    proveedores_lista = conn.execute('SELECT * FROM proveedores ORDER BY nombre ASC').fetchall()
-    conn.close()
+    proveedores_lista = ejecutar_consulta('SELECT * FROM proveedores ORDER BY nombre ASC', fetchall=True) or []
     return render_template('proveedores.html', proveedores_guardados=proveedores_lista)
 
 @app.route('/guardar_factura_proveedor', methods=['POST'])
@@ -590,36 +582,28 @@ def guardar_factura_proveedor():
     if not items:
         return jsonify({'exito': False, 'mensaje': 'Sin productos válidos para guardar'}), 400
 
-    conn = obtener_conexion()
-    cursor = conn.cursor()
     try:
-        cols_prov = [c[1] for c in cursor.execute("PRAGMA table_info(proveedores)").fetchall()]
-        for col_name, col_type in [('ultima_compra', 'TEXT DEFAULT ""'), ('total_compras', 'REAL DEFAULT 0.0'), ('telefono', 'TEXT DEFAULT ""')]:
-            if col_name not in cols_prov:
-                try:
-                    cursor.execute(f"ALTER TABLE proveedores ADD COLUMN {col_name} {col_type}")
-                except Exception:
-                    pass
-
+        # Registrar o actualizar proveedor
         if proveedor_nom and proveedor_nom != "Proveedor General":
             monto_compra_actual = sum(float(it.get('costo', 0)) * int(it.get('stock', 0)) for it in items)
             fecha_hoy = date.today().strftime('%Y-%m-%d')
 
-            prov_existente = cursor.execute('SELECT id FROM proveedores WHERE UPPER(nombre) = ?', (proveedor_nom.upper(),)).fetchone()
+            prov_existente = ejecutar_consulta('SELECT id FROM proveedores WHERE UPPER(nombre) = ?', (proveedor_nom.upper(),), fetchone=True)
             if prov_existente:
-                cursor.execute('''
+                ejecutar_consulta('''
                     UPDATE proveedores 
                     SET telefono = CASE WHEN ? != '' THEN ? ELSE telefono END,
                         ultima_compra = ?,
                         total_compras = total_compras + ?
                     WHERE id = ?
-                ''', (telefono_prov, telefono_prov, fecha_hoy, round(monto_compra_actual, 2), prov_existente['id']))
+                ''', (telefono_prov, telefono_prov, fecha_hoy, round(monto_compra_actual, 2), prov_existente['id']), commit=True)
             else:
-                cursor.execute('''
+                ejecutar_consulta('''
                     INSERT INTO proveedores (nombre, telefono, ultima_compra, total_compras)
                     VALUES (?, ?, ?, ?)
-                ''', (proveedor_nom, telefono_prov, fecha_hoy, round(monto_compra_actual, 2)))
+                ''', (proveedor_nom, telefono_prov, fecha_hoy, round(monto_compra_actual, 2)), commit=True)
 
+        # Guardar productos respetando nombres y códigos sin chocar
         for it in items:
             cod = str(it.get('codigo', '')).strip().upper()
             nom = str(it.get('nombre', '')).strip()
@@ -633,29 +617,21 @@ def guardar_factura_proveedor():
             if not nom:
                 continue
 
-            existente = cursor.execute(
-                'SELECT id FROM productos WHERE UPPER(TRIM(nombre)) = ?',
-                (nom.upper(),)
-            ).fetchone()
-
+            existente = ejecutar_consulta('SELECT id FROM productos WHERE UPPER(TRIM(nombre)) = ?', (nom.upper(),), fetchone=True)
             if existente:
-                cursor.execute('''
+                ejecutar_consulta('''
                     UPDATE productos 
                     SET codigo = ?, costo = ?, precio_bs = ?, precio = ?, stock = stock + ?, categoria = ?, descuento = ?
                     WHERE id = ?
-                ''', (cod, costo, precio_bs, precio, stock_nuevo, cat, desc, existente['id']))
+                ''', (cod, costo, precio_bs, precio, stock_nuevo, cat, desc, existente['id']), commit=True)
             else:
-                cursor.execute('''
-                    INSERT OR REPLACE INTO productos (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento)
+                ejecutar_consulta('''
+                    INSERT INTO productos (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (cod, nom, costo, precio_bs, precio, stock_nuevo, cat, desc))
+                ''', (cod, nom, costo, precio_bs, precio, stock_nuevo, cat, desc), commit=True)
 
-        conn.commit()
-        conn.close()
         return jsonify({'exito': True})
     except Exception as e:
-        conn.rollback()
-        conn.close()
         return jsonify({'exito': False, 'mensaje': str(e)}), 500
 
 @app.route('/actualizar_proveedor_telefono', methods=['POST'])
@@ -667,14 +643,10 @@ def actualizar_proveedor_telefono():
     if not prov_id:
         return jsonify({'exito': False, 'mensaje': 'ID requerido'}), 400
 
-    conn = obtener_conexion()
     try:
-        conn.execute('UPDATE proveedores SET telefono = ? WHERE id = ?', (nuevo_tel, prov_id))
-        conn.commit()
-        conn.close()
+        ejecutar_consulta('UPDATE proveedores SET telefono = ? WHERE id = ?', (nuevo_tel, prov_id), commit=True)
         return jsonify({'exito': True})
     except Exception as e:
-        conn.close()
         return jsonify({'exito': False, 'mensaje': str(e)}), 500
 
 @app.route('/procesar_factura_ocr', methods=['POST'])
@@ -950,50 +922,54 @@ def procesar_factura_ocr():
 @app.route('/ventas')
 @role_required('admin')
 def historial_ventas():
-    conn = obtener_conexion()
-    try:
-        ventas_raw = conn.execute('SELECT * FROM ventas ORDER BY id DESC').fetchall()
-        ventas_lista = []
-        for v in ventas_raw:
-            detalles = conn.execute('SELECT * FROM detalle_ventas WHERE venta_id = ?', (v['id'],)).fetchall()
-            ventas_lista.append({
-                'id': v['id'],
-                'fecha': v['fecha'],
-                'total': v['total'] if 'total' in v.keys() else 0.0,
-                'metodo_pago': v['metodo_pago'] if 'metodo_pago' in v.keys() else 'Efectivo $',
-                'referencia': v['referencia'] if 'referencia' in v.keys() else 'N/A',
-                'usuario': v['usuario'] if 'usuario' in v.keys() else 'Cajero',
-                'desglose_pago': v['desglose_pago'] if 'desglose_pago' in v.keys() else '',
-                'cliente_nombre': v['cliente_nombre'] if 'cliente_nombre' in v.keys() else 'Cliente',
-                'cliente_telefono': v['cliente_telefono'] if 'cliente_telefono' in v.keys() else '04244042825',
-                'items': detalles
-            })
-        conn.close()
-        return render_template('ventas.html', ventas=ventas_lista)
-    except Exception:
-        conn.close()
-        return render_template('ventas.html', ventas=[])
+    ventas_raw = ejecutar_consulta('SELECT * FROM ventas ORDER BY id DESC', fetchall=True) or []
+    ventas_lista = []
+    for v in ventas_raw:
+        detalles = ejecutar_consulta('SELECT * FROM detalle_ventas WHERE venta_id = ?', (v['id'],), fetchall=True) or []
+        ventas_lista.append({
+            'id': v['id'],
+            'fecha': v['fecha'],
+            'total': float(v['total'] or 0.0),
+            'metodo_pago': v['metodo_pago'] if 'metodo_pago' in v else 'Efectivo $',
+            'referencia': v['referencia'] if 'referencia' in v else 'N/A',
+            'usuario': v['usuario'] if 'usuario' in v else 'Cajero',
+            'desglose_pago': v['desglose_pago'] if 'desglose_pago' in v else '',
+            'cliente_nombre': v['cliente_nombre'] if 'cliente_nombre' in v else 'Cliente',
+            'cliente_telefono': v['cliente_telefono'] if 'cliente_telefono' in v else '',
+            'items': detalles
+        })
+    return render_template('ventas.html', ventas=ventas_lista)
 
 @app.route('/cierre-caja')
 @role_required('admin')
 def cierre_caja():
-    conn = obtener_conexion()
     hoy = date.today().strftime('%Y-%m-%d')
     try:
-        ventas_hoy = conn.execute("SELECT * FROM ventas WHERE fecha LIKE ? ORDER BY id DESC", (f"{hoy}%",)).fetchall()
-        total_usd = sum(float(v['total'] or 0.0) for v in ventas_hoy if 'total' in v.keys())
+        ventas_hoy = ejecutar_consulta("SELECT * FROM ventas WHERE fecha LIKE ? ORDER BY id DESC", (f"{hoy}%",), fetchall=True) or []
+        total_usd = sum(float(v['total'] or 0.0) for v in ventas_hoy)
         metodos_totales = {}
         for v in ventas_hoy:
-            m = v['metodo_pago'] if 'metodo_pago' in v.keys() else 'Efectivo $'
-            tot = float(v['total'] or 0.0) if 'total' in v.keys() else 0.0
+            m = v['metodo_pago'] if 'metodo_pago' in v else 'Efectivo $'
+            tot = float(v['total'] or 0.0)
             metodos_totales[m] = metodos_totales.get(m, 0.0) + tot
     except Exception:
         ventas_hoy = []
         total_usd = 0.0
         metodos_totales = {}
 
-    conn.close()
     return render_template('cierre_caja.html', ventas=ventas_hoy, total_usd=round(total_usd, 2), metodos=metodos_totales, fecha=hoy)
+
+# --- RUTAS DE INSTALACIÓN PWA ---
+
+@app.route('/manifest.json')
+def manifest():
+    return send_file(os.path.join(app.root_path, 'static', 'manifest.json'), mimetype='application/manifest+json')
+
+@app.route('/sw.js')
+def service_worker():
+    response = send_file(os.path.join(app.root_path, 'static', 'sw.js'), mimetype='application/javascript')
+    response.headers['Service-Worker-Allowed'] = '/'
+    return response
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
