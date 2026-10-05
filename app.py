@@ -247,6 +247,7 @@ def inicializar_db():
             )
         """)
 
+    # Usuarios iniciales
     cursor.execute("SELECT id FROM usuarios WHERE username = 'admin'")
     if not cursor.fetchone():
         cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('admin', 'admin123', 'admin')")
@@ -271,7 +272,5 @@ def clasificar_categoria_ryd(descripcion):
         return "Uñas"
     if any(k in desc for k in ['gorro', 'guante', 'desechable', 'tapa boca', 'mascarilla', 'toalla', 'separador', 'palitos', 'hisopo']):
         return "Desechables"
-if any(k in desc for k in ['shampoo', 'alisado', 'laminado', 'termoprotector', 'blower', 'tratamiento', 'peine', 'difusor', 'ondas', 'cepillo', 'keratina']):
-  @app.route('/importar')
-  def importar():
-      return render_template('importar.html')
+    if any(k in desc for k in ['shampoo', 'alisado', 'laminado', 'termoprotector', 'blower', 'tratamiento', 'peine', 'difusor', 'ondas', 'cepillo', 'keratina', 'tinte', 'plancha', 'cabello', 'acondicionador', 'cuidado capilar']):
+        return "
