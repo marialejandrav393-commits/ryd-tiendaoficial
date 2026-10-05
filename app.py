@@ -84,17 +84,15 @@ def inicializar_db():
         cursor = conn.cursor()
         # 1. Productos en Postgres
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS productos (
-                id SERIAL PRIMARY KEY,
-                codigo TEXT,
-                nombre TEXT NOT NULL,
-                costo NUMERIC DEFAULT 0.0,
-                precio_bs NUMERIC DEFAULT 0.0,
-                precio NUMERIC NOT NULL,
-                stock INTEGER NOT NULL DEFAULT 0,
-                categoria TEXT DEFAULT 'General',
-                descuento NUMERIC DEFAULT 0.0,
-                imagen TEXT
+            CREATE TABLE IF NOT EXISTS proveedores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT UNIQUE NOT NULL,
+                telefono TEXT DEFAULT '',
+                contacto TEXT DEFAULT '',
+                direccion TEXT DEFAULT '',
+                rif TEXT DEFAULT '',
+                ultima_compra TEXT DEFAULT '',
+                total_compras REAL DEFAULT 0.0
             )
         ''')
 
