@@ -1,145 +1,284 @@
 import os
-import pandas as pd
-from flask import Flask, render_template, request, redirect, url_for, flash
-from flask_sqlalchemy import SQLAlchemy
+import io
+import re
+import sqlite3
+import unicodedata
+from datetime import datetime, date
+from functools import wraps
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file
 from werkzeug.utils import secure_filename
+from pypdf import PdfReader
+import pandas as pd
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'clave_secreta_super_segura'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///inventario.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.secret_key = 'clave_secreta_super_segura_ryd_2026'
 
-# Carpeta para archivos temporales subidos
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'xlsx', 'xls', 'csv'}
+UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-db = SQLAlchemy(app)
+# Detección de base de datos permanente en Neon / PostgreSQL
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
-# ----------------- MODELO DE DATOS ----------------- #
-class Producto(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    codigo = db.Column(db.String(50), unique=True, nullable=False)
-    nombre = db.Column(db.String(100), nullable=False)
-    precio = db.Column(db.Float, nullable=False, default=0.0)
-    stock = db.Column(db.Integer, nullable=False, default=0)
+def es_postgres():
+    return bool(DATABASE_URL and (DATABASE_URL.startswith('postgres://') or DATABASE_URL.startswith('postgresql://')))
 
-    def __repr__(self):
-        return f'<Producto {self.nombre}>'
+def obtener_conexion():
+    if es_postgres():
+        url = DATABASE_URL
+        if url.startswith('postgres://'):
+            url = url.replace('postgres://', 'postgresql://', 1)
+        return psycopg2.connect(url, sslmode='require')
+    else:
+        conn = sqlite3.connect('inventario.db')
+        conn.row_factory = sqlite3.Row
+        return conn
 
-# Crear tablas al iniciar
-with app.app_context():
-    db.create_all()
+def ejecutar_consulta(query, params=(), fetchone=False, fetchall=False, commit=False, lastrowid=False):
+    conn = obtener_conexion()
+    if es_postgres():
+        query_pg = query.replace('?', '%s')
+        if lastrowid and 'INSERT' in query_pg.upper() and 'RETURNING' not in query_pg.upper():
+            query_pg += ' RETURNING id'
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute(query_pg, params)
+        res = None
+        if lastrowid:
+            fila = cursor.fetchone()
+            res = fila['id'] if fila else None
+        elif fetchone:
+            res = cursor.fetchone()
+        elif fetchall:
+            res = cursor.fetchall()
 
-# ----------------- RUTAS DE LA APLICACIÓN ----------------- #
+        if commit:
+            conn.commit()
+        cursor.close()
+        conn.close()
+        return res
+    else:
+        cursor = conn.cursor()
+        cursor.execute(query, params)
+        res = None
+        if lastrowid:
+            res = cursor.lastrowid
+        elif fetchone:
+            res = cursor.fetchone()
+        elif fetchall:
+            res = cursor.fetchall()
 
-@app.route('/')
-def index():
-    productos = Producto.query.all()
-    return render_template('index.html', productos=productos)
+        if commit:
+            conn.commit()
+        cursor.close()
+        conn.close()
+        return res
 
-@app.route('/agregar', methods=['POST'])
-def agregar_producto():
-    codigo = request.form.get('codigo')
-    nombre = request.form.get('nombre')
-    precio = float(request.form.get('precio', 0))
-    stock = int(request.form.get('stock', 0))
+def inicializar_db():
+    conn = obtener_conexion()
+    cursor = conn.cursor()
 
-    if Producto.query.filter_by(codigo=codigo).first():
-        flash('El código ya existe en el inventario.', 'warning')
-        return redirect(url_for('index'))
+    if es_postgres():
+        # 1. Tabla productos en Postgres
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS productos (
+                id SERIAL PRIMARY KEY,
+                codigo TEXT,
+                nombre TEXT NOT NULL,
+                costo NUMERIC DEFAULT 0.0,
+                precio_bs NUMERIC DEFAULT 0.0,
+                precio NUMERIC NOT NULL,
+                stock INTEGER NOT NULL DEFAULT 0,
+                categoria TEXT DEFAULT 'General',
+                descuento NUMERIC DEFAULT 0.0,
+                imagen TEXT
+            )
+        """)
 
-    nuevo = Producto(codigo=codigo, nombre=nombre, precio=precio, stock=stock)
-    db.session.add(nuevo)
-    db.session.commit()
-    flash('Producto agregado correctamente.', 'success')
-    return redirect(url_for('index'))
+        # 2. Tabla proveedores en Postgres
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS proveedores (
+                id SERIAL PRIMARY KEY,
+                nombre TEXT UNIQUE NOT NULL,
+                telefono TEXT DEFAULT '',
+                contacto TEXT DEFAULT '',
+                direccion TEXT DEFAULT '',
+                rif TEXT DEFAULT '',
+                ultima_compra TEXT DEFAULT '',
+                total_compras NUMERIC DEFAULT 0.0
+            )
+        """)
 
-@app.route('/importar_excel', methods=['GET', 'POST'])
-def importar_excel():
-    if request.method == 'POST':
-        if 'archivo' not in request.files:
-            flash('No se seleccionó ningún archivo.', 'danger')
-            return redirect(request.url)
+        # 3. Tabla ventas en Postgres
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS ventas (
+                id SERIAL PRIMARY KEY,
+                fecha TEXT NOT NULL,
+                total NUMERIC DEFAULT 0.0,
+                metodo_pago TEXT DEFAULT 'Efectivo $',
+                referencia TEXT DEFAULT '',
+                usuario TEXT DEFAULT 'Cajero',
+                producto_nombre TEXT DEFAULT '',
+                tasa_cambio NUMERIC DEFAULT 50.0,
+                monto_bs NUMERIC DEFAULT 0.0,
+                desglose_pago TEXT DEFAULT '',
+                cliente_nombre TEXT DEFAULT 'Cliente',
+                cliente_telefono TEXT DEFAULT '',
+                cantidad INTEGER DEFAULT 1,
+                precio NUMERIC DEFAULT 0.0
+            )
+        """)
 
-        file = request.files['archivo']
+        # 4. Tabla detalle_ventas en Postgres
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS detalle_ventas (
+                id SERIAL PRIMARY KEY,
+                venta_id INTEGER REFERENCES ventas(id) ON DELETE CASCADE,
+                producto_id INTEGER,
+                nombre_producto TEXT,
+                cantidad INTEGER,
+                precio_unitario NUMERIC,
+                precio_unitario_bs NUMERIC DEFAULT 0.0,
+                subtotal NUMERIC
+            )
+        """)
 
-        if file.filename == '':
-            flash('El nombre del archivo está vacío.', 'danger')
-            return redirect(request.url)
+        # 5. Tabla usuarios en Postgres
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id SERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                rol TEXT NOT NULL DEFAULT 'cajero'
+            )
+        """)
+    else:
+        # 1. Tabla productos en SQLite
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS productos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                codigo TEXT,
+                nombre TEXT NOT NULL,
+                costo REAL DEFAULT 0.0,
+                precio_bs REAL DEFAULT 0.0,
+                precio REAL NOT NULL,
+                stock INTEGER NOT NULL DEFAULT 0,
+                categoria TEXT DEFAULT 'General',
+                descuento REAL DEFAULT 0.0,
+                imagen TEXT
+            )
+        """)
 
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
+        # 2. Tabla proveedores en SQLite
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS proveedores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT UNIQUE NOT NULL,
+                telefono TEXT DEFAULT '',
+                contacto TEXT DEFAULT '',
+                direccion TEXT DEFAULT '',
+                rif TEXT DEFAULT '',
+                ultima_compra TEXT DEFAULT '',
+                total_compras REAL DEFAULT 0.0
+            )
+        """)
 
-            try:
-                # Lectura flexible para Excel (.xlsx, .xls) y CSV
-                if filename.endswith('.csv'):
-                    df = pd.read_csv(filepath)
-                else:
-                    df = pd.read_excel(filepath)
+        # Parche para garantizar columnas en SQLite
+        cols_existentes_prov = [c[1] for c in cursor.execute("PRAGMA table_info(proveedores)").fetchall()]
+        for col_nom, col_tipo in [
+            ('telefono', 'TEXT DEFAULT ""'),
+            ('contacto', 'TEXT DEFAULT ""'),
+            ('direccion', 'TEXT DEFAULT ""'),
+            ('rif', 'TEXT DEFAULT ""'),
+            ('ultima_compra', 'TEXT DEFAULT ""'),
+            ('total_compras', 'REAL DEFAULT 0.0')
+        ]:
+            if col_nom not in cols_existentes_prov:
+                try:
+                    cursor.execute(f'ALTER TABLE proveedores ADD COLUMN {col_nom} {col_tipo}')
+                except Exception:
+                    pass
 
-                # Estandarizar nombres de columnas a minúsculas sin espacios
-                df.columns = [str(col).strip().lower() for col in df.columns]
+        # 3. Tabla ventas en SQLite
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS ventas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                fecha TEXT NOT NULL,
+                total REAL DEFAULT 0.0,
+                metodo_pago TEXT DEFAULT 'Efectivo $',
+                referencia TEXT DEFAULT '',
+                usuario TEXT DEFAULT 'Cajero',
+                producto_nombre TEXT DEFAULT '',
+                tasa_cambio REAL DEFAULT 50.0,
+                monto_bs REAL DEFAULT 0.0,
+                desglose_pago TEXT DEFAULT '',
+                cliente_nombre TEXT DEFAULT 'Cliente',
+                cliente_telefono TEXT DEFAULT '',
+                cantidad INTEGER DEFAULT 1,
+                precio REAL DEFAULT 0.0
+            )
+        """)
 
-                # Verificar columnas requeridas
-                columnas_necesarias = {'codigo', 'nombre', 'precio', 'stock'}
-                if not columnas_necesarias.issubset(set(df.columns)):
-                    flash('El archivo debe tener las columnas: codigo, nombre, precio, stock', 'danger')
-                    return redirect(request.url)
+        # 4. Tabla detalle_ventas en SQLite
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS detalle_ventas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                venta_id INTEGER,
+                producto_id INTEGER,
+                nombre_producto TEXT,
+                cantidad INTEGER,
+                precio_unitario REAL,
+                precio_unitario_bs REAL DEFAULT 0.0,
+                subtotal REAL
+            )
+        """)
 
-                registros_nuevos = 0
-                registros_actualizados = 0
+        # 5. Tabla usuarios en SQLite
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                rol TEXT NOT NULL DEFAULT 'cajero'
+            )
+        """)
 
-                for _, row in df.iterrows():
-                    codigo = str(row['codigo']).strip()
-                    nombre = str(row['nombre']).strip()
-                    
-                    # Limpieza básica de números
-                    try:
-                        precio = float(row['precio'])
-                    except (ValueError, TypeError):
-                        precio = 0.0
+    cursor.execute("SELECT id FROM usuarios WHERE username = 'admin'")
+    if not cursor.fetchone():
+        cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('admin', 'admin123', 'admin')")
 
-                    try:
-                        stock = int(row['stock'])
-                    except (ValueError, TypeError):
-                        stock = 0
+    cursor.execute("SELECT id FROM usuarios WHERE username = 'cajero'")
+    if not cursor.fetchone():
+        cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('cajero', 'cajero2026', 'cajero')")
 
-                    # Buscar si el producto ya existe para actualizarlo o crearlo
-                    producto = Producto.query.filter_by(codigo=codigo).first()
-                    if producto:
-                        producto.nombre = nombre
-                        producto.precio = precio
-                        producto.stock = stock
-                        registros_actualizados += 1
-                    else:
-                        nuevo = Producto(codigo=codigo, nombre=nombre, precio=precio, stock=stock)
-                        db.session.add(nuevo)
-                        registros_nuevos += 1
+    conn.commit()
+    cursor.close()
+    conn.close()
 
-                db.session.commit()
-                flash(f'Importación exitosa: {registros_nuevos} nuevos, {registros_actualizados} actualizados.', 'success')
+inicializar_db()
 
-            except Exception as e:
-                db.session.rollback()
-                flash(f'Error al procesar el archivo: {str(e)}', 'danger')
-            finally:
-                # Borrar archivo temporal subido
-                if os.path.exists(filepath):
-                    os.remove(filepath)
+def clasificar_categoria_ryd(descripcion):
+    desc = (descripcion or '').lower()
+    if any(k in desc for k in ['olla', 'sm-200', 'ventilador', 'lampara', 'extractor', 'pulidor', 'drill', 'esterilizador', 'maquina', 'aparatologia']):
+        return "Aparatología"
+    if any(k in desc for k in ['pestañ', 'ceja', 'henna', 'lash', 'brow', 'volumen', 'pigmento']):
+        return "Cejas y Pestañas"
+    if any(k in desc for k in ['esmalte', 'lipstick', 'brush on', 'gel', 'finish', 'rubber', 'cuticula', 'protein', 'polygel', 'acrygel', 'serum', 'nail', 'primer', 'ultrabond', 'blossom', 'base coat', 'builder', 'tijera', 'cortauna', 'lima', 'punta', 'jelly', 'pincel', 'bledo', 'dappen', 'guillotina', 'empujador', 'uñas', 'uña']):
+        return "Uñas"
+    if any(k in desc for k in ['gorro', 'guante', 'desechable', 'tapa boca', 'mascarilla', 'toalla', 'separador', 'palitos', 'hisopo']):
+        return "Desechables"
+    if any(k in desc for k in ['shampoo', 'alisado', 'laminado', 'termoprotector', 'blower', 'tratamiento', 'peine', 'difusor', 'ondas', 'cepillo', 'keratina', 'Cuando una plantilla como `importar.html` deja de cargar o no aparece en Flask, casi siempre se debe a un error **404 (Not Found)** o un **TemplateNotFound** en la consola. 
 
-            return redirect(url_for('index'))
+Las causas más frecuentes y cómo solucionarlas:
 
-        flash('Formato no permitido. Solo archivos .xlsx, .xls o .csv.', 'warning')
-        return redirect(request.url)
-
-    return render_template('importar.html')
-
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+* **El archivo no está dentro de la carpeta `templates/`:** Flask busca estrictamente las plantillas en una carpeta llamada exactamente `templates` (en minúsculas) al mismo nivel que tu archivo `app.py`. Si por error se movió a la raíz o a `static/`, Flask no lo encontrará.
+* **Error tipográfico en el nombre:** Revisa mayúsculas, minúsculas o dobles extensiones (por ejemplo, que no haya quedado guardado como `importar.html.html` o `Importar.html`).
+* **La ruta en `app.py` cambió o no coincide:** Verifica que la función que atiende la URL tenga el llamado exacto:
+  ```python
+  @app.route('/importar')
+  def importar():
+      return render_template('importar.html')
