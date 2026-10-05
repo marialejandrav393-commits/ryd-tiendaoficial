@@ -83,7 +83,6 @@ def inicializar_db():
     cursor = conn.cursor()
 
     if es_postgres():
-        # 1. Tabla productos en Postgres
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS productos (
                 id SERIAL PRIMARY KEY,
@@ -98,8 +97,6 @@ def inicializar_db():
                 imagen TEXT
             )
         """)
-
-        # 2. Tabla proveedores en Postgres
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS proveedores (
                 id SERIAL PRIMARY KEY,
@@ -112,8 +109,6 @@ def inicializar_db():
                 total_compras NUMERIC DEFAULT 0.0
             )
         """)
-
-        # 3. Tabla ventas en Postgres
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS ventas (
                 id SERIAL PRIMARY KEY,
@@ -132,8 +127,6 @@ def inicializar_db():
                 precio NUMERIC DEFAULT 0.0
             )
         """)
-
-        # 4. Tabla detalle_ventas en Postgres
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS detalle_ventas (
                 id SERIAL PRIMARY KEY,
@@ -146,8 +139,6 @@ def inicializar_db():
                 subtotal NUMERIC
             )
         """)
-
-        # 5. Tabla usuarios en Postgres
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS usuarios (
                 id SERIAL PRIMARY KEY,
@@ -157,7 +148,6 @@ def inicializar_db():
             )
         """)
     else:
-        # 1. Tabla productos en SQLite
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS productos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -172,8 +162,6 @@ def inicializar_db():
                 imagen TEXT
             )
         """)
-
-        # 2. Tabla proveedores en SQLite
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS proveedores (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -186,8 +174,6 @@ def inicializar_db():
                 total_compras REAL DEFAULT 0.0
             )
         """)
-
-        # Parche para garantizar columnas en SQLite
         cols_existentes_prov = [c[1] for c in cursor.execute("PRAGMA table_info(proveedores)").fetchall()]
         for col_nom, col_tipo in [
             ('telefono', 'TEXT DEFAULT ""'),
@@ -202,8 +188,6 @@ def inicializar_db():
                     cursor.execute(f'ALTER TABLE proveedores ADD COLUMN {col_nom} {col_tipo}')
                 except Exception:
                     pass
-
-        # 3. Tabla ventas en SQLite
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS ventas (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -222,8 +206,6 @@ def inicializar_db():
                 precio REAL DEFAULT 0.0
             )
         """)
-
-        # 4. Tabla detalle_ventas en SQLite
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS detalle_ventas (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -236,8 +218,6 @@ def inicializar_db():
                 subtotal REAL
             )
         """)
-
-        # 5. Tabla usuarios en SQLite
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS usuarios (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -247,14 +227,20 @@ def inicializar_db():
             )
         """)
 
-    # Usuarios iniciales
-    cursor.execute("SELECT id FROM usuarios WHERE username = 'admin'")
-    if not cursor.fetchone():
-        cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('admin', 'admin123', 'admin')")
-
-    cursor.execute("SELECT id FROM usuarios WHERE username = 'cajero'")
-    if not cursor.fetchone():
-        cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('cajero', 'cajero2026', 'cajero')")
+    if es_postgres():
+        cursor.execute("SELECT id FROM usuarios WHERE username = 'admin'")
+        if not cursor.fetchone():
+            cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('admin', 'admin123', 'admin')")
+        cursor.execute("SELECT id FROM usuarios WHERE username = 'cajero'")
+        if not cursor.fetchone():
+            cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('cajero', 'cajero2026', 'cajero')")
+    else:
+        cursor.execute("SELECT id FROM usuarios WHERE username = 'admin'")
+        if not cursor.fetchone():
+            cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('admin', 'admin123', 'admin')")
+        cursor.execute("SELECT id FROM usuarios WHERE username = 'cajero'")
+        if not cursor.fetchone():
+            cursor.execute("INSERT INTO usuarios (username, password, rol) VALUES ('cajero', 'cajero2026', 'cajero')")
 
     conn.commit()
     cursor.close()
@@ -273,4 +259,667 @@ def clasificar_categoria_ryd(descripcion):
     if any(k in desc for k in ['gorro', 'guante', 'desechable', 'tapa boca', 'mascarilla', 'toalla', 'separador', 'palitos', 'hisopo']):
         return "Desechables"
     if any(k in desc for k in ['shampoo', 'alisado', 'laminado', 'termoprotector', 'blower', 'tratamiento', 'peine', 'difusor', 'ondas', 'cepillo', 'keratina', 'tinte', 'plancha', 'cabello', 'acondicionador', 'cuidado capilar']):
-        return "
+        return "Cuidado Capilar"
+    if any(k in desc for k in ['intimo', 'jabon', 'arandano', 'manzanilla', 'cera depilatoria', 'roll on', 'banda depilacion', 'corporal']):
+        return "Íntimo"
+    if any(k in desc for k in ['alcohol', 'acetona', 'algodon', 'cleanser', 'sanitizante', 'exfoliante', 'espuma', 'sponge', 'mantequilla', 'gota', 'atomizador', 'organizador', 'envase', 'boligrafo', 'espejo', 'cesta']):
+        return "Insumos"
+    return "General"
+
+def role_required(*roles):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not session.get('logged_in'):
+                flash('Por favor inicia sesión para acceder.')
+                return redirect(url_for('login'))
+            if session.get('user_role') not in roles:
+                flash('Acceso denegado: No tienes permisos para acceder a esta sección.')
+                return redirect(url_for('login'))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+# --- AUTENTICACIÓN ---
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        usuario = (request.form.get('username') or '').strip().lower()
+        password = (request.form.get('password') or '').strip()
+
+        if usuario == 'admin' and password in ['admin123', 'admin2026', 'admin']:
+            session['logged_in'] = True
+            session['user_id'] = 1
+            session['username'] = 'admin'
+            session['user_role'] = 'admin'
+            return redirect(url_for('admin'))
+
+        if usuario == 'cajero' and password in ['cajero2026', 'cajero123', 'cajero']:
+            session['logged_in'] = True
+            session['user_id'] = 2
+            session['username'] = 'cajero'
+            session['user_role'] = 'cajero'
+            return redirect(url_for('pos_cajero'))
+
+        user_info = ejecutar_consulta(
+            'SELECT * FROM usuarios WHERE LOWER(username) = ? AND password = ?',
+            (usuario, password),
+            fetchone=True
+        )
+
+        if user_info:
+            session['logged_in'] = True
+            session['user_id'] = user_info['id']
+            session['username'] = user_info['username']
+            rol_obtenido = user_info['rol'] if 'rol' in user_info else 'cajero'
+            session['user_role'] = rol_obtenido
+
+            if rol_obtenido == 'admin':
+                return redirect(url_for('admin'))
+            return redirect(url_for('pos_cajero'))
+        else:
+            flash('Usuario o contraseña incorrectos.')
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Has cerrado sesión.')
+    return redirect(url_for('login'))
+
+# --- PUNTO DE VENTA (POS) ---
+
+@app.route('/')
+def index():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    if session.get('user_role') == 'admin':
+        return redirect(url_for('admin'))
+    return redirect(url_for('pos_cajero'))
+
+@app.route('/cajero/pos')
+@role_required('admin', 'cajero')
+def pos_cajero():
+    productos = ejecutar_consulta('SELECT * FROM productos WHERE stock > 0 ORDER BY nombre ASC', fetchall=True) or []
+    categorias_rows = ejecutar_consulta('SELECT DISTINCT categoria FROM productos WHERE stock > 0', fetchall=True) or []
+    categorias = [row['categoria'] for row in categorias_rows if row['categoria']]
+    return render_template('pos.html', productos=productos, categorias=categorias)
+
+@app.route('/procesar_venta', methods=['POST'])
+def procesar_venta():
+    if not session.get('logged_in'):
+        return jsonify({'exito': False, 'mensaje': 'Sesión vencida. Vuelve a iniciar sesión.'}), 401
+
+    data = request.get_json() or {}
+    items = data.get('items', [])
+    metodo_pago = data.get('metodo_pago', 'Efectivo $')
+    referencia = data.get('referencia', 'N/A')
+    tasa_cambio = float(data.get('tasa_cambio', 50.0))
+    desglose_pago = data.get('desglose_pago', '')
+    cliente_nombre = data.get('cliente_nombre', 'Cliente Mostrador')
+    cliente_telefono = data.get('cliente_telefono', '')
+    usuario = session.get('username', 'Cajero')
+
+    if not items:
+        return jsonify({'exito': False, 'mensaje': 'El carrito está vacío'}), 400
+
+    try:
+        total_venta = sum(float(item['precio']) * int(item['cantidad']) for item in items)
+        total_unidades = sum(int(item.get('cantidad', 1)) for item in items)
+        monto_bs = round(total_venta * tasa_cambio, 2)
+        fecha_hora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        resumen_nombres = ", ".join([it['nombre'] for it in items[:3]])
+        if len(items) > 3:
+            resumen_nombres += f" (+{len(items)-3} más)"
+
+        venta_id = ejecutar_consulta("""
+            INSERT INTO ventas (fecha, total, metodo_pago, referencia, usuario, producto_nombre, tasa_cambio, monto_bs, desglose_pago, cliente_nombre, cliente_telefono, cantidad, precio)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            fecha_hora, round(total_venta, 2), metodo_pago, referencia, usuario,
+            resumen_nombres, tasa_cambio, monto_bs, desglose_pago, cliente_nombre,
+            cliente_telefono, total_unidades, round(total_venta, 2)
+        ), commit=True, lastrowid=True)
+
+        for it in items:
+            cod = it.get('codigo', '')
+            nom = it.get('nombre', '')
+            cant = int(it.get('cantidad', 1))
+            p_unit = float(it.get('precio', 0.0))
+            p_unit_bs = round(float(it.get('precio_bs', p_unit * tasa_cambio)), 2)
+            subt = round(p_unit * cant, 2)
+
+            ejecutar_consulta('UPDATE productos SET stock = stock - ? WHERE codigo = ? OR nombre = ?', (cant, cod, nom), commit=True)
+            prod_row = ejecutar_consulta('SELECT id FROM productos WHERE codigo = ? OR nombre = ? LIMIT 1', (cod, nom), fetchone=True)
+            prod_id = prod_row['id'] if prod_row else None
+
+            ejecutar_consulta("""
+                INSERT INTO detalle_ventas (venta_id, producto_id, nombre_producto, cantidad, precio_unitario, precio_unitario_bs, subtotal)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (venta_id, prod_id, nom, cant, p_unit, p_unit_bs, subt), commit=True)
+
+        return jsonify({'exito': True, 'venta_id': venta_id})
+    except Exception as e:
+        return jsonify({'exito': False, 'mensaje': f"Error al procesar: {str(e)}"}), 500
+
+@app.route('/ticket/<int:venta_id>')
+def ticket(venta_id):
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+
+    venta = ejecutar_consulta('SELECT * FROM ventas WHERE id = ?', (venta_id,), fetchone=True)
+    if not venta:
+        return "Comprobante no encontrado", 404
+
+    detalles = ejecutar_consulta('SELECT * FROM detalle_ventas WHERE venta_id = ?', (venta_id,), fetchall=True) or []
+    return render_template('ticket.html', venta=venta, detalles=detalles)
+
+# --- ADMINISTRACIÓN, INVENTARIO Y EXCEL ---
+
+@app.route('/admin')
+@role_required('admin')
+def admin():
+    productos_raw = ejecutar_consulta('SELECT * FROM productos ORDER BY id DESC', fetchall=True) or []
+
+    total_costo_inversion = 0.0
+    total_valor_venta = 0.0
+    ganancia_estimada = 0.0
+
+    for p in productos_raw:
+        costo_u = float(p['costo'] or 0.0)
+        precio_u = float(p['precio'] or 0.0)
+        stock_u = int(p['stock'] or 0)
+
+        total_costo_inversion += (costo_u * stock_u)
+        total_valor_venta += (precio_u * stock_u)
+        ganancia_estimada += ((precio_u - costo_u) * stock_u)
+
+    total_ventas_usd = 0.0
+    try:
+        ventas_total_row = ejecutar_consulta('SELECT SUM(total) as total_ventas FROM ventas', fetchone=True)
+        if ventas_total_row and ventas_total_row['total_ventas']:
+            total_ventas_usd = float(ventas_total_row['total_ventas'])
+    except Exception:
+        total_ventas_usd = 0.0
+
+    return render_template(
+        'admin.html',
+        productos=productos_raw,
+        ganancia_estimada=round(ganancia_estimada, 2),
+        total_costo_inversion=round(total_costo_inversion, 2),
+        total_valor_venta=round(total_valor_venta, 2),
+        total_ventas_usd=round(total_ventas_usd, 2)
+    )
+
+@app.route('/exportar_inventario_excel')
+@role_required('admin')
+def exportar_inventario_excel():
+    productos = ejecutar_consulta('SELECT * FROM productos ORDER BY categoria ASC, nombre ASC', fetchall=True) or []
+    filas_productos = []
+    for p in productos:
+        costo = float(p['costo'] or 0.0)
+        p_bs = float(p['precio_bs'] or (costo * 1.5525))
+        p_div = float(p['precio'] or 0.0)
+        stock = int(p['stock'] or 0)
+
+        filas_productos.append({
+            'codigo': p['codigo'],
+            'nombre': p['nombre'],
+            'costo': costo,
+            'precio bs': round(p_bs, 2),
+            'precio': round(p_div, 2),
+            'stock': stock,
+            'categoria': p['categoria'],
+            'descuento': float(p['descuento'] or 0.0)
+        })
+
+    ventas = ejecutar_consulta('SELECT * FROM ventas ORDER BY id DESC', fetchall=True) or []
+    filas_ventas = []
+    for v in ventas:
+        filas_ventas.append({
+            'Nro Comprobante': f"#{v['id']:06d}",
+            'Fecha y Hora': v['fecha'],
+            'Cliente': v['cliente_nombre'] if 'cliente_nombre' in v else 'Cliente',
+            'Teléfono WhatsApp': v['cliente_telefono'] if 'cliente_telefono' in v else '',
+            'Total USD ($)': float(v['total']),
+            'Total Bs': float(v['monto_bs'] or 0.0),
+            'Modalidad Pago': v['metodo_pago'],
+            'Referencia': v['referencia'],
+            'Cajero': v['usuario'],
+            'Desglose': v['desglose_pago'] if 'desglose_pago' in v else ''
+        })
+
+    salida = io.BytesIO()
+    with pd.ExcelWriter(salida, engine='openpyxl') as writer:
+        pd.DataFrame(filas_productos).to_excel(writer, index=False, sheet_name='Inventario Maestro')
+        pd.DataFrame(filas_ventas).to_excel(writer, index=False, sheet_name='Historial Ventas')
+
+    salida.seek(0)
+    nombre_archivo = f"Respaldo_Completo_RyD_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    return send_file(
+        salida,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=nombre_archivo
+    )
+
+@app.route('/agregar', methods=['GET', 'POST'])
+@role_required('admin')
+def agregar():
+    if request.method == 'POST':
+        codigo = request.form.get('codigo', '').strip().upper()
+        nombre = request.form.get('nombre', '').strip()
+        costo = float(request.form.get('costo', 0) or 0)
+        precio_bs = float(request.form.get('precio_bs', 0) or (costo * 1.5525))
+        precio = float(request.form.get('precio', 0) or 0)
+        stock = int(request.form.get('stock', 0) or 0)
+        categoria = request.form.get('categoria', 'General').strip()
+        descuento = float(request.form.get('descuento', 0) or 0)
+
+        if not codigo or not nombre:
+            flash("Código y Nombre son obligatorios")
+            return redirect(url_for('agregar'))
+
+        ejecutar_consulta("""
+            INSERT INTO productos (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento), commit=True)
+        return redirect(url_for('admin'))
+
+    return render_template('agregar.html')
+
+@app.route('/editar/<int:id>', methods=['GET', 'POST'])
+@role_required('admin')
+def editar(id):
+    if request.method == 'POST':
+        codigo = request.form.get('codigo', '').strip()
+        nombre = request.form.get('nombre', '').strip()
+        costo = float(request.form.get('costo', 0) or 0)
+        precio_bs = float(request.form.get('precio_bs', 0) or 0)
+        precio = float(request.form.get('precio', 0) or 0)
+        stock = int(request.form.get('stock', 0) or 0)
+        categoria = request.form.get('categoria', 'General').strip()
+
+        ejecutar_consulta("""
+            UPDATE productos 
+            SET codigo = ?, nombre = ?, costo = ?, precio_bs = ?, precio = ?, stock = ?, categoria = ? 
+            WHERE id = ?
+        """, (codigo, nombre, costo, precio_bs, precio, stock, categoria, id), commit=True)
+        return redirect(url_for('admin'))
+
+    producto = ejecutar_consulta('SELECT * FROM productos WHERE id = ?', (id,), fetchone=True)
+    if not producto:
+        return "Producto no encontrado", 404
+    return render_template('editar.html', producto=producto)
+
+@app.route('/eliminar/<int:id>')
+@role_required('admin')
+def eliminar(id):
+    ejecutar_consulta('DELETE FROM productos WHERE id = ?', (id,), commit=True)
+    return redirect(url_for('admin'))
+
+# --- MÓDULO DE PROVEEDORES Y PARSER UNIVERSAL EXACTO ---
+
+@app.route('/proveedores')
+@role_required('admin')
+def proveedores():
+    proveedores_lista = ejecutar_consulta('SELECT * FROM proveedores ORDER BY nombre ASC', fetchall=True) or []
+    return render_template('proveedores.html', proveedores_guardados=proveedores_lista)
+
+@app.route('/guardar_factura_proveedor', methods=['POST'])
+def guardar_factura_proveedor():
+    data = request.get_json() or {}
+    items = data.get('items', [])
+    proveedor_nom = (data.get('proveedor') or '').strip().title()
+    telefono_prov = (data.get('telefono') or '').strip()
+
+    if not items:
+        return jsonify({'exito': False, 'mensaje': 'Sin productos válidos para guardar'}), 400
+
+    try:
+        if proveedor_nom and proveedor_nom != "Proveedor General":
+            monto_compra_actual = sum(float(it.get('costo', 0)) * int(it.get('stock', 0)) for it in items)
+            fecha_hoy = date.today().strftime('%Y-%m-%d')
+
+            prov_existente = ejecutar_consulta('SELECT id FROM proveedores WHERE UPPER(nombre) = ?', (proveedor_nom.upper(),), fetchone=True)
+            if prov_existente:
+                ejecutar_consulta("""
+                    UPDATE proveedores 
+                    SET telefono = CASE WHEN ? != '' THEN ? ELSE telefono END,
+                        ultima_compra = ?,
+                        total_compras = total_compras + ?
+                    WHERE id = ?
+                """, (telefono_prov, telefono_prov, fecha_hoy, round(monto_compra_actual, 2), prov_existente['id']), commit=True)
+            else:
+                ejecutar_consulta("""
+                    INSERT INTO proveedores (nombre, telefono, ultima_compra, total_compras)
+                    VALUES (?, ?, ?, ?)
+                """, (proveedor_nom, telefono_prov, fecha_hoy, round(monto_compra_actual, 2)), commit=True)
+
+        for it in items:
+            cod = str(it.get('codigo', '')).strip().upper()
+            nom = str(it.get('nombre', '')).strip()
+            costo = round(float(it.get('costo', 0) or 0), 2)
+            precio_bs = round(float(it.get('precio_bs', 0) or (costo * 1.5525)), 2)
+            precio = round(float(it.get('precio', 0) or (costo * 1.35)), 2)
+            stock_nuevo = int(it.get('stock', 0) or 0)
+            cat = str(it.get('categoria', 'General')).strip()
+            desc = float(it.get('descuento', 0) or 0)
+
+            if not nom:
+                continue
+
+            existente = ejecutar_consulta('SELECT id FROM productos WHERE UPPER(TRIM(nombre)) = ?', (nom.upper(),), fetchone=True)
+            if existente:
+                ejecutar_consulta("""
+                    UPDATE productos 
+                    SET codigo = ?, costo = ?, precio_bs = ?, precio = ?, stock = stock + ?, categoria = ?, descuento = ?
+                    WHERE id = ?
+                """, (cod, costo, precio_bs, precio, stock_nuevo, cat, desc, existente['id']), commit=True)
+            else:
+                ejecutar_consulta("""
+                    INSERT INTO productos (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (cod, nom, costo, precio_bs, precio, stock_nuevo, cat, desc), commit=True)
+
+        return jsonify({'exito': True})
+    except Exception as e:
+        return jsonify({'exito': False, 'mensaje': str(e)}), 500
+
+@app.route('/actualizar_proveedor_telefono', methods=['POST'])
+def actualizar_proveedor_telefono():
+    data = request.get_json() or {}
+    prov_id = data.get('id')
+    nuevo_tel = (data.get('telefono') or '').strip()
+
+    if not prov_id:
+        return jsonify({'exito': False, 'mensaje': 'ID requerido'}), 400
+
+    try:
+        ejecutar_consulta('UPDATE proveedores SET telefono = ? WHERE id = ?', (nuevo_tel, prov_id), commit=True)
+        return jsonify({'exito': True})
+    except Exception as e:
+        return jsonify({'exito': False, 'mensaje': str(e)}), 500
+
+@app.route('/procesar_factura_ocr', methods=['POST'])
+def procesar_factura_ocr():
+    texto_directo = request.form.get('texto_ocr', '')
+    archivo = request.files.get('factura')
+
+    comercio = ""
+    telefono = ""
+    items = []
+    total_paginas = 1
+
+    try:
+        texto_completo = ""
+
+        if archivo and any(archivo.filename.lower().endswith(ext) for ext in ['.xlsx', '.xls', '.csv']):
+            df_in = pd.read_excel(archivo) if not archivo.filename.lower().endswith('.csv') else pd.read_csv(archivo)
+            
+            col_cod = None
+            col_nom = None
+            col_costo = None
+            col_precio_bs = None
+            col_precio = None
+            col_stock = None
+            col_cat = None
+
+            for c in df_in.columns:
+                c_str = str(c).lower().strip()
+                if c_str in ['codigo', 'código', 'sku']:
+                    col_cod = c
+                elif any(k in c_str for k in ['producto', 'descripcion', 'descripci', 'nombre']):
+                    col_nom = c
+                elif any(k in c_str for k in ['costo unit', 'costo net', 'costo']):
+                    col_costo = c
+                elif c_str in ['precio bs', 'precio_bs', 'pvp bs', 'precio tasa']:
+                    col_precio_bs = c
+                elif c_str in ['precio', 'precio venta', 'pvp', 'precio ($)', 'precio usd', 'precio divisa']:
+                    col_precio = c
+                elif any(k in c_str for k in ['stock', 'cantidad', 'cant']):
+                    col_stock = c
+                elif any(k in c_str for k in ['categoria', 'categor']):
+                    col_cat = c
+
+            if col_nom is None and len(df_in.columns) >= 2:
+                col_nom = df_in.columns[1]
+            if col_costo is None and len(df_in.columns) >= 3:
+                col_costo = df_in.columns[2]
+
+            for _, row in df_in.iterrows():
+                nom = str(row[col_nom]).strip() if col_nom and pd.notna(row[col_nom]) else ""
+                if not nom or nom.lower() in ['nan', 'producto', 'total', 'subtotal']:
+                    continue
+
+                cod_val = str(row[col_cod]).strip() if col_cod and pd.notna(row[col_cod]) else ""
+                
+                try:
+                    c_val = float(row[col_costo]) if col_costo and pd.notna(row[col_costo]) else 0.0
+                except:
+                    c_val = 0.0
+
+                try:
+                    s_val = int(row[col_stock]) if col_stock and pd.notna(row[col_stock]) else 1
+                except:
+                    s_val = 1
+
+                try:
+                    p_bs_val = float(row[col_precio_bs]) if col_precio_bs and pd.notna(row[col_precio_bs]) else (c_val * 1.5525)
+                except:
+                    p_bs_val = c_val * 1.5525
+
+                try:
+                    p_val = float(row[col_precio]) if col_precio and pd.notna(row[col_precio]) else (c_val * 1.35)
+                except:
+                    p_val = c_val * 1.35
+
+                cat_val = str(row[col_cat]).strip() if col_cat and pd.notna(row[col_cat]) else clasificar_categoria_ryd(nom)
+
+                items.append({
+                    'codigo': cod_val,
+                    'nombre': nom.title(),
+                    'costo': round(c_val, 2),
+                    'precio_bs': round(p_bs_val, 2),
+                    'precio': round(p_val, 2),
+                    'stock': s_val,
+                    'categoria': cat_val
+                })
+
+            return jsonify({
+                'exito': True,
+                'comercio': 'Catálogo Maestro Excel',
+                'telefono': '',
+                'total_paginas': 1,
+                'items': items
+            })
+
+        if archivo and (archivo.filename or "").lower().endswith('.pdf'):
+            reader = PdfReader(io.BytesIO(archivo.read()))
+            total_paginas = len(reader.pages)
+            for page in reader.pages:
+                texto_completo += "\n" + (page.extract_text() or "")
+        elif texto_directo:
+            texto_completo = texto_directo
+
+        up = texto_completo.upper()
+        if "TODOBELLA" in up or "TODO BELLA" in up:
+            comercio = "Todo Bella"
+            telefono = "04127494517"
+        elif "MICELI" in up:
+            comercio = "Comercializadora Miceli Corp, S.A."
+            telefono = "04129583694"
+        elif "STOREFIT" in up:
+            comercio = "Storefit Internacional, C.A."
+            telefono = "04121100769"
+        elif "HOGAR IDEAL" in up:
+            comercio = "Hogar Ideal 1441, C.A."
+        elif "GOOD TIMES" in up:
+            comercio = "Inversiones J.S Good Times C.A"
+        elif "AURA" in up:
+            comercio = "Aura Profesional"
+            telefono = "04127494813"
+
+        if not telefono:
+            m_tel = re.search(r'(?:04\d{2}[\s\-]?\d{7}|\+?58[\s\-]?\d{10})', texto_completo)
+            if m_tel:
+                telefono = m_tel.group(0).replace(" ", "").replace("-", "")
+
+        lines = [l.strip() for l in texto_completo.split('\n') if l.strip()]
+
+        for line in lines:
+            l_clean = line.replace('|', ' ').strip()
+            m_tb = re.match(r'^(\d+)\s*(?:Und\.?|Pza\.?|Unidad(?:es)?)?\s+(.+?)\s+([0-9]+[\.,][0-9]{2})\s+([0-9]+[\.,][0-9]{2})$', l_clean, re.IGNORECASE)
+            if m_tb:
+                cant = int(m_tb.group(1))
+                desc = m_tb.group(2).strip()
+                costo = float(m_tb.group(3).replace(',', '.'))
+                if not any(k in desc.upper() for k in ['SUBTOTAL', 'TOTAL', 'DESCRIPCION', 'CANTIDAD', 'ITEMS']):
+                    items.append({
+                        'codigo': '',
+                        'nombre': desc.title(),
+                        'costo': costo,
+                        'precio_bs': round(costo * 1.5525, 2),
+                        'precio': round(costo * 1.35, 2),
+                        'stock': cant,
+                        'categoria': clasificar_categoria_ryd(desc)
+                    })
+
+        if not items:
+            i = 0
+            while i < len(lines):
+                linea_act = lines[i]
+                if "Lineas" in linea_act or "SUBTTL" in linea_act or ("TOTAL" in linea_act and len(items) > 5):
+                    break
+                m_qty = re.match(r'^(\d+)[,\.]00$', linea_act)
+                if m_qty and (i + 2) < len(lines):
+                    cant = int(m_qty.group(1))
+                    desc = lines[i + 1].strip()
+                    price_line = lines[i + 2].strip()
+
+                    costo_encontrado = None
+                    for split_pos in range(1, len(price_line)):
+                        s1 = price_line[:split_pos].replace(',', '.')
+                        s2 = price_line[split_pos:].replace(',', '.')
+                        try:
+                            f1, f2 = float(s1), float(s2)
+                            if abs(cant * f2 - f1) < 0.05:
+                                costo_encontrado = f2; break
+                            if abs(cant * f1 - f2) < 0.05:
+                                costo_encontrado = f1; break
+                        except:
+                            continue
+
+                    if costo_encontrado is None:
+                        partes = re.findall(r'\d+[,\.]\d{2}', price_line)
+                        costo_encontrado = float(partes[-1].replace(',', '.')) if partes else 0.0
+
+                    if desc and costo_encontrado > 0:
+                        items.append({
+                            'codigo': '',
+                            'nombre': desc.title(),
+                            'costo': round(costo_encontrado, 2),
+                            'precio_bs': round(costo_encontrado * 1.5525, 2),
+                            'precio': round(costo_encontrado * 1.35, 2),
+                            'stock': cant,
+                            'categoria': clasificar_categoria_ryd(desc)
+                        })
+                        i += 3
+                        continue
+                i += 1
+
+        if not items:
+            for linea in lines:
+                m_miceli = re.match(r'^([A-Z0-9\-_]{3,18})\s+(.+?)\s+(\d+)\s+([0-9]+[,\.][0-9]{2})\s+([0-9]+[,\.][0-9]{2})$', linea, re.IGNORECASE)
+                if m_miceli:
+                    cod, desc, cant, p_unit, _ = m_miceli.groups()
+                    c_val = float(p_unit.replace(',', '.'))
+                    items.append({
+                        'codigo': cod.upper(),
+                        'nombre': desc.strip().title(),
+                        'costo': c_val,
+                        'precio_bs': round(c_val * 1.5525, 2),
+                        'precio': round(c_val * 1.35, 2),
+                        'stock': int(cant),
+                        'categoria': clasificar_categoria_ryd(desc)
+                    })
+
+        if not items:
+            for linea in lines:
+                m_store = re.match(r'^(\d+)\s+(.+?)\s+\$?([0-9]+[,\.][0-9]{2})\s+\$?([0-9]+[,\.][0-9]{2})$', linea, re.IGNORECASE)
+                if m_store:
+                    cant, desc, p_unit, _ = m_store.groups()
+                    desc_limpia = desc.strip()
+                    if not any(k in desc_limpia.upper() for k in ['TOTAL', 'SUBTOTAL', 'SUB-TOTAL', 'ORDEN', 'DESCRIPCION']):
+                        c_val = float(p_unit.replace(',', '.'))
+                        items.append({
+                            'codigo': '',
+                            'nombre': desc_limpia.title(),
+                            'costo': c_val,
+                            'precio_bs': round(c_val * 1.5525, 2),
+                            'precio': round(c_val * 1.35, 2),
+                            'stock': int(cant),
+                            'categoria': clasificar_categoria_ryd(desc_limpia)
+                        })
+
+        if not items:
+            for i, linea in enumerate(lines):
+                if '/' in linea and not any(k in linea.upper() for k in ['FECHA', 'RAZ', 'CEDULA', 'RIF', 'DIR', 'VALENCIA']):
+                    partes = linea.split('/', 1)
+                    nom = partes[1].strip() if len(partes) > 1 else partes[0].strip()
+                    
+                    qty = 1
+                    cost = 0.0
+
+                    for offset in [-1, 1]:
+                        idx_check = i + offset
+                        if 0 <= idx_check < len(lines):
+                            m_q = re.search(r'(\d+)(?:[,\.]\d+)?\s*[xX]\s*(?:Bs\.?|\$)?\s*([0-9\.,]+)', lines[idx_check])
+                            if m_q:
+                                qty = int(m_q.group(1))
+                                p_clean = m_q.group(2).replace('.', '').replace(',', '.') if (',' in m_q.group(2) and '.' in m_q.group(2)) else m_q.group(2).replace(',', '.')
+                                try:
+                                    cost = float(p_clean)
+                                    break
+                                except:
+                                    pass
+
+                    if not any(k in nom.upper() for k in ['TOTAL', 'SUBTOTAL', 'DESCUENTO', 'EXENTO', 'IVA']):
+                        items.append({
+                            'codigo': '',
+                            'nombre': nom.title(),
+                            'costo': round(cost, 2),
+                            'precio_bs': round(cost * 1.5525, 2),
+                            'precio': round(cost * 1.35, 2),
+                            'stock': qty,
+                            'categoria': clasificar_categoria_ryd(nom)
+                        })
+
+        return jsonify({
+            'exito': True,
+            'comercio': comercio,
+            'telefono': telefono,
+            'total_paginas': total_paginas,
+            'items': items
+        })
+
+    except Exception as e:
+        return jsonify({'exito': False, 'mensaje': f'Error en procesamiento: {str(e)}'}), 500
+
+# --- HISTORIAL Y CIERRE ---
+
+@app.route('/ventas')
+@role_required('admin')
+def historial_ventas():
+    ventas_raw = ejecutar_consulta('SELECT * FROM ventas ORDER BY id DESC', fetchall=True) or []
+    ventas_lista = []
+    for v in ventas_raw:
+        detalles = ejecutar_consulta('SELECT * FROM detalle_ventas WHERE venta_id = ?', (v['id'],), fetchall=True) or []
+        ventas_lista.append({
+            'id': v['id'],
+            'fecha': v['fecha'],
+            'total': float(v['total'] or 0.0),
+            '
