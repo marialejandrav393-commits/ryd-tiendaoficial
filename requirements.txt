@@ -1,7 +1,5 @@
 Flask
-gunicorn
-psycopg2-binary
+Flask-SQLAlchemy
 pandas
 openpyxl
-pypdf
-Werkzeug
+werkzeug
