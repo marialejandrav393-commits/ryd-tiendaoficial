@@ -369,21 +369,25 @@ def procesar_venta():
     if not session.get('logged_in'):
         return jsonify({'exito': False, 'mensaje': 'Sesión vencida. Vuelve a iniciar sesión.'})
 
-    data = request.get_json() or {}
-    items = data.get('items', [])
-    metodo_pago = data.get('metodo_pago', 'Efectivo $')
-    referencia = data.get('referencia', 'N/A')
-    tasa_cambio = float(data.get('tasa_cambio', 50.0))
-    desglose_pago = data.get('desglose_pago', '')
-    cliente_nombre = data.get('cliente_nombre', 'Cliente Mostrador')
-    cliente_telefono = data.get('cliente_telefono', '')
-    usuario = session.get('username', 'Cajero')
-
-    if not items:
-        return jsonify({'exito': False, 'mensaje': 'El carrito está vacío'})
-
     conn = None
     try:
+        data = request.get_json() or {}
+        items = data.get('items', [])
+        metodo_pago = data.get('metodo_pago', 'Efectivo $')
+        referencia = data.get('referencia', 'N/A')
+        
+        # EL SALVAVIDAS: Convertimos la coma en punto automáticamente (ej: 872,39 a 872.39)
+        tasa_raw = str(data.get('tasa_cambio', '50.0')).replace(',', '.')
+        tasa_cambio = float(tasa_raw)
+        
+        desglose_pago = data.get('desglose_pago', '')
+        cliente_nombre = data.get('cliente_nombre', 'Cliente Mostrador')
+        cliente_telefono = data.get('cliente_telefono', '')
+        usuario = session.get('username', 'Cajero')
+
+        if not items:
+            return jsonify({'exito': False, 'mensaje': 'El carrito está vacío'})
+
         total_venta = sum(float(item['precio']) * int(item['cantidad']) for item in items)
         total_unidades = sum(int(item.get('cantidad', 1)) for item in items)
         monto_bs = round(total_venta * tasa_cambio, 2)
@@ -393,7 +397,6 @@ def procesar_venta():
         if len(items) > 3:
             resumen_nombres += f" (+{len(items)-3} más)"
 
-        # Abrimos la puerta a Neon UNA SOLA VEZ para toda la venta
         conn = obtener_conexion()
         if es_postgres():
             cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -403,7 +406,6 @@ def procesar_venta():
         def fmt(q):
             return q.replace('?', '%s') if es_postgres() else q
 
-        # 1. Guardar la venta general
         query_venta = fmt("""
             INSERT INTO ventas (fecha, total, metodo_pago, referencia, usuario, producto_nombre, tasa_cambio, monto_bs, desglose_pago, cliente_nombre, cliente_telefono, cantidad, precio)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -422,7 +424,6 @@ def procesar_venta():
         else:
             venta_id = cursor.lastrowid
 
-        # 2. Descontar stock y registrar detalles de golpe
         for it in items:
             cod = it.get('codigo', '')
             nom = it.get('nombre', '')
@@ -446,7 +447,6 @@ def procesar_venta():
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """), (venta_id, prod_id, nom, cant, p_unit, p_unit_bs, subt))
 
-        # 3. Confirmamos todo y cerramos la puerta
         conn.commit()
         cursor.close()
         conn.close()
@@ -459,6 +459,12 @@ def procesar_venta():
             conn.rollback()
             conn.close()
         return jsonify({'exito': False, 'mensaje': f"ERROR AL COBRAR:\n{str(e)}\n\nDETALLE:\n{error_detallado}"})
+
+@app.route('/limpiar_catalogo_secreto')
+@role_required('admin')
+def limpiar_catalogo_secreto():
+    ejecutar_consulta('DELETE FROM productos', commit=True)
+    return "<h1>INVENTARIO BORRADO CON ÉXITO</h1><p>Las ventas siguen a salvo. Ya puedes cerrar esta pestaña y subir tu Excel una sola vez.</p>"
 
 @app.route('/ticket/<int:venta_id>')
 def ticket(venta_id):
