@@ -606,16 +606,18 @@ def proveedores():
 
 @app.route('/guardar_factura_proveedor', methods=['POST'])
 def guardar_factura_proveedor():
+    import traceback
     data = request.get_json() or {}
     items = data.get('items', [])
     proveedor_nom = (data.get('proveedor') or '').strip().title()
     telefono_prov = (data.get('telefono') or '').strip()
 
     if not items:
-        return jsonify({'exito': False, 'mensaje': 'Sin productos válidos para guardar'}), 400
+        return jsonify({'exito': False, 'mensaje': 'Sin productos válidos para guardar'})
 
-    conn = obtener_conexion()
+    conn = None
     try:
+        conn = obtener_conexion()
         if es_postgres():
             cursor = conn.cursor(cursor_factory=RealDictCursor)
         else:
@@ -681,10 +683,12 @@ def guardar_factura_proveedor():
         return jsonify({'exito': True})
 
     except Exception as e:
+        error_detallado = traceback.format_exc()
         if conn:
             conn.rollback()
             conn.close()
-        return jsonify({'exito': False, 'mensaje': str(e)}), 500
+        # Devolvemos 200 en vez de 500 para forzar a la pantalla a mostrar la falla real
+        return jsonify({'exito': False, 'mensaje': f"ERROR INTERNO:\n{str(e)}\n\nDETALLE:\n{error_detallado}"})
 
 @app.route('/actualizar_proveedor_telefono', methods=['POST'])
 def actualizar_proveedor_telefono():
