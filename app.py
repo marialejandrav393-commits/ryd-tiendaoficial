@@ -362,7 +362,7 @@ def pos_cajero():
     except Exception as e:
         import traceback
         return f"<h1>Error del sistema:</h1><pre>{traceback.format_exc()}</pre>"
-
+        
 @app.route('/procesar_venta', methods=['POST'])
 def procesar_venta():
     import traceback
@@ -382,6 +382,7 @@ def procesar_venta():
     if not items:
         return jsonify({'exito': False, 'mensaje': 'El carrito está vacío'})
 
+    conn = None
     try:
         total_venta = sum(float(item['precio']) * int(item['cantidad']) for item in items)
         total_unidades = sum(int(item.get('cantidad', 1)) for item in items)
@@ -392,15 +393,36 @@ def procesar_venta():
         if len(items) > 3:
             resumen_nombres += f" (+{len(items)-3} más)"
 
-        venta_id = ejecutar_consulta("""
+        # Abrimos la puerta a Neon UNA SOLA VEZ para toda la venta
+        conn = obtener_conexion()
+        if es_postgres():
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = conn.cursor()
+
+        def fmt(q):
+            return q.replace('?', '%s') if es_postgres() else q
+
+        # 1. Guardar la venta general
+        query_venta = fmt("""
             INSERT INTO ventas (fecha, total, metodo_pago, referencia, usuario, producto_nombre, tasa_cambio, monto_bs, desglose_pago, cliente_nombre, cliente_telefono, cantidad, precio)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
+        """)
+        if es_postgres():
+            query_venta += ' RETURNING id'
+        
+        cursor.execute(query_venta, (
             fecha_hora, round(total_venta, 2), metodo_pago, referencia, usuario,
             resumen_nombres, tasa_cambio, monto_bs, desglose_pago, cliente_nombre,
             cliente_telefono, total_unidades, round(total_venta, 2)
-        ), commit=True, lastrowid=True)
+        ))
+        
+        if es_postgres():
+            venta_id = cursor.fetchone()['id']
+        else:
+            venta_id = cursor.lastrowid
 
+        # 2. Descontar stock y registrar detalles de golpe
         for it in items:
             cod = it.get('codigo', '')
             nom = it.get('nombre', '')
@@ -409,18 +431,33 @@ def procesar_venta():
             p_unit_bs = round(float(it.get('precio_bs', p_unit * tasa_cambio)), 2)
             subt = round(p_unit * cant, 2)
 
-            ejecutar_consulta('UPDATE productos SET stock = stock - ? WHERE codigo = ? OR nombre = ?', (cant, cod, nom), commit=True)
-            prod_row = ejecutar_consulta('SELECT id FROM productos WHERE codigo = ? OR nombre = ? LIMIT 1', (cod, nom), fetchone=True)
-            prod_id = prod_row['id'] if prod_row else None
+            cursor.execute(fmt('UPDATE productos SET stock = stock - ? WHERE codigo = ? OR nombre = ?'), (cant, cod, nom))
+            
+            cursor.execute(fmt('SELECT id FROM productos WHERE codigo = ? OR nombre = ? LIMIT 1'), (cod, nom))
+            prod_row = cursor.fetchone()
+            
+            if es_postgres():
+                prod_id = prod_row['id'] if prod_row else None
+            else:
+                prod_id = prod_row[0] if prod_row else None
 
-            ejecutar_consulta("""
+            cursor.execute(fmt("""
                 INSERT INTO detalle_ventas (venta_id, producto_id, nombre_producto, cantidad, precio_unitario, precio_unitario_bs, subtotal)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (venta_id, prod_id, nom, cant, p_unit, p_unit_bs, subt), commit=True)
+            """), (venta_id, prod_id, nom, cant, p_unit, p_unit_bs, subt))
+
+        # 3. Confirmamos todo y cerramos la puerta
+        conn.commit()
+        cursor.close()
+        conn.close()
 
         return jsonify({'exito': True, 'venta_id': venta_id})
+
     except Exception as e:
         error_detallado = traceback.format_exc()
+        if conn:
+            conn.rollback()
+            conn.close()
         return jsonify({'exito': False, 'mensaje': f"ERROR AL COBRAR:\n{str(e)}\n\nDETALLE:\n{error_detallado}"})
 
 @app.route('/ticket/<int:venta_id>')
@@ -971,48 +1008,68 @@ def procesar_factura_ocr():
 
     except Exception as e:
         return jsonify({'exito': False, 'mensaje': f'Error en procesamiento: {str(e)}'}), 500
-
+        
 # --- HISTORIAL Y CIERRE ---
 
 @app.route('/ventas')
 @role_required('admin')
 def historial_ventas():
-    ventas_raw = ejecutar_consulta('SELECT * FROM ventas ORDER BY id DESC', fetchall=True) or []
-    ventas_lista = []
-    for v in ventas_raw:
-        detalles = ejecutar_consulta('SELECT * FROM detalle_ventas WHERE venta_id = ?', (v['id'],), fetchall=True) or []
-        ventas_lista.append({
-            'id': v['id'],
-            'fecha': v['fecha'],
-            'total': float(v['total'] or 0.0),
-            'metodo_pago': v['metodo_pago'] if 'metodo_pago' in v else 'Efectivo $',
-            'referencia': v['referencia'] if 'referencia' in v else 'N/A',
-            'usuario': v['usuario'] if 'usuario' in v else 'Cajero',
-            'desglose_pago': v['desglose_pago'] if 'desglose_pago' in v else '',
-            'cliente_nombre': v['cliente_nombre'] if 'cliente_nombre' in v else 'Cliente',
-            'cliente_telefono': v['cliente_telefono'] if 'cliente_telefono' in v else '',
-            'items': detalles
-        })
-    return render_template('ventas.html', ventas=ventas_lista)
+    try:
+        ventas_raw = ejecutar_consulta('SELECT * FROM ventas ORDER BY id DESC', fetchall=True) or []
+        ventas_lista = []
+        for v in ventas_raw:
+            detalles_raw = ejecutar_consulta('SELECT * FROM detalle_ventas WHERE venta_id = ?', (v['id'],), fetchall=True) or []
+            detalles = []
+            for d in detalles_raw:
+                d_dict = dict(d)
+                d_dict['precio_unitario'] = float(d_dict.get('precio_unitario', 0.0) or 0.0)
+                d_dict['precio_unitario_bs'] = float(d_dict.get('precio_unitario_bs', 0.0) or 0.0)
+                d_dict['subtotal'] = float(d_dict.get('subtotal', 0.0) or 0.0)
+                detalles.append(d_dict)
+            
+            ventas_lista.append({
+                'id': v['id'],
+                'fecha': v['fecha'],
+                'total': float(v['total'] or 0.0),
+                'monto_bs': float(v.get('monto_bs', 0.0) or 0.0),
+                'metodo_pago': v.get('metodo_pago', 'Efectivo $'),
+                'referencia': v.get('referencia', 'N/A'),
+                'usuario': v.get('usuario', 'Cajero'),
+                'desglose_pago': v.get('desglose_pago', ''),
+                'cliente_nombre': v.get('cliente_nombre', 'Cliente'),
+                'cliente_telefono': v.get('cliente_telefono', ''),
+                'items': detalles
+            })
+        return render_template('ventas.html', ventas=ventas_lista)
+    except Exception as e:
+        import traceback
+        return f"<h1>Error en Historial de Ventas:</h1><pre>{traceback.format_exc()}</pre>"
 
 @app.route('/cierre-caja')
 @role_required('admin')
 def cierre_caja():
     hoy = date.today().strftime('%Y-%m-%d')
     try:
-        ventas_hoy = ejecutar_consulta("SELECT * FROM ventas WHERE fecha LIKE ? ORDER BY id DESC", (f"{hoy}%",), fetchall=True) or []
-        total_usd = sum(float(v['total'] or 0.0) for v in ventas_hoy)
-        metodos_totales = {}
-        for v in ventas_hoy:
-            m = v['metodo_pago'] if 'metodo_pago' in v else 'Efectivo $'
-            tot = float(v['total'] or 0.0)
-            metodos_totales[m] = metodos_totales.get(m, 0.0) + tot
-    except Exception:
+        ventas_raw = ejecutar_consulta("SELECT * FROM ventas WHERE fecha LIKE ? ORDER BY id DESC", (f"{hoy}%",), fetchall=True) or []
         ventas_hoy = []
         total_usd = 0.0
         metodos_totales = {}
+        for v in ventas_raw:
+            v_dict = dict(v)
+            v_dict['total'] = float(v_dict['total'] or 0.0)
+            v_dict['monto_bs'] = float(v_dict.get('monto_bs', 0.0) or 0.0)
+            
+            tot = v_dict['total']
+            m = v_dict.get('metodo_pago', 'Efectivo $')
+            
+            total_usd += tot
+            metodos_totales[m] = metodos_totales.get(m, 0.0) + tot
+            ventas_hoy.append(v_dict)
 
-    return render_template('cierre_caja.html', ventas=ventas_hoy, total_usd=round(total_usd, 2), metodos=metodos_totales, fecha=hoy)
+        return render_template('cierre_caja.html', ventas=ventas_hoy, total_usd=round(total_usd, 2), metodos=metodos_totales, fecha=hoy)
+    except Exception as e:
+        import traceback
+        return f"<h1>Error en Cierre de Caja:</h1><pre>{traceback.format_exc()}</pre>"
 
 # --- RUTAS DE INSTALACIÓN PWA ---
 
