@@ -365,8 +365,9 @@ def pos_cajero():
 
 @app.route('/procesar_venta', methods=['POST'])
 def procesar_venta():
+    import traceback
     if not session.get('logged_in'):
-        return jsonify({'exito': False, 'mensaje': 'Sesión vencida. Vuelve a iniciar sesión.'}), 401
+        return jsonify({'exito': False, 'mensaje': 'Sesión vencida. Vuelve a iniciar sesión.'})
 
     data = request.get_json() or {}
     items = data.get('items', [])
@@ -379,7 +380,7 @@ def procesar_venta():
     usuario = session.get('username', 'Cajero')
 
     if not items:
-        return jsonify({'exito': False, 'mensaje': 'El carrito está vacío'}), 400
+        return jsonify({'exito': False, 'mensaje': 'El carrito está vacío'})
 
     try:
         total_venta = sum(float(item['precio']) * int(item['cantidad']) for item in items)
@@ -419,7 +420,8 @@ def procesar_venta():
 
         return jsonify({'exito': True, 'venta_id': venta_id})
     except Exception as e:
-        return jsonify({'exito': False, 'mensaje': f"Error al procesar: {str(e)}"}), 500
+        error_detallado = traceback.format_exc()
+        return jsonify({'exito': False, 'mensaje': f"ERROR AL COBRAR:\n{str(e)}\n\nDETALLE:\n{error_detallado}"})
 
 @app.route('/ticket/<int:venta_id>')
 def ticket(venta_id):
