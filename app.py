@@ -339,13 +339,15 @@ def index():
         return redirect(url_for('admin'))
     return redirect(url_for('pos_cajero'))
 
-@app.route('/cajero/pos')
-@role_required('admin', 'cajero')
-def pos_cajero():
-    productos = ejecutar_consulta('SELECT * FROM productos WHERE stock > 0 ORDER BY nombre ASC', fetchall=True) or []
-    categorias_rows = ejecutar_consulta('SELECT DISTINCT categoria FROM productos WHERE stock > 0', fetchall=True) or []
-    categorias = [row['categoria'] for row in categorias_rows if row['categoria']]
-    return render_template('pos.html', productos=productos, categorias=categorias)
+@app.route('/cajero/pos')@role_required('admin', 'cajero')def pos_cajero():
+    try:
+        productos = ejecutar_consulta('SELECT * FROM productos WHERE stock > 0 ORDER BY nombre ASC', fetchall=True) or []
+        categorias_rows = ejecutar_consulta('SELECT DISTINCT categoria FROM productos WHERE stock > 0', fetchall=True) or []
+        categorias = [row['categoria'] for row in categorias_rows if row['categoria']]
+        return render_template('pos.html', productos=productos, categorias=categorias)
+    except Exception as e:
+        import traceback
+        return f"<h1>Error del sistema:</h1><pre>{traceback.format_exc()}</pre>"
 
 @app.route('/procesar_venta', methods=['POST'])
 def procesar_venta():
