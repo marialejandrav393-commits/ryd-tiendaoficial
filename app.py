@@ -11,6 +11,7 @@ from pypdf import PdfReader
 import pandas as pd
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import traceback
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_super_segura_ryd_2026'
@@ -21,7 +22,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Detección de base de datos permanente en Neon / PostgreSQL
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 def es_postgres():
@@ -344,8 +344,6 @@ def index():
 def pos_cajero():
     try:
         productos_raw = ejecutar_consulta('SELECT * FROM productos WHERE stock > 0 ORDER BY nombre ASC', fetchall=True) or []
-        
-        # Convertimos los precios de Neon a números estándar para evitar choques en el HTML
         productos = []
         for p in productos_raw:
             p_dict = dict(p)
@@ -357,15 +355,12 @@ def pos_cajero():
 
         categorias_rows = ejecutar_consulta('SELECT DISTINCT categoria FROM productos WHERE stock > 0', fetchall=True) or []
         categorias = [row['categoria'] for row in categorias_rows if row['categoria']]
-        
         return render_template('pos.html', productos=productos, categorias=categorias)
     except Exception as e:
-        import traceback
         return f"<h1>Error del sistema:</h1><pre>{traceback.format_exc()}</pre>"
-        
+
 @app.route('/procesar_venta', methods=['POST'])
 def procesar_venta():
-    import traceback
     if not session.get('logged_in'):
         return jsonify({'exito': False, 'mensaje': 'Sesión vencida. Vuelve a iniciar sesión.'})
 
@@ -376,7 +371,6 @@ def procesar_venta():
         metodo_pago = data.get('metodo_pago', 'Efectivo $')
         referencia = data.get('referencia', 'N/A')
         
-        # EL SALVAVIDAS: Convertimos la coma en punto automáticamente (ej: 872,39 a 872.39)
         tasa_raw = str(data.get('tasa_cambio', '50.0')).replace(',', '.')
         tasa_cambio = float(tasa_raw)
         
@@ -388,9 +382,10 @@ def procesar_venta():
         if not items:
             return jsonify({'exito': False, 'mensaje': 'El carrito está vacío'})
 
+        # +0.0001 para forzar redondeo comercial en la venta total
         total_venta = sum(float(item['precio']) * int(item['cantidad']) for item in items)
         total_unidades = sum(int(item.get('cantidad', 1)) for item in items)
-        monto_bs = round(total_venta * tasa_cambio, 2)
+        monto_bs = round((total_venta * tasa_cambio) + 0.0001, 2)
         fecha_hora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         resumen_nombres = ", ".join([it['nombre'] for it in items[:3]])
@@ -414,9 +409,9 @@ def procesar_venta():
             query_venta += ' RETURNING id'
         
         cursor.execute(query_venta, (
-            fecha_hora, round(total_venta, 2), metodo_pago, referencia, usuario,
+            fecha_hora, round(total_venta + 0.0001, 2), metodo_pago, referencia, usuario,
             resumen_nombres, tasa_cambio, monto_bs, desglose_pago, cliente_nombre,
-            cliente_telefono, total_unidades, round(total_venta, 2)
+            cliente_telefono, total_unidades, round(total_venta + 0.0001, 2)
         ))
         
         if es_postgres():
@@ -429,8 +424,8 @@ def procesar_venta():
             nom = it.get('nombre', '')
             cant = int(it.get('cantidad', 1))
             p_unit = float(it.get('precio', 0.0))
-            p_unit_bs = round(float(it.get('precio_bs', p_unit * tasa_cambio)), 2)
-            subt = round(p_unit * cant, 2)
+            p_unit_bs = round((p_unit * tasa_cambio) + 0.0001, 2)
+            subt = round((p_unit * cant) + 0.0001, 2)
 
             cursor.execute(fmt('UPDATE productos SET stock = stock - ? WHERE codigo = ? OR nombre = ?'), (cant, cod, nom))
             
@@ -464,7 +459,7 @@ def procesar_venta():
 @role_required('admin')
 def limpiar_catalogo_secreto():
     ejecutar_consulta('DELETE FROM productos', commit=True)
-    return "<h1>INVENTARIO BORRADO CON ÉXITO</h1><p>Las ventas siguen a salvo. Ya puedes cerrar esta pestaña y subir tu Excel una sola vez.</p>"
+    return "<h1>INVENTARIO BORRADO CON ÉXITO</h1><p>Las ventas de hoy siguen a salvo. Ya puedes cerrar esta pestaña y subir tu Excel una sola vez.</p>"
 
 @app.route('/ticket/<int:venta_id>')
 def ticket(venta_id):
@@ -475,7 +470,6 @@ def ticket(venta_id):
     if not venta:
         return "Comprobante no encontrado", 404
 
-    # Convertir decimals para evitar errores en Jinja
     v_dict = dict(venta)
     v_dict['total'] = float(v_dict['total'] or 0.0)
     v_dict['monto_bs'] = float(v_dict['monto_bs'] or 0.0)
@@ -549,8 +543,8 @@ def exportar_inventario_excel():
             'codigo': p['codigo'],
             'nombre': p['nombre'],
             'costo': costo,
-            'precio bs': round(p_bs, 2),
-            'precio': round(p_div, 2),
+            'precio bs': round(p_bs + 0.0001, 2),
+            'precio': round(p_div + 0.0001, 2),
             'stock': stock,
             'categoria': p['categoria'],
             'descuento': float(p['descuento'] or 0.0)
@@ -606,7 +600,7 @@ def agregar():
         ejecutar_consulta("""
             INSERT INTO productos (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento), commit=True)
+        """, (codigo, nombre, round(costo+0.0001, 2), round(precio_bs+0.0001, 2), round(precio+0.0001, 2), stock, categoria, descuento), commit=True)
         return redirect(url_for('admin'))
 
     return render_template('agregar.html')
@@ -627,7 +621,7 @@ def editar(id):
             UPDATE productos 
             SET codigo = ?, nombre = ?, costo = ?, precio_bs = ?, precio = ?, stock = ?, categoria = ? 
             WHERE id = ?
-        """, (codigo, nombre, costo, precio_bs, precio, stock, categoria, id), commit=True)
+        """, (codigo, nombre, round(costo+0.0001, 2), round(precio_bs+0.0001, 2), round(precio+0.0001, 2), stock, categoria, id), commit=True)
         return redirect(url_for('admin'))
 
     producto = ejecutar_consulta('SELECT * FROM productos WHERE id = ?', (id,), fetchone=True)
@@ -651,7 +645,6 @@ def proveedores():
 
 @app.route('/guardar_factura_proveedor', methods=['POST'])
 def guardar_factura_proveedor():
-    import traceback
     data = request.get_json() or {}
     items = data.get('items', [])
     proveedor_nom = (data.get('proveedor') or '').strip().title()
@@ -696,9 +689,10 @@ def guardar_factura_proveedor():
         for it in items:
             cod = str(it.get('codigo', '')).strip().upper()
             nom = str(it.get('nombre', '')).strip()
-            costo = round(float(it.get('costo', 0) or 0), 2)
-            precio_bs = round(float(it.get('precio_bs', 0) or (costo * 1.5525)), 2)
-            precio = round(float(it.get('precio', 0) or (costo * 1.35)), 2)
+            # Parche de Epsilon (+0.0001) para resolver el choque del centavo con Excel
+            costo = round(float(it.get('costo', 0) or 0) + 0.0001, 2)
+            precio_bs = round(float(it.get('precio_bs', 0) or (costo * 1.5525)) + 0.0001, 2)
+            precio = round(float(it.get('precio', 0) or (costo * 1.35)) + 0.0001, 2)
             stock_nuevo = int(it.get('stock', 0) or 0)
             cat = str(it.get('categoria', 'General')).strip()
             desc = float(it.get('descuento', 0) or 0)
@@ -732,7 +726,6 @@ def guardar_factura_proveedor():
         if conn:
             conn.rollback()
             conn.close()
-        # Devolvemos 200 en vez de 500 para forzar a la pantalla a mostrar la falla real
         return jsonify({'exito': False, 'mensaje': f"ERROR INTERNO:\n{str(e)}\n\nDETALLE:\n{error_detallado}"})
 
 @app.route('/actualizar_proveedor_telefono', methods=['POST'])
@@ -742,13 +735,13 @@ def actualizar_proveedor_telefono():
     nuevo_tel = (data.get('telefono') or '').strip()
 
     if not prov_id:
-        return jsonify({'exito': False, 'mensaje': 'ID requerido'}), 400
+        return jsonify({'exito': False, 'mensaje': 'ID requerido'})
 
     try:
         ejecutar_consulta('UPDATE proveedores SET telefono = ? WHERE id = ?', (nuevo_tel, prov_id), commit=True)
         return jsonify({'exito': True})
     except Exception as e:
-        return jsonify({'exito': False, 'mensaje': str(e)}), 500
+        return jsonify({'exito': False, 'mensaje': str(e)})
 
 @app.route('/procesar_factura_ocr', methods=['POST'])
 def procesar_factura_ocr():
@@ -825,12 +818,13 @@ def procesar_factura_ocr():
 
                 cat_val = str(row[col_cat]).strip() if col_cat and pd.notna(row[col_cat]) else clasificar_categoria_ryd(nom)
 
+                # Se añade el empujoncito de los centavos en la previsualización también
                 items.append({
                     'codigo': cod_val,
                     'nombre': nom.title(),
-                    'costo': round(c_val, 2),
-                    'precio_bs': round(p_bs_val, 2),
-                    'precio': round(p_val, 2),
+                    'costo': round(c_val + 0.0001, 2),
+                    'precio_bs': round(p_bs_val + 0.0001, 2),
+                    'precio': round(p_val + 0.0001, 2),
                     'stock': s_val,
                     'categoria': cat_val
                 })
@@ -887,9 +881,9 @@ def procesar_factura_ocr():
                     items.append({
                         'codigo': '',
                         'nombre': desc.title(),
-                        'costo': costo,
-                        'precio_bs': round(costo * 1.5525, 2),
-                        'precio': round(costo * 1.35, 2),
+                        'costo': round(costo + 0.0001, 2),
+                        'precio_bs': round((costo * 1.5525) + 0.0001, 2),
+                        'precio': round((costo * 1.35) + 0.0001, 2),
                         'stock': cant,
                         'categoria': clasificar_categoria_ryd(desc)
                     })
@@ -927,9 +921,9 @@ def procesar_factura_ocr():
                         items.append({
                             'codigo': '',
                             'nombre': desc.title(),
-                            'costo': round(costo_encontrado, 2),
-                            'precio_bs': round(costo_encontrado * 1.5525, 2),
-                            'precio': round(costo_encontrado * 1.35, 2),
+                            'costo': round(costo_encontrado + 0.0001, 2),
+                            'precio_bs': round((costo_encontrado * 1.5525) + 0.0001, 2),
+                            'precio': round((costo_encontrado * 1.35) + 0.0001, 2),
                             'stock': cant,
                             'categoria': clasificar_categoria_ryd(desc)
                         })
@@ -946,9 +940,9 @@ def procesar_factura_ocr():
                     items.append({
                         'codigo': cod.upper(),
                         'nombre': desc.strip().title(),
-                        'costo': c_val,
-                        'precio_bs': round(c_val * 1.5525, 2),
-                        'precio': round(c_val * 1.35, 2),
+                        'costo': round(c_val + 0.0001, 2),
+                        'precio_bs': round((c_val * 1.5525) + 0.0001, 2),
+                        'precio': round((c_val * 1.35) + 0.0001, 2),
                         'stock': int(cant),
                         'categoria': clasificar_categoria_ryd(desc)
                     })
@@ -964,9 +958,9 @@ def procesar_factura_ocr():
                         items.append({
                             'codigo': '',
                             'nombre': desc_limpia.title(),
-                            'costo': c_val,
-                            'precio_bs': round(c_val * 1.5525, 2),
-                            'precio': round(c_val * 1.35, 2),
+                            'costo': round(c_val + 0.0001, 2),
+                            'precio_bs': round((c_val * 1.5525) + 0.0001, 2),
+                            'precio': round((c_val * 1.35) + 0.0001, 2),
                             'stock': int(cant),
                             'categoria': clasificar_categoria_ryd(desc_limpia)
                         })
@@ -997,9 +991,9 @@ def procesar_factura_ocr():
                         items.append({
                             'codigo': '',
                             'nombre': nom.title(),
-                            'costo': round(cost, 2),
-                            'precio_bs': round(cost * 1.5525, 2),
-                            'precio': round(cost * 1.35, 2),
+                            'costo': round(cost + 0.0001, 2),
+                            'precio_bs': round((cost * 1.5525) + 0.0001, 2),
+                            'precio': round((cost * 1.35) + 0.0001, 2),
                             'stock': qty,
                             'categoria': clasificar_categoria_ryd(nom)
                         })
@@ -1013,8 +1007,8 @@ def procesar_factura_ocr():
         })
 
     except Exception as e:
-        return jsonify({'exito': False, 'mensaje': f'Error en procesamiento: {str(e)}'}), 500
-        
+        return jsonify({'exito': False, 'mensaje': f'Error en procesamiento: {str(e)}'})
+
 # --- HISTORIAL Y CIERRE ---
 
 @app.route('/ventas')
@@ -1048,7 +1042,6 @@ def historial_ventas():
             })
         return render_template('ventas.html', ventas=ventas_lista)
     except Exception as e:
-        import traceback
         return f"<h1>Error en Historial de Ventas:</h1><pre>{traceback.format_exc()}</pre>"
 
 @app.route('/cierre-caja')
@@ -1074,7 +1067,6 @@ def cierre_caja():
 
         return render_template('cierre_caja.html', ventas=ventas_hoy, total_usd=round(total_usd, 2), metodos=metodos_totales, fecha=hoy)
     except Exception as e:
-        import traceback
         return f"<h1>Error en Cierre de Caja:</h1><pre>{traceback.format_exc()}</pre>"
 
 # --- RUTAS DE INSTALACIÓN PWA ---
