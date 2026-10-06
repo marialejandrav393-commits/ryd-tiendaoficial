@@ -579,25 +579,39 @@ def guardar_factura_proveedor():
     if not items:
         return jsonify({'exito': False, 'mensaje': 'Sin productos válidos para guardar'}), 400
 
+    conn = obtener_conexion()
     try:
+        # Preparamos una única conexión para todo el lote
+        if es_postgres():
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = conn.cursor()
+
+        # Adaptador rápido para Neon vs SQLite
+        def fmt(q):
+            return q.replace('?', '%s') if es_postgres() else q
+
         if proveedor_nom and proveedor_nom != "Proveedor General":
             monto_compra_actual = sum(float(it.get('costo', 0)) * int(it.get('stock', 0)) for it in items)
             fecha_hoy = date.today().strftime('%Y-%m-%d')
 
-            prov_existente = ejecutar_consulta('SELECT id FROM proveedores WHERE UPPER(nombre) = ?', (proveedor_nom.upper(),), fetchone=True)
+            cursor.execute(fmt('SELECT id FROM proveedores WHERE UPPER(nombre) = ?'), (proveedor_nom.upper(),))
+            prov_existente = cursor.fetchone()
+
             if prov_existente:
-                ejecutar_consulta("""
+                prov_id = prov_existente['id']
+                cursor.execute(fmt("""
                     UPDATE proveedores 
                     SET telefono = CASE WHEN ? != '' THEN ? ELSE telefono END,
                         ultima_compra = ?,
                         total_compras = total_compras + ?
                     WHERE id = ?
-                """, (telefono_prov, telefono_prov, fecha_hoy, round(monto_compra_actual, 2), prov_existente['id']), commit=True)
+                """), (telefono_prov, telefono_prov, fecha_hoy, round(monto_compra_actual, 2), prov_id))
             else:
-                ejecutar_consulta("""
+                cursor.execute(fmt("""
                     INSERT INTO proveedores (nombre, telefono, ultima_compra, total_compras)
                     VALUES (?, ?, ?, ?)
-                """, (proveedor_nom, telefono_prov, fecha_hoy, round(monto_compra_actual, 2)), commit=True)
+                """), (proveedor_nom, telefono_prov, fecha_hoy, round(monto_compra_actual, 2)))
 
         for it in items:
             cod = str(it.get('codigo', '')).strip().upper()
@@ -612,21 +626,32 @@ def guardar_factura_proveedor():
             if not nom:
                 continue
 
-            existente = ejecutar_consulta('SELECT id FROM productos WHERE UPPER(TRIM(nombre)) = ?', (nom.upper(),), fetchone=True)
+            cursor.execute(fmt('SELECT id FROM productos WHERE UPPER(TRIM(nombre)) = ?'), (nom.upper(),))
+            existente = cursor.fetchone()
+
             if existente:
-                ejecutar_consulta("""
+                prod_id = existente['id']
+                cursor.execute(fmt("""
                     UPDATE productos 
                     SET codigo = ?, costo = ?, precio_bs = ?, precio = ?, stock = stock + ?, categoria = ?, descuento = ?
                     WHERE id = ?
-                """, (cod, costo, precio_bs, precio, stock_nuevo, cat, desc, existente['id']), commit=True)
+                """), (cod, costo, precio_bs, precio, stock_nuevo, cat, desc, prod_id))
             else:
-                ejecutar_consulta("""
+                cursor.execute(fmt("""
                     INSERT INTO productos (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (cod, nom, costo, precio_bs, precio, stock_nuevo, cat, desc), commit=True)
+                """), (cod, nom, costo, precio_bs, precio, stock_nuevo, cat, desc))
 
+        # Subimos todo a Neon de un solo golpe y cerramos
+        conn.commit()
+        cursor.close()
+        conn.close()
         return jsonify({'exito': True})
+
     except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
         return jsonify({'exito': False, 'mensaje': str(e)}), 500
 
 @app.route('/actualizar_proveedor_telefono', methods=['POST'])
