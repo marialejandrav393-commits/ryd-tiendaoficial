@@ -24,16 +24,28 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
+pg_conn = None
 
 def es_postgres():
     return bool(DATABASE_URL and (DATABASE_URL.startswith('postgres://') or DATABASE_URL.startswith('postgresql://')))
 
 def obtener_conexion():
+    global pg_conn
     if es_postgres():
         url = DATABASE_URL
         if url.startswith('postgres://'):
             url = url.replace('postgres://', 'postgresql://', 1)
-        return psycopg2.connect(url, sslmode='require')
+        try:
+            if pg_conn is None or pg_conn.closed != 0:
+                pg_conn = psycopg2.connect(url, sslmode='require')
+            else:
+                # Prueba ultra rápida para verificar que la línea sigue viva
+                with pg_conn.cursor() as cur:
+                    cur.execute('SELECT 1')
+            return pg_conn
+        except Exception:
+            pg_conn = psycopg2.connect(url, sslmode='require')
+            return pg_conn
     else:
         conn = sqlite3.connect('inventario.db')
         conn.row_factory = sqlite3.Row
@@ -46,22 +58,26 @@ def ejecutar_consulta(query, params=(), fetchone=False, fetchall=False, commit=F
         if lastrowid and 'INSERT' in query_pg.upper() and 'RETURNING' not in query_pg.upper():
             query_pg += ' RETURNING id'
 
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute(query_pg, params)
-        res = None
-        if lastrowid:
-            fila = cursor.fetchone()
-            res = fila['id'] if fila else None
-        elif fetchone:
-            res = cursor.fetchone()
-        elif fetchall:
-            res = cursor.fetchall()
+        try:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute(query_pg, params)
+            res = None
+            if lastrowid:
+                fila = cursor.fetchone()
+                res = fila['id'] if fila else None
+            elif fetchone:
+                res = cursor.fetchone()
+            elif fetchall:
+                res = cursor.fetchall()
 
-        if commit:
-            conn.commit()
-        cursor.close()
-        conn.close()
-        return res
+            if commit:
+                conn.commit()
+            cursor.close()
+            # NO cerramos conn para dejar el túnel abierto y que vuele
+            return res
+        except Exception as e:
+            conn.rollback()
+            raise e
     else:
         cursor = conn.cursor()
         cursor.execute(query, params)
@@ -78,6 +94,14 @@ def ejecutar_consulta(query, params=(), fetchone=False, fetchall=False, commit=F
         cursor.close()
         conn.close()
         return res
+
+@app.route('/ping')
+def ping():
+    try:
+        ejecutar_consulta('SELECT 1', fetchone=True)
+        return "OK", 200
+    except Exception:
+        return "ERROR", 500
 
 def inicializar_db():
     conn = obtener_conexion()
@@ -245,7 +269,6 @@ def inicializar_db():
 
     conn.commit()
     cursor.close()
-    conn.close()
 
 inicializar_db()
 
@@ -452,7 +475,6 @@ def procesar_venta():
 
         conn.commit()
         cursor.close()
-        conn.close()
 
         return jsonify({'exito': True, 'venta_id': venta_id})
 
@@ -727,7 +749,6 @@ def guardar_factura_proveedor():
 
         conn.commit()
         cursor.close()
-        conn.close()
         return jsonify({'exito': True})
 
     except Exception as e:
