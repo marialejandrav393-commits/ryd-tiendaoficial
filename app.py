@@ -12,6 +12,7 @@ import pandas as pd
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import traceback
+from decimal import Decimal, ROUND_HALF_UP
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_super_segura_ryd_2026'
@@ -248,6 +249,14 @@ def inicializar_db():
 
 inicializar_db()
 
+# --- CALCULADORA FINANCIERA GEMELA DE EXCEL ---
+def redondear(valor):
+    try:
+        # Convierte el número a la calculadora Decimal y aplica redondeo comercial
+        return float(Decimal(str(float(valor))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+    except Exception:
+        return 0.0
+
 def clasificar_categoria_ryd(descripcion):
     desc = (descripcion or '').lower()
     if any(k in desc for k in ['olla', 'sm-200', 'ventilador', 'lampara', 'extractor', 'pulidor', 'drill', 'esterilizador', 'maquina', 'aparatologia']):
@@ -382,10 +391,9 @@ def procesar_venta():
         if not items:
             return jsonify({'exito': False, 'mensaje': 'El carrito está vacío'})
 
-        # +0.0001 para forzar redondeo comercial en la venta total
         total_venta = sum(float(item['precio']) * int(item['cantidad']) for item in items)
         total_unidades = sum(int(item.get('cantidad', 1)) for item in items)
-        monto_bs = round((total_venta * tasa_cambio) + 0.0001, 2)
+        monto_bs = redondear(total_venta * tasa_cambio)
         fecha_hora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         resumen_nombres = ", ".join([it['nombre'] for it in items[:3]])
@@ -409,9 +417,9 @@ def procesar_venta():
             query_venta += ' RETURNING id'
         
         cursor.execute(query_venta, (
-            fecha_hora, round(total_venta + 0.0001, 2), metodo_pago, referencia, usuario,
+            fecha_hora, redondear(total_venta), metodo_pago, referencia, usuario,
             resumen_nombres, tasa_cambio, monto_bs, desglose_pago, cliente_nombre,
-            cliente_telefono, total_unidades, round(total_venta + 0.0001, 2)
+            cliente_telefono, total_unidades, redondear(total_venta)
         ))
         
         if es_postgres():
@@ -424,8 +432,8 @@ def procesar_venta():
             nom = it.get('nombre', '')
             cant = int(it.get('cantidad', 1))
             p_unit = float(it.get('precio', 0.0))
-            p_unit_bs = round((p_unit * tasa_cambio) + 0.0001, 2)
-            subt = round((p_unit * cant) + 0.0001, 2)
+            p_unit_bs = redondear(p_unit * tasa_cambio)
+            subt = redondear(p_unit * cant)
 
             cursor.execute(fmt('UPDATE productos SET stock = stock - ? WHERE codigo = ? OR nombre = ?'), (cant, cod, nom))
             
@@ -517,10 +525,10 @@ def admin():
     return render_template(
         'admin.html',
         productos=productos_raw,
-        ganancia_estimada=round(ganancia_estimada, 2),
-        total_costo_inversion=round(total_costo_inversion, 2),
-        total_valor_venta=round(total_valor_venta, 2),
-        total_ventas_usd=round(total_ventas_usd, 2)
+        ganancia_estimada=redondear(ganancia_estimada),
+        total_costo_inversion=redondear(total_costo_inversion),
+        total_valor_venta=redondear(total_valor_venta),
+        total_ventas_usd=redondear(total_ventas_usd)
     )
 
 @app.route('/importar')
@@ -543,8 +551,8 @@ def exportar_inventario_excel():
             'codigo': p['codigo'],
             'nombre': p['nombre'],
             'costo': costo,
-            'precio bs': round(p_bs + 0.0001, 2),
-            'precio': round(p_div + 0.0001, 2),
+            'precio bs': redondear(p_bs),
+            'precio': redondear(p_div),
             'stock': stock,
             'categoria': p['categoria'],
             'descuento': float(p['descuento'] or 0.0)
@@ -600,7 +608,7 @@ def agregar():
         ejecutar_consulta("""
             INSERT INTO productos (codigo, nombre, costo, precio_bs, precio, stock, categoria, descuento)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (codigo, nombre, round(costo+0.0001, 2), round(precio_bs+0.0001, 2), round(precio+0.0001, 2), stock, categoria, descuento), commit=True)
+        """, (codigo, nombre, redondear(costo), redondear(precio_bs), redondear(precio), stock, categoria, descuento), commit=True)
         return redirect(url_for('admin'))
 
     return render_template('agregar.html')
@@ -621,7 +629,7 @@ def editar(id):
             UPDATE productos 
             SET codigo = ?, nombre = ?, costo = ?, precio_bs = ?, precio = ?, stock = ?, categoria = ? 
             WHERE id = ?
-        """, (codigo, nombre, round(costo+0.0001, 2), round(precio_bs+0.0001, 2), round(precio+0.0001, 2), stock, categoria, id), commit=True)
+        """, (codigo, nombre, redondear(costo), redondear(precio_bs), redondear(precio), stock, categoria, id), commit=True)
         return redirect(url_for('admin'))
 
     producto = ejecutar_consulta('SELECT * FROM productos WHERE id = ?', (id,), fetchone=True)
@@ -679,20 +687,21 @@ def guardar_factura_proveedor():
                         ultima_compra = ?,
                         total_compras = total_compras + ?
                     WHERE id = ?
-                """), (telefono_prov, telefono_prov, fecha_hoy, round(monto_compra_actual, 2), prov_id))
+                """), (telefono_prov, telefono_prov, fecha_hoy, redondear(monto_compra_actual), prov_id))
             else:
                 cursor.execute(fmt("""
                     INSERT INTO proveedores (nombre, telefono, ultima_compra, total_compras)
                     VALUES (?, ?, ?, ?)
-                """), (proveedor_nom, telefono_prov, fecha_hoy, round(monto_compra_actual, 2)))
+                """), (proveedor_nom, telefono_prov, fecha_hoy, redondear(monto_compra_actual)))
 
         for it in items:
             cod = str(it.get('codigo', '')).strip().upper()
             nom = str(it.get('nombre', '')).strip()
-            # Parche de Epsilon (+0.0001) para resolver el choque del centavo con Excel
-            costo = round(float(it.get('costo', 0) or 0) + 0.0001, 2)
-            precio_bs = round(float(it.get('precio_bs', 0) or (costo * 1.5525)) + 0.0001, 2)
-            precio = round(float(it.get('precio', 0) or (costo * 1.35)) + 0.0001, 2)
+            
+            costo = redondear(it.get('costo', 0))
+            precio_bs = redondear(it.get('precio_bs', 0) or (costo * 1.5525))
+            precio = redondear(it.get('precio', 0) or (costo * 1.35))
+            
             stock_nuevo = int(it.get('stock', 0) or 0)
             cat = str(it.get('categoria', 'General')).strip()
             desc = float(it.get('descuento', 0) or 0)
@@ -818,13 +827,12 @@ def procesar_factura_ocr():
 
                 cat_val = str(row[col_cat]).strip() if col_cat and pd.notna(row[col_cat]) else clasificar_categoria_ryd(nom)
 
-                # Se añade el empujoncito de los centavos en la previsualización también
                 items.append({
                     'codigo': cod_val,
                     'nombre': nom.title(),
-                    'costo': round(c_val + 0.0001, 2),
-                    'precio_bs': round(p_bs_val + 0.0001, 2),
-                    'precio': round(p_val + 0.0001, 2),
+                    'costo': redondear(c_val),
+                    'precio_bs': redondear(p_bs_val),
+                    'precio': redondear(p_val),
                     'stock': s_val,
                     'categoria': cat_val
                 })
@@ -881,9 +889,9 @@ def procesar_factura_ocr():
                     items.append({
                         'codigo': '',
                         'nombre': desc.title(),
-                        'costo': round(costo + 0.0001, 2),
-                        'precio_bs': round((costo * 1.5525) + 0.0001, 2),
-                        'precio': round((costo * 1.35) + 0.0001, 2),
+                        'costo': redondear(costo),
+                        'precio_bs': redondear(costo * 1.5525),
+                        'precio': redondear(costo * 1.35),
                         'stock': cant,
                         'categoria': clasificar_categoria_ryd(desc)
                     })
@@ -921,9 +929,9 @@ def procesar_factura_ocr():
                         items.append({
                             'codigo': '',
                             'nombre': desc.title(),
-                            'costo': round(costo_encontrado + 0.0001, 2),
-                            'precio_bs': round((costo_encontrado * 1.5525) + 0.0001, 2),
-                            'precio': round((costo_encontrado * 1.35) + 0.0001, 2),
+                            'costo': redondear(costo_encontrado),
+                            'precio_bs': redondear(costo_encontrado * 1.5525),
+                            'precio': redondear(costo_encontrado * 1.35),
                             'stock': cant,
                             'categoria': clasificar_categoria_ryd(desc)
                         })
@@ -940,9 +948,9 @@ def procesar_factura_ocr():
                     items.append({
                         'codigo': cod.upper(),
                         'nombre': desc.strip().title(),
-                        'costo': round(c_val + 0.0001, 2),
-                        'precio_bs': round((c_val * 1.5525) + 0.0001, 2),
-                        'precio': round((c_val * 1.35) + 0.0001, 2),
+                        'costo': redondear(c_val),
+                        'precio_bs': redondear(c_val * 1.5525),
+                        'precio': redondear(c_val * 1.35),
                         'stock': int(cant),
                         'categoria': clasificar_categoria_ryd(desc)
                     })
@@ -958,9 +966,9 @@ def procesar_factura_ocr():
                         items.append({
                             'codigo': '',
                             'nombre': desc_limpia.title(),
-                            'costo': round(c_val + 0.0001, 2),
-                            'precio_bs': round((c_val * 1.5525) + 0.0001, 2),
-                            'precio': round((c_val * 1.35) + 0.0001, 2),
+                            'costo': redondear(c_val),
+                            'precio_bs': redondear(c_val * 1.5525),
+                            'precio': redondear(c_val * 1.35),
                             'stock': int(cant),
                             'categoria': clasificar_categoria_ryd(desc_limpia)
                         })
@@ -991,9 +999,9 @@ def procesar_factura_ocr():
                         items.append({
                             'codigo': '',
                             'nombre': nom.title(),
-                            'costo': round(cost + 0.0001, 2),
-                            'precio_bs': round((cost * 1.5525) + 0.0001, 2),
-                            'precio': round((cost * 1.35) + 0.0001, 2),
+                            'costo': redondear(cost),
+                            'precio_bs': redondear(cost * 1.5525),
+                            'precio': redondear(cost * 1.35),
                             'stock': qty,
                             'categoria': clasificar_categoria_ryd(nom)
                         })
@@ -1065,7 +1073,7 @@ def cierre_caja():
             metodos_totales[m] = metodos_totales.get(m, 0.0) + tot
             ventas_hoy.append(v_dict)
 
-        return render_template('cierre_caja.html', ventas=ventas_hoy, total_usd=round(total_usd, 2), metodos=metodos_totales, fecha=hoy)
+        return render_template('cierre_caja.html', ventas=ventas_hoy, total_usd=redondear(total_usd), metodos=metodos_totales, fecha=hoy)
     except Exception as e:
         return f"<h1>Error en Cierre de Caja:</h1><pre>{traceback.format_exc()}</pre>"
 
