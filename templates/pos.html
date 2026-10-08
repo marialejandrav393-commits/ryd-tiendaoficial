@@ -1001,6 +1001,7 @@ function renderizarAbonos() {
 }
 
 // Botón Único: Registra automáticamente, envía por WhatsApp si hay número y deja la pantalla limpia
+// Botón Único: Registra automáticamente, envía por WhatsApp con desglose exacto y limpia la pantalla
 function ejecutarVenta() {
     if (carrito.length === 0) {
         alert("Agregue al menos un producto a la cuenta.");
@@ -1023,19 +1024,22 @@ function ejecutarVenta() {
         return;
     }
 
-    const referencia = document.getElementById('inputReferencia').value.trim();
-    const clienteNombre = document.getElementById('inputClienteNombre').value.trim() || 'Cliente Mostrador';
-    const clienteTelefono = document.getElementById('inputClienteTelefono').value.trim();
+    const elRef = document.getElementById('inputReferencia');
+    const elNom = document.getElementById('inputClienteNombre');
+    const elTel = document.getElementById('inputClienteTelefono');
+
+    const referencia = elRef ? elRef.value.trim() : '';
+    const clienteNombre = (elNom && elNom.value.trim()) ? elNom.value.trim() : 'Cliente Mostrador';
+    const clienteTelefono = elTel ? elTel.value.trim() : '';
 
     if (['Pago Móvil', 'Punto Venta', 'Binance'].includes(metodoSeleccionado) && abonosRegistrados.length === 0) {
         if (!referencia) {
             alert(`Es obligatorio ingresar el número de referencia para ${metodoSeleccionado}.`);
-            document.getElementById('inputReferencia').focus();
+            if (elRef) elRef.focus();
             return;
         }
     }
 
-    const usarBs = esModoPrecioBs();
     const itemsParaGuardar = carrito.map(p => {
         const pUnit = obtenerPrecioUnitarioItem(p);
         return {
@@ -1047,19 +1051,37 @@ function ejecutarVenta() {
         };
     });
 
+    // Armamos la lista exacta de cómo pagó el cliente
+    let listaPagos = [...abonosRegistrados];
+    if (listaPagos.length > 0 && ingresoActualUSD > 0.009) {
+        listaPagos.push({
+            metodo: metodoSeleccionado,
+            montoUSD: ingresoActualUSD,
+            montoBS: (monedaEntrada === 'BS' ? rawVal : (rawVal * tasaPos)),
+            ref: referencia || 'N/A'
+        });
+    }
+
     let desgloseTxt = '';
-    if (abonosRegistrados.length > 0) {
-        if (ingresoActualUSD > 0.009) {
-            abonosRegistrados.push({
-                metodo: metodoSeleccionado,
-                montoUSD: ingresoActualUSD,
-                montoBS: (monedaEntrada === 'BS' ? rawVal : (rawVal * tasaPos)),
-                ref: referencia || 'N/A'
-            });
-        }
-        desgloseTxt = abonosRegistrados.map(a => `${a.metodo}: $${a.montoUSD.toFixed(2)} / Bs. ${a.montoBS.toFixed(2)}`).join(' | ');
+    let modalidadFinal = metodoSeleccionado;
+
+    if (listaPagos.length > 0) {
+        modalidadFinal = 'Pago Combinado';
+        desgloseTxt = listaPagos.map(a => {
+            const txtRef = (a.ref && a.ref !== 'N/A') ? ` (Ref: ${a.ref})` : '';
+            if (a.metodo.includes('Efectivo $') || a.metodo.includes('Binance')) {
+                return `${a.metodo}: $${a.montoUSD.toFixed(2)}${txtRef}`;
+            } else {
+                return `${a.metodo}: Bs. ${a.montoBS.toFixed(2)} ($${a.montoUSD.toFixed(2)})${txtRef}`;
+            }
+        }).join(' | ');
     } else {
-        desgloseTxt = `${metodoSeleccionado}: $${total.toFixed(2)} / Bs. ${(total * tasaPos).toFixed(2)}`;
+        const txtRef = referencia ? ` (Ref: ${referencia})` : '';
+        if (metodoSeleccionado.includes('Efectivo $') || metodoSeleccionado.includes('Binance')) {
+            desgloseTxt = `${metodoSeleccionado}: $${total.toFixed(2)}${txtRef}`;
+        } else {
+            desgloseTxt = `${metodoSeleccionado}: Bs. ${(total * tasaPos).toFixed(2)} ($${total.toFixed(2)})${txtRef}`;
+        }
     }
 
     fetch('/procesar_venta', {
@@ -1067,49 +1089,47 @@ function ejecutarVenta() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             items: itemsParaGuardar,
-            metodo_pago: abonosRegistrados.length > 0 ? 'Pago Mixto' : metodoSeleccionado,
+            metodo_pago: modalidadFinal,
             referencia: referencia || 'N/A',
             tasa_cambio: tasaPos,
             desglose_pago: desgloseTxt,
-            cliente_nombre: Nombre,
-            cliente_telefono: Telefono
+            cliente_nombre: clienteNombre,
+            cliente_telefono: clienteTelefono
         })
     })
     .then(res => res.json())
     .then(data => {
         if (data.exito) {
-            // 1. Si se ingresó teléfono, envía automáticamente el recibo por WhatsApp
             if (clienteTelefono) {
                 let telLimpio = clienteTelefono.replace(/[^0-9]/g, '');
                 if (telLimpio.startsWith('0')) {
                     telLimpio = '58' + telLimpio.substring(1);
                 }
                 
-                let mensajeWA = ` *COMPROBANTE / NOTA DE ENTREGA RyD* \n`;
-                mensajeWA += `━━━━━━━━━━━━━━━━━━━━━\n`;
-                mensajeWA += `*Nota N°:* #${String(data.venta_id).padStart(6, '0')}\n`;
+                let mensajeWA = `*COMPROBANTE / NOTA DE ENTREGA RyD*\n`;
+                mensajeWA += `------------------------------------\n`;
+                mensajeWA += `*Nota Nro:* #${String(data.venta_id).padStart(6, '0')}\n`;
                 mensajeWA += `*Cliente:* ${clienteNombre}\n`;
-                mensajeWA += `*Tasa Oficial:* Bs. ${tasaPos.toFixed(2)}\n`;
-                mensajeWA += `━━━━━━━━━━━━━━━━━━━━━\n`;
-                mensajeWA += `*DETALLE DE COMPRA:*\n`;
+                mensajeWA += `*Tasa aplicada:* Bs. ${tasaPos.toFixed(2)}\n`;
+                mensajeWA += `------------------------------------\n`;
+                mensajeWA += `*PRODUCTOS:*\n`;
                 itemsParaGuardar.forEach(it => {
-                    mensajeWA += `▪ ${it.cantidad}x *${it.nombre}* ($${it.precio.toFixed(2)})\n`;
+                    mensajeWA += `- ${it.cantidad}x ${it.nombre} ($${it.precio.toFixed(2)})\n`;
                 });
-                mensajeWA += `━━━━━━━━━━━━━━━━━━━━━\n`;
-                mensajeWA += `*TOTAL PAGADO:*\n`;
-                mensajeWA += `*USD:* $${total.toFixed(2)}\n`;
-                mensajeWA += `*Bs:* Bs. ${(total * tasaPos).toFixed(2)}\n`;
-                mensajeWA += `*Modalidad:* ${metodoSeleccionado}\n`;
-                if (referencia) mensajeWA += `*Referencia:* ${referencia}\n`;
-                mensajeWA += `¡Muchas gracias por su compra! `;
+                mensajeWA += `------------------------------------\n`;
+                mensajeWA += `*TOTAL DE LA COMPRA:* $${total.toFixed(2)} (Bs. ${(total * tasaPos).toFixed(2)})\n`;
+                mensajeWA += `*MODALIDAD:* ${modalidadFinal}\n`;
+                mensajeWA += `*DETALLE DEL PAGO RECIBIDO:*\n`;
+                desgloseTxt.split(' | ').forEach(parte => {
+                    mensajeWA += `• ${parte}\n`;
+                });
+                mensajeWA += `------------------------------------\n`;
+                mensajeWA += `Muchas gracias por su compra en RyD.`;
 
                 window.open(`https://wa.me/${telLimpio}?text=${encodeURIComponent(mensajeWA)}`, '_blank');
             }
 
-            // 2. Abre el comprobante térmico en una pestaña para imprimir por calor
             window.open(`/ticket/${data.venta_id}`, '_blank');
-
-            // 3. Cierra la venta y deja la pantalla limpia para la siguiente compra
             limpiarPantallaCompleta();
         } else {
             alert(`Fallo de registro: ${data.mensaje}`);

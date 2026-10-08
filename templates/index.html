@@ -14,10 +14,10 @@
         .header-ryd {
             background-color: #FFFFFF;
             border-bottom: 1px solid #F0EAE1;
-            padding: 20px 40px;
+            padding: 15px 30px;
         }
         .logo-ryd {
-            font-size: 2.5rem;
+            font-size: 2.3rem;
             font-weight: bold;
             color: #C5A059;
             letter-spacing: 2px;
@@ -30,15 +30,15 @@
             background-color: #FFFFFF;
             border-bottom: 1px solid #E5E0D8;
             padding: 12px 0;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
         .btn-category {
             background: transparent;
             border: none;
             color: #555;
-            font-size: 0.9rem;
-            margin: 0 8px;
-            padding: 4px 8px;
+            font-size: 0.85rem;
+            margin: 4px 6px;
+            padding: 4px 10px;
             text-transform: uppercase;
             letter-spacing: 1px;
             transition: all 0.2s ease;
@@ -46,6 +46,29 @@
         .btn-category:hover, .btn-category.active {
             color: #C5A059;
             border-bottom: 2px solid #C5A059;
+            font-weight: bold;
+        }
+        .payment-banner {
+            background-color: #FFFFFF;
+            border: 1px solid #E5E0D8;
+            border-left: 4px solid #C5A059;
+            border-radius: 4px;
+            padding: 12px 20px;
+            margin-bottom: 25px;
+        }
+        .btn-modo-pago {
+            border: 1px solid #C5A059;
+            color: #555;
+            background: #FFFFFF;
+            font-size: 0.85rem;
+            padding: 6px 16px;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+        }
+        .btn-modo-pago.active {
+            background-color: #C5A059;
+            color: #FFFFFF;
+            font-weight: bold;
         }
         .section-title {
             font-size: 1.4rem;
@@ -59,6 +82,8 @@
             border: 1px solid #E5E0D8;
             border-radius: 4px;
             padding: 20px;
+            position: sticky;
+            top: 20px;
         }
         .cart-table th {
             font-size: 0.75rem;
@@ -77,12 +102,25 @@
             border: 1px solid #E5E0D8;
             border-radius: 4px;
             overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
         .product-img {
             width: 100%;
             height: 180px;
             object-fit: cover;
             border-bottom: 1px solid #F0EAE1;
+        }
+        .price-tag-main {
+            font-size: 1.15rem;
+            font-weight: bold;
+            color: #111;
+        }
+        .price-tag-sub {
+            font-size: 0.78rem;
+            color: #777;
         }
         .btn-whatsapp {
             background-color: #25D366;
@@ -98,26 +136,54 @@
 </head>
 <body>
 
-<header class="header-ryd d-flex justify-content-between align-items-center">
+<header class="header-ryd d-flex justify-content-between align-items-center flex-wrap gap-2">
     <a href="{{ url_for('index') }}" class="logo-ryd">RyD</a>
-    <div class="search-header">
-        <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Buscar productos..." onkeyup="filtrarProductos()">
+    <div class="d-flex align-items-center gap-2">
+        <div class="search-header">
+            <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Buscar productos..." onkeyup="filtrarProductos()">
+        </div>
+        {% if session.get('logged_in') %}
+            <a href="{{ url_for('pos_cajero') }}" class="btn btn-sm btn-outline-dark">Ir a Caja</a>
+            {% if session.get('user_role') == 'admin' %}
+                <a href="{{ url_for('admin') }}" class="btn btn-sm btn-dark">Panel Admin</a>
+            {% endif %}
+        {% else %}
+            <a href="{{ url_for('login') }}" class="btn btn-sm btn-outline-secondary" style="font-size: 0.75rem;">Acceso Personal</a>
+        {% endif %}
     </div>
 </header>
 
 <nav class="category-bar text-center">
     <div class="container d-flex justify-content-center flex-wrap">
         <button class="btn-category active" onclick="filtrarCategoria('todas', this)">Todas</button>
-        <button class="btn-category" onclick="filtrarCategoria('cabello', this)">Productos para el Cabello</button>
-        <button class="btn-category" onclick="filtrarCategoria('intimos', this)">Íntimos</button>
-        <button class="btn-category" onclick="filtrarCategoria('insumos', this)">Insumos</button>
-        <button class="btn-category" onclick="filtrarCategoria('cejas y pestañas', this)">Cejas y Pestañas</button>
         <button class="btn-category" onclick="filtrarCategoria('uñas', this)">Uñas</button>
+        <button class="btn-category" onclick="filtrarCategoria('cejas y pestañas', this)">Cejas y Pestañas</button>
+        <button class="btn-category" onclick="filtrarCategoria('cuidado capilar', this)">Cuidado Capilar</button>
+        <button class="btn-category" onclick="filtrarCategoria('aparatología', this)">Aparatología</button>
+        <button class="btn-category" onclick="filtrarCategoria('insumos', this)">Insumos</button>
+        <button class="btn-category" onclick="filtrarCategoria('desechables', this)">Desechables</button>
+        <button class="btn-category" onclick="filtrarCategoria('íntimo', this)">Íntimo</button>
     </div>
 </nav>
 
 <div class="container mb-5">
-    
+
+    <!-- SELECTOR DE MODALIDAD DE PAGO SIN EMOJIS -->
+    <div class="payment-banner d-flex justify-content-between align-items-center flex-wrap gap-3 shadow-sm">
+        <div>
+            <strong class="d-block" style="color: #C5A059;">¿Cómo deseas realizar tu pago?</strong>
+            <span class="small text-muted">Selecciona tu método de pago para ver el precio exacto aplicado a tu compra:</span>
+        </div>
+        <div class="btn-group" role="group">
+            <button type="button" id="btnModoDivisa" class="btn btn-modo-pago active" onclick="cambiarModoPago('DIVISA')">
+                Divisas Efectivo / Binance
+            </button>
+            <button type="button" id="btnModoBs" class="btn btn-modo-pago" onclick="cambiarModoPago('BS')">
+                Pago Móvil / Punto (Precio Bs)
+            </button>
+        </div>
+    </div>
+
     {% with messages = get_flashed_messages() %}
       {% if messages %}
         {% for message in messages %}
@@ -127,35 +193,49 @@
     {% endwith %}
 
     <div class="row">
-        <!-- CATÁLOGO DE PRODUCTOS CON FOTO -->
-        <div class="col-lg-8 pe-lg-5">
-            <h5 class="section-title">Catálogo</h5>
+        <!-- CATÁLOGO DE PRODUCTOS -->
+        <div class="col-lg-8 pe-lg-4">
+            <h5 class="section-title">Catálogo Disponible</h5>
             
             <div class="row" id="gridProductos">
                 {% if productos %}
                     {% for p in productos %}
+                    {% set p_bs_calc = p.precio_bs if (p.precio_bs and p.precio_bs > 0) else (p.costo * 1.5525 if p.costo else p.precio) %}
                     <div class="col-md-6 mb-4 item-producto" 
                          data-nombre="{{ p.nombre.lower() }}" 
                          data-categoria="{{ (p.categoria or 'general').lower() }}">
-                        <div class="card-product">
-                            {% if p.imagen %}
-                                <img src="{{ url_for('static', filename='uploads/' + p.imagen) }}" class="product-img" alt="{{ p.nombre }}">
-                            {% endif %}
-                            <div class="p-3">
+                        <div class="card-product p-3">
+                            <div>
+                                {% if p.imagen %}
+                                    <img src="{{ url_for('static', filename='uploads/' + p.imagen) }}" class="product-img mb-3" alt="{{ p.nombre }}">
+                                {% endif %}
                                 <h6 class="fw-bold m-0">{{ p.nombre }}</h6>
-                                <p class="text-muted small my-1">Categoría: {{ p.categoria or 'General' }}</p>
-                                <p class="fw-bold text-dark m-0 mb-2">${{ "%.2f"|format(p.precio) }}</p>
-                                <form action="{{ url_for('agregar_carrito') }}" method="POST" class="d-flex">
-                                    <input type="hidden" name="producto_id" value="{{ p.id }}">
-                                    <input type="number" name="cantidad" value="1" min="1" max="{{ p.stock }}" class="form-control form-control-sm me-2" style="width: 70px;">
-                                    <button type="submit" class="btn btn-sm btn-dark">Agregar al Carrito</button>
-                                </form>
+                                <p class="text-muted small my-1">Categoría: {{ p.categoria or 'General' }} | Disponible: {{ p.stock }}</p>
+                                
+                                <div class="my-2">
+                                    <span class="price-tag-main precio-producto-principal" 
+                                          data-usd="{{ '%.2f'|format(p.precio) }}" 
+                                          data-bs="{{ '%.2f'|format(p_bs_calc) }}">
+                                        ${{ "%.2f"|format(p.precio) }}
+                                    </span>
+                                    <span class="d-block price-tag-sub texto-referencia-precio"
+                                          data-usd="{{ '%.2f'|format(p.precio) }}" 
+                                          data-bs="{{ '%.2f'|format(p_bs_calc) }}">
+                                        Precio Divisas / Binance (En Bs: ${{ "%.2f"|format(p_bs_calc) }})
+                                    </span>
+                                </div>
                             </div>
+
+                            <form action="{{ url_for('agregar_carrito') }}" method="POST" class="d-flex mt-2">
+                                <input type="hidden" name="producto_id" value="{{ p.id }}">
+                                <input type="number" name="cantidad" value="1" min="1" max="{{ p.stock }}" class="form-control form-control-sm me-2" style="width: 70px;">
+                                <button type="submit" class="btn btn-sm btn-dark flex-grow-1">Agregar al Carrito</button>
+                            </form>
                         </div>
                     </div>
                     {% endfor %}
                 {% else %}
-                    <p class="text-muted small">No hay productos en catálogo.</p>
+                    <p class="text-muted small">No hay productos disponibles en el catálogo en este momento.</p>
                 {% endif %}
             </div>
         </div>
@@ -163,9 +243,19 @@
         <!-- CARRITO DE COMPRAS CON ENVÍO A WHATSAPP -->
         <div class="col-lg-4">
             <div class="cart-card shadow-sm">
-                <h6 class="mb-4">Carrito de Compras</h6>
+                <h6 class="mb-3 fw-bold">Carrito de Compras</h6>
                 
-                <table class="table table-borderless cart-table">
+                <div class="mb-3">
+                    <label class="form-label small text-muted mb-1">Método de pago que usarás:</label>
+                    <select id="selectMetodoCarrito" class="form-select form-select-sm" onchange="sincronizarDesdeSelect()">
+                        <option value="Efectivo en Divisas ($)">Efectivo en Divisas ($)</option>
+                        <option value="Binance (USDT)">Binance (USDT)</option>
+                        <option value="Pago Móvil (Bs)">Pago Móvil (Bolívares)</option>
+                        <option value="Punto de Venta / Transferencia (Bs)">Punto de Venta / Transferencia (Bs)</option>
+                    </select>
+                </div>
+
+                <table class="table table-borderless cart-table align-middle">
                     <thead>
                         <tr>
                             <th>PRODUCTO</th>
@@ -176,10 +266,14 @@
                     <tbody>
                         {% if carrito %}
                             {% for item in carrito %}
-                            <tr>
+                            <tr class="fila-item-carrito"
+                                data-nombre="{{ item.nombre }}"
+                                data-cantidad="{{ item.cantidad }}"
+                                data-sub-usd="{{ '%.2f'|format(item.subtotal_usd) }}"
+                                data-sub-bs="{{ '%.2f'|format(item.subtotal_bs) }}">
                                 <td><small>{{ item.nombre }}</small></td>
                                 <td class="text-center"><small>{{ item.cantidad }}</small></td>
-                                <td class="text-end"><small>${{ "%.2f"|format(item.subtotal) }}</small></td>
+                                <td class="text-end"><small class="fw-bold celda-subtotal">${{ "%.2f"|format(item.subtotal_usd) }}</small></td>
                             </tr>
                             {% endfor %}
                         {% else %}
@@ -194,15 +288,22 @@
 
                 <hr style="border-color: #E5E0D8;">
                 
-                <div class="d-flex justify-content-between align-items-center mt-3 mb-4">
-                    <span class="total-price">Total:</span>
-                    <span class="total-price">${{ "%.2f"|format(total_carrito) }}</span>
+                <div class="d-flex justify-content-between align-items-center mt-3 mb-1">
+                    <span class="total-price">Total a Pagar:</span>
+                    <span class="total-price" id="totalCarritoDisplay" 
+                          data-total-usd="{{ '%.2f'|format(total_carrito_usd) }}"
+                          data-total-bs="{{ '%.2f'|format(total_carrito_bs) }}">
+                        ${{ "%.2f"|format(total_carrito_usd) }}
+                    </span>
                 </div>
+                <p id="notaMetodoCarrito" class="small text-muted text-end mb-3">
+                    Tarifa aplicada para Divisas / Binance
+                </p>
 
                 {% if carrito %}
                     <div class="mb-3">
-                        <label class="form-label small text-muted">Tu Nombre (para la factura):</label>
-                        <input type="text" id="clienteNombre" class="form-control form-control-sm" placeholder="Ej. Maria Gonzalez">
+                        <label class="form-label small text-muted">Tu Nombre (para tu nota de entrega):</label>
+                        <input type="text" id="clienteNombre" class="form-control form-control-sm" placeholder="Ej. María González">
                     </div>
 
                     <button onclick="enviarPedidoWhatsApp()" class="btn btn-whatsapp btn-sm w-100 py-2 mb-2">
@@ -217,6 +318,77 @@
 
 <script>
 let categoriaActual = 'todas';
+let modoPagoActual = localStorage.getItem('ryd_modo_pago') || 'DIVISA';
+
+function cambiarModoPago(modo) {
+    modoPagoActual = modo;
+    localStorage.setItem('ryd_modo_pago', modo);
+
+    const btnDivisa = document.getElementById('btnModoDivisa');
+    const btnBs = document.getElementById('btnModoBs');
+    const selectMetodo = document.getElementById('selectMetodoCarrito');
+
+    if (modo === 'DIVISA') {
+        btnDivisa.classList.add('active');
+        btnBs.classList.remove('active');
+        if (selectMetodo && (selectMetodo.value.includes('Pago Móvil') || selectMetodo.value.includes('Punto'))) {
+            selectMetodo.value = 'Efectivo en Divisas ($)';
+        }
+    } else {
+        btnBs.classList.add('active');
+        btnDivisa.classList.remove('active');
+        if (selectMetodo && (selectMetodo.value.includes('Divisas') || selectMetodo.value.includes('Binance'))) {
+            selectMetodo.value = 'Pago Móvil (Bs)';
+        }
+    }
+
+    document.querySelectorAll('.precio-producto-principal').forEach(el => {
+        const pUsd = el.getAttribute('data-usd');
+        const pBs = el.getAttribute('data-bs');
+        el.textContent = (modo === 'DIVISA') ? `$${pUsd}` : `$${pBs}`;
+    });
+
+    document.querySelectorAll('.texto-referencia-precio').forEach(el => {
+        const pUsd = el.getAttribute('data-usd');
+        const pBs = el.getAttribute('data-bs');
+        if (modo === 'DIVISA') {
+            el.textContent = `Precio Divisas / Binance (En Bs: $${pBs})`;
+        } else {
+            el.textContent = `Precio para Pago Móvil / Bs (En Divisas: $${pUsd})`;
+        }
+    });
+
+    document.querySelectorAll('.fila-item-carrito').forEach(fila => {
+        const subUsd = fila.getAttribute('data-sub-usd');
+        const subBs = fila.getAttribute('data-sub-bs');
+        const celda = fila.querySelector('.celda-subtotal');
+        if (celda) {
+            celda.textContent = (modo === 'DIVISA') ? `$${subUsd}` : `$${subBs}`;
+        }
+    });
+
+    const totalEl = document.getElementById('totalCarritoDisplay');
+    const notaEl = document.getElementById('notaMetodoCarrito');
+    if (totalEl) {
+        const totUsd = totalEl.getAttribute('data-total-usd');
+        const totBs = totalEl.getAttribute('data-total-bs');
+        totalEl.textContent = (modo === 'DIVISA') ? `$${totUsd}` : `$${totBs}`;
+    }
+    if (notaEl) {
+        notaEl.textContent = (modo === 'DIVISA')
+            ? 'Tarifa aplicada para Divisas / Binance'
+            : 'Monto base para pagos en Bolívares (a tasa del día)';
+    }
+}
+
+function sincronizarDesdeSelect() {
+    const val = document.getElementById('selectMetodoCarrito').value;
+    if (val.includes('Pago Móvil') || val.includes('Punto')) {
+        cambiarModoPago('BS');
+    } else {
+        cambiarModoPago('DIVISA');
+    }
+}
 
 function filtrarProductos() {
     const query = document.getElementById('searchInput').value.toLowerCase().trim();
@@ -246,25 +418,42 @@ function filtrarCategoria(cat, elemento) {
 
 function enviarPedidoWhatsApp() {
     const numeroTienda = "584244495812"; 
-    const nombre = document.getElementById('clienteNombre').value.trim() || "Cliente General";
-    
+    const nombreInput = document.getElementById('clienteNombre');
+    const nombre = (nombreInput && nombreInput.value.trim()) ? nombreInput.value.trim() : "Cliente General";
+    const selectMetodo = document.getElementById('selectMetodoCarrito');
+    const metodoElegido = selectMetodo ? selectMetodo.value : (modoPagoActual === 'DIVISA' ? 'Divisas / Binance' : 'Pago Móvil (Bs)');
+
     let mensaje = `*NUEVO PEDIDO - RyD Tienda Oficial*\n`;
     mensaje += `*Cliente:* ${nombre}\n`;
+    mensaje += `*Método de Pago:* ${metodoElegido}\n`;
     mensaje += `------------------------------------\n`;
 
-    {% if carrito %}
-        {% for item in carrito %}
-            mensaje += `• {{ item.nombre }} x{{ item.cantidad }} - ${{ "%.2f"|format(item.subtotal) }}\n`;
-        {% endfor %}
-    {% endif %}
+    const filas = document.querySelectorAll('.fila-item-carrito');
+    filas.forEach(fila => {
+        const nom = fila.getAttribute('data-nombre');
+        const cant = fila.getAttribute('data-cantidad');
+        const sub = (modoPagoActual === 'DIVISA') ? fila.getAttribute('data-sub-usd') : fila.getAttribute('data-sub-bs');
+        mensaje += `• ${nom} x${cant} - $${sub}\n`;
+    });
+
+    const totalEl = document.getElementById('totalCarritoDisplay');
+    const totalFinal = (modoPagoActual === 'DIVISA') ? totalEl.getAttribute('data-total-usd') : totalEl.getAttribute('data-total-bs');
 
     mensaje += `------------------------------------\n`;
-    mensaje += `*TOTAL A PAGAR:* ${{ "%.2f"|format(total_carrito) }}\n\n`;
-    mensaje += `Deseo coordinar el pago y la entrega.`;
+    if (modoPagoActual === 'DIVISA') {
+        mensaje += `*TOTAL A PAGAR (Divisas/Binance):* $${totalFinal}\n\n`;
+    } else {
+        mensaje += `*TOTAL BASE (Para pagar en Bs a tasa del día):* $${totalFinal}\n\n`;
+    }
+    mensaje += `Deseo confirmar disponibilidad y datos de pago para mi pedido.`;
 
     const url = `https://api.whatsapp.com/send?phone=${numeroTienda}&text=${encodeURIComponent(mensaje)}`;
     window.open(url, '_blank');
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    cambiarModoPago(modoPagoActual);
+});
 </script>
 
 </body>

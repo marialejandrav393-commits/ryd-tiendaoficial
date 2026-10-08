@@ -3,95 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comprobante #{{ "%06d"|format(venta.id) }} - RyD</title>
+    <title>Nota de Entrega #{{ "%06d"|format(venta.id) }} - RyD</title>
     <style>
-        /* Ajuste exacto para rollo térmico de 58mm / 80mm */
-        @page {
-            size: 58mm auto;
-            margin: 0;
-        }
         body {
             font-family: 'Courier New', Courier, monospace;
-            background-color: #F8F5F0;
+            background-color: #f4f4f4;
             margin: 0;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            padding: 20px;
+            color: #000;
         }
-        .ticket-termico {
-            width: 220px;
-            background: #FFFFFF;
-            padding: 10px 8px;
-            border: 1px dashed #C5A059;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
-            font-size: 11px;
-            line-height: 1.25;
-            color: #000000;
+        .ticket-container {
+            max-width: 320px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 18px;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         }
         .text-center { text-align: center; }
-        .text-end { text-align: right; }
+        .text-right { text-align: right; }
         .fw-bold { font-weight: bold; }
-        .divider { border-top: 1px dashed #000000; margin: 6px 0; }
-        table { width: 100%; border-collapse: collapse; font-size: 10px; }
-        td, th { padding: 3px 0; vertical-align: top; }
-        
-        .btn-whatsapp {
-            display: block;
-            width: 100%;
-            background: #25D366;
-            color: #FFFFFF;
-            border: none;
-            padding: 9px;
+        .brand-title {
+            font-size: 1.5rem;
             font-weight: bold;
-            margin-top: 10px;
+            letter-spacing: 2px;
+            margin: 0;
+        }
+        .subtitle {
+            font-size: 0.78rem;
+            margin: 4px 0 12px 0;
+        }
+        .divider {
+            border-top: 1px dashed #000;
+            margin: 10px 0;
+        }
+        .info-row {
+            font-size: 0.8rem;
+            margin: 3px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        th {
+            border-bottom: 1px dashed #000;
+            padding-bottom: 4px;
+            text-align: left;
+        }
+        td {
+            padding: 5px 0;
+            vertical-align: top;
+        }
+        .payment-box {
+            background-color: #f9f9f9;
+            border: 1px solid #000;
+            padding: 8px;
+            margin-top: 8px;
+            font-size: 0.78rem;
+        }
+        .payment-item {
+            margin: 3px 0;
+        }
+        .btn-actions {
+            max-width: 320px;
+            margin: 15px auto 0 auto;
+            display: flex;
+            gap: 8px;
+        }
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
             cursor: pointer;
-            text-transform: uppercase;
+            font-weight: bold;
+            font-size: 0.85rem;
             text-align: center;
             text-decoration: none;
-            border-radius: 5px;
-            font-size: 11px;
-            box-shadow: 0 2px 5px rgba(37, 211, 102, 0.35);
         }
-        .btn-imprimir {
-            display: block;
-            width: 100%;
-            background: #C5A059;
-            color: #FFFFFF;
-            border: none;
-            padding: 8px;
-            font-weight: bold;
-            margin-top: 6px;
-            cursor: pointer;
-            text-transform: uppercase;
-            border-radius: 5px;
-            font-size: 11px;
-        }
+        .btn-print { background: #000; color: #fff; }
+        .btn-back { background: #C5A059; color: #fff; }
         @media print {
-            body { background: #FFFFFF; padding: 0; margin: 0; }
-            .ticket-termico { border: none; box-shadow: none; width: 100%; padding: 4px; }
-            .no-print { display: none !important; }
+            body { background: #fff; padding: 0; }
+            .ticket-container { box-shadow: none; border: none; max-width: 100%; padding: 0; }
+            .btn-actions { display: none; }
         }
     </style>
 </head>
 <body>
 
-<div class="ticket-termico">
+<div class="ticket-container">
     <div class="text-center">
-        <strong style="font-size: 14px; letter-spacing: 1px;">RyD TIENDA</strong><br>
-        <span style="font-size: 9px;">Cosmética y Belleza Integral</span><br>
-        <span style="font-size: 9px;">Valencia, Carabobo - VE</span>
+        <p class="brand-title">RyD</p>
+        <p class="subtitle">TIENDA OFICIAL<br>NOTA DE ENTREGA</p>
     </div>
 
     <div class="divider"></div>
 
-    <div style="font-size: 10px;">
-        <strong>NOTA N°:</strong> #{{ "%06d"|format(venta.id) }}<br>
-        <strong>FECHA:</strong> {{ venta.fecha }}<br>
-        <strong>CLIENTE:</strong> {{ venta.cliente_nombre|default('Cliente Mostrador') }}<br>
-        <strong>TLF:</strong> {{ venta.cliente_telefono if venta.cliente_telefono else 'N/A' }}<br>
-        <strong>CAJERO:</strong> {{ venta.usuario }}<br>
-        <strong>TASA:</strong> Bs. {{ "%.2f"|format(venta.tasa_cambio|default(50.0)) }}
+    <div class="info-row">
+        <span>NOTA NRO:</span>
+        <span class="fw-bold">#{{ "%06d"|format(venta.id) }}</span>
+    </div>
+    <div class="info-row">
+        <span>FECHA:</span>
+        <span>{{ venta.fecha }}</span>
+    </div>
+    <div class="info-row">
+        <span>CLIENTE:</span>
+        <span>{{ venta.cliente_nombre or 'Cliente Mostrador' }}</span>
+    </div>
+    {% if venta.cliente_telefono %}
+    <div class="info-row">
+        <span>TELÉFONO:</span>
+        <span>{{ venta.cliente_telefono }}</span>
+    </div>
+    {% endif %}
+    <div class="info-row">
+        <span>CAJERO:</span>
+        <span>{{ venta.usuario }}</span>
+    </div>
+    <div class="info-row">
+        <span>TASA APLICADA:</span>
+        <span>Bs. {{ "%.2f"|format(venta.tasa_cambio) }}</span>
     </div>
 
     <div class="divider"></div>
@@ -99,18 +134,20 @@
     <table>
         <thead>
             <tr>
-                <th style="text-align: left;">Cant/Desc</th>
-                <th class="text-end">Total</th>
+                <th>CANT / PRODUCTO</th>
+                <th class="text-right">SUBTOTAL</th>
             </tr>
         </thead>
         <tbody>
             {% for d in detalles %}
             <tr>
-                <td colspan="2" style="font-weight: bold; padding-top: 3px;">{{ d.nombre_producto }}</td>
-            </tr>
-            <tr>
-                <td style="color: #444;">{{ d.cantidad }} x ${{ "%.2f"|format(d.precio_unitario) }}</td>
-                <td class="text-end fw-bold">${{ "%.2f"|format(d.subtotal) }}</td>
+                <td>
+                    <strong>{{ d.cantidad }}x</strong> {{ d.nombre_producto }}<br>
+                    <small>Unit: ${{ "%.2f"|format(d.precio_unitario) }} (Bs. {{ "%.2f"|format(d.precio_unitario_bs) }})</small>
+                </td>
+                <td class="text-right fw-bold">
+                    ${{ "%.2f"|format(d.subtotal) }}
+                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -118,92 +155,46 @@
 
     <div class="divider"></div>
 
-    <div class="text-end" style="font-size: 12px;">
-        <strong>TOTAL USD:</strong> ${{ "%.2f"|format(venta.total) }}<br>
-        <strong style="font-size: 11px;">TOTAL BS:</strong> Bs. {{ "%.2f"|format(venta.monto_bs|default(venta.total * 50.0)) }}
+    <div class="info-row" style="font-size: 0.95rem;">
+        <span class="fw-bold">TOTAL COMPRA ($):</span>
+        <span class="fw-bold">${{ "%.2f"|format(venta.total) }}</span>
+    </div>
+    <div class="info-row" style="font-size: 0.9rem;">
+        <span class="fw-bold">EQUIVALENTE (Bs):</span>
+        <span class="fw-bold">Bs. {{ "%.2f"|format(venta.monto_bs) }}</span>
     </div>
 
-    <div class="divider"></div>
-
-    <div style="font-size: 9px;">
-        <strong>PAGO:</strong> {{ venta.metodo_pago }}<br>
-        {% if venta.referencia and venta.referencia != 'N/A' %}
-        <strong>REF:</strong> {{ venta.referencia }}<br>
-        {% endif %}
-        {% if venta.desglose_pago %}
-        <span>{{ venta.desglose_pago }}</span>
-        {% endif %}
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="text-center" style="font-size: 9px;">
-        ¡Gracias por su compra!<br>
-        Conserve su comprobante.
-    </div>
-
-    <!-- Botones de Acción -->
-    <div class="no-print mt-2">
-        <div class="mb-1">
-            <input type="text" id="telDestinoWA" class="text-center" 
-                   value="{{ venta.cliente_telefono }}" placeholder="Número WhatsApp" 
-                   style="width: 100%; padding: 4px; box-sizing: border-box; font-size: 11px; font-weight: bold; border: 1px solid #25D366; border-radius: 4px;">
+    <!-- CAJA DE DESGLOSE EXACTO DE CÓMO PAGÓ -->
+    <div class="payment-box">
+        <div class="fw-bold" style="border-bottom: 1px solid #ccc; padding-bottom: 3px; margin-bottom: 5px;">
+            FORMA DE PAGO: {{ venta.metodo_pago | upper }}
         </div>
+        {% if venta.desglose_pago %}
+            {% for parte in venta.desglose_pago.split(' | ') %}
+                <div class="payment-item">• {{ parte }}</div>
+            {% endfor %}
+        {% else %}
+            <div class="payment-item">• {{ venta.metodo_pago }}: ${{ "%.2f"|format(venta.total) }}</div>
+        {% endif %}
+        {% if venta.referencia and venta.referencia != 'N/A' %}
+            <div class="payment-item" style="margin-top: 4px;">
+                <strong>Ref:</strong> {{ venta.referencia }}
+            </div>
+        {% endif %}
+    </div>
 
-        <button type="button" class="btn-whatsapp" onclick="enviarNotaWhatsApp()">
-            Enviar por WhatsApp
-        </button>
+    <div class="divider"></div>
 
-        <button type="button" class="btn-imprimir" onclick="window.print()">
-            Imprimir en Físico
-        </button>
-
-        <button type="button" onclick="window.close()" style="background: none; border: none; font-size: 10px; color: #827668; text-decoration: underline; width: 100%; margin-top: 6px; cursor: pointer;">
-            Cerrar Ventana
-        </button>
+    <div class="text-center" style="font-size: 0.78rem; margin-top: 10px;">
+        ¡Gracias por su compra!<br>
+        Conserve su nota de entrega.
     </div>
 </div>
 
-<script>
-function enviarNotaWhatsApp() {
-    let inputTel = document.getElementById('telDestinoWA').value.trim();
-    if (!inputTel) {
-        inputTel = prompt("Ingresa el número de WhatsApp del cliente:");
-        if (!inputTel) return;
-    }
+<div class="btn-actions">
+    <button class="btn btn-print" onclick="window.print()">Imprimir Nota</button>
+    <a href="/cajero/pos" class="btn btn-back">Volver a Caja</a>
+</div>
 
-    let telLimpio = inputTel.replace(/[^0-9]/g, '');
-    if (telLimpio.startsWith('0')) {
-        telLimpio = '58' + telLimpio.substring(1);
-    }
-
-    let mensaje = ` *COMPROBANTE / NOTA DE ENTREGA RyD* \n`;
-    mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    mensaje += `*Nota N°:* #{{ "%06d"|format(venta.id) }}\n`;
-    mensaje += `*Fecha:* {{ venta.fecha }}\n`;
-    mensaje += `*Cliente:* {{ venta.cliente_nombre|default('Cliente Mostrador') }}\n`;
-    mensaje += `*Tasa:* Bs. {{ "%.2f"|format(venta.tasa_cambio|default(50.0)) }}\n`;
-    mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    mensaje += `*DETALLE DE ARTÍCULOS:*\n`;
-
-    {% for d in detalles %}
-    mensaje += `▪ {{ d.cantidad }}x *{{ d.nombre_producto }}*\n`;
-    mensaje += `   P.Unit: ${{ "%.2f"|format(d.precio_unitario) }} | Subt: ${{ "%.2f"|format(d.subtotal) }}\n`;
-    {% endfor %}
-
-    mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    mensaje += `*TOTAL PAGADO:*\n`;
-    mensaje += `*USD:* ${{ "%.2f"|format(venta.total) }}\n`;
-    mensaje += `*Bs:* Bs. {{ "%.2f"|format(venta.monto_bs|default(venta.total * 50.0)) }}\n`;
-    mensaje += `*Modalidad:* {{ venta.metodo_pago }}\n`;
-    {% if venta.referencia and venta.referencia != 'N/A' %}
-    mensaje += `*Referencia:* {{ venta.referencia }}\n`;
-    {% endif %}
-    mensaje += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    mensaje += `¡Muchas gracias por su compra!`;
-
-    window.open(`https://wa.me/${telLimpio}?text=${encodeURIComponent(mensaje)}`, '_blank');
-}
-</script>
 </body>
 </html>
